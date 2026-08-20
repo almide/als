@@ -36,7 +36,13 @@ Stated so they cannot be mistaken for claims:
    this runner. The implementations' third leg (the reference interpreter in
    their 3-way oracle) carries that burden today; a reference evaluator
    owned by this repository would close the gap and is the natural next
-   instrument after the freeze.
+   instrument after the freeze ([#10](https://github.com/almide/als/issues/10)).
+   **That third leg shares the front half.** `almide-interp` is an IR
+   interpreter built on the compiler's own parser, checker and lowering; the
+   three-way vote is N-version from IR downward only. A defect in the shared
+   front half moves all three legs identically and agreement cannot see it —
+   which is why the evaluator this repository will own must read source, not
+   IR, and depend on no compiler crate.
 3. **Discovery is directory-based, expectations are mandatory.** Every
    discovered fixture must declare its judgement (`@contract`,
    `@expect-fail`, the diag triple) — a case with no expectation is RED,
@@ -45,8 +51,37 @@ Stated so they cannot be mistaken for claims:
 4. **No baseline tag exists yet.** The first tag is the semantics freeze
    (sequenced behind ADR-0012 D2/D3 on the implementation side). Until then
    consumers pin commit SHAs; the audit trail starts at extraction
-   (`BOUNDARY.md`, Provenance).
+   (`BOUNDARY.md`, Provenance). The chapter examples are likewise mostly
+   unjudged: `scripts/doctest.py` judges 3 fenced blocks, with 21 fragments
+   and 163 untagged fences held under shrink-only ceilings
+   ([#13](https://github.com/almide/als/issues/13)).
 5. **The runner self-test verifies judgment, not the world.** The 21
    scenarios drive the real runner over stub processes; they prove the
    verdict logic, not wasmtime's or the OS's behaviour. Those are exercised
    by the real conformance runs.
+6. **The proof-qualified checker certifies safety properties, not values.**
+   What the implementation's kernel-proven checker establishes on every
+   build is RC balance, name totality, the capability bound and type
+   concretization — a certified-sound function can still print the wrong
+   string ([proven-vs-trusted.md](docs/contracts/proven-vs-trusted.md)).
+   Value correctness rests on the corpus and on agreement (limitation 2).
+   In DO-330 terms the compiler's demotion to an output-verified tool
+   therefore holds for exactly those properties; for functional correctness
+   it stands where any unqualified compiler stands — the applicant verifies
+   the object code — and this repository claims nothing more.
+7. **Most requirements were written after their behaviour shipped.**
+   `proofs/contract-provenance.toml` classifies every contract by the
+   instant its id entered the ledger against the instant its `since` release
+   was tagged. At the time of writing (2026-08-20): 301 contracts —
+   2 requirements-first, 156 contemporaneous, 126 retroactive, 17
+   unmeasured; the live figure is the first block of
+   [docs/contracts/README.md](docs/contracts/README.md). The two-PR order
+   is enforced from the extraction onward; the retroactive count is a
+   shrink-only ceiling (`scripts/check-contract-provenance.py`).
+8. **Traceability is one layer deep.** `ALS-<id>` ⇄ `C-NNN` ⇄ fixture is
+   bidirectional and gated, but it is requirement ⇄ test; there is no
+   HLR → LLR → design → code hierarchy, and no validation record that a
+   section is accurate, complete and consistent beyond the style gate and
+   the fixtures citing it. A per-section review record is the next
+   instrument ([#12](https://github.com/almide/als/issues/12)); filling it
+   with a second signer is limitation 1.
