@@ -1,4 +1,4 @@
-# ADR-0015: Numeric determinism is one normative family, written once — not a property the targets happen to share
+# ADR-0016: Numeric determinism is one normative family, written once — not a property the targets happen to share
 
 - **Status**: Proposed (draft for adjudication — the decisions marked ⚖ are the
   ones this ADR asks the reader to ratify or overturn; everything else is
@@ -91,7 +91,7 @@
   rejected for now as unbacked; the falsifier below reopens it. (c) make
   the cert profile fixed-point only and leave Float unpinned — rejected:
   Float is in the language for everyone, not only the flight subset;
-  ADR-0016 takes Float's flight-admissibility as a separate question that
+  ADR-0017 takes Float's flight-admissibility as a separate question that
   DEPENDS on this family existing.
 - **Consequences**: A new `## ALS-T<n>` family head plus ~5 member sections
   in `text-and-numbers.md`, ~6 contracts, and fixtures in `spec/wasm_cross`
