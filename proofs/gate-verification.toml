@@ -44,6 +44,11 @@ class = "NEGATIVE_TESTED"
 evidence = "Landing run (2026-08-20), each restored to green: a forged row with a wrong hash (STALE, plus the ceiling's below-direction); a correct --stamp row without ratcheting the ceiling (BELOW the ceiling — ratchet it down); the same row with the ceiling ratcheted (green) then verdict=revise without an issue (red); a row for ALS-Z999 (STALE row — section no longer exists); the ceiling lowered with no rows (exceed); and the live case — a valid ALS-T1 row followed by one inserted line in that section's text flipped the row STALE with both hashes named. Zero-sections-enumerated is a hard error. Side finding of the first run: STANDARD.md called ALS-S4 'retired forever' while strings.md still owns a live ALS-S4 — the wording was corrected in the same PR."
 
 [[gate]]
+path = "scripts/check-runner-coverage.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-20): floor hand-set to 99.0 → 'BELOW the floor' red; floor hand-set to 10.0 → 'ABOVE the floor — ratchet it up' red; the self-test made red (declared scenario count 21→20) → 'the runner self-test is red — coverage of a failing verification is not evidence' with the self-test output attached, exit 1; three consecutive measurements identical (85.1% of 261). Measurement honesty checked the other way too: the first denominator counted the imports and the hook (structurally untraceable) as uncovered — module-level lines and the hook's own functions are now excluded and the excluded count is recorded in the ledger, not hidden."
+
+[[gate]]
 path = "scripts/check-workflows.sh"
 class = "NEGATIVE_TESTED"
 evidence = "Inherited verbatim from the implementation (#1234): a forged workflow with a duplicate `if:` key rejected with the key named, exit 1; the empty-glob path fails loud."

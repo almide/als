@@ -66,6 +66,9 @@ def main():
     r = run(["python3", "scripts/selftest-conformance.py"])
     verdict("OK" if r.returncode == 0 else "FAIL", "runner self-test",
             "" if r.returncode == 0 else "the runner's verdicts cannot be trusted")
+    r = run(["python3", "scripts/check-runner-coverage.py"])
+    verdict("OK" if r.returncode == 0 else "FAIL", "runner coverage floor",
+            (r.stdout.strip().splitlines() or ["?"])[-1][:120])
 
     # 4. spec examples compile
     if args.almide:
