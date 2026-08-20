@@ -1,9 +1,10 @@
 # ADR-0016: Numeric determinism is one normative family, written once — not a property the targets happen to share
 
-- **Status**: Proposed (draft for adjudication — the decisions marked ⚖ are the
-  ones this ADR asks the reader to ratify or overturn; everything else is
-  already normative and is only consolidated here)
-- **Date**: 2026-08-21
+- **Status**: Accepted — adjudicated 2026-08-21 ([#28](https://github.com/almide/als/issues/28)):
+  all five ⚖ decisions ratified as written. The ⚖ marks are kept so the
+  reader can see which sentences were decisions and which were
+  consolidation.
+- **Date**: 2026-08-21 (proposed and accepted the same day)
 - **Context**: Floating-point is where "byte-identical on every target" is
   easiest to lose and hardest to see: a NaN's sign bit differs between x86
   and aarch64, engines may or may not propagate payloads, a host libm rounds
@@ -90,9 +91,9 @@
   that was never written. (b) require correctly-rounded transcendentals —
   rejected for now as unbacked; the falsifier below reopens it. (c) make
   the cert profile fixed-point only and leave Float unpinned — rejected:
-  Float is in the language for everyone, not only the flight subset;
-  ADR-0017 takes Float's flight-admissibility as a separate question that
-  DEPENDS on this family existing.
+  Float is in the language for everyone, not only the bounded profile;
+  ADR-0017 takes Float's admissibility in that profile as a separate question
+  that DEPENDS on this family existing.
 - **Consequences**: A new `## ALS-T<n>` family head plus ~5 member sections
   in `text-and-numbers.md`, ~6 contracts, and fixtures in `spec/wasm_cross`
   for every edge named above — all landing before the implementation pins
