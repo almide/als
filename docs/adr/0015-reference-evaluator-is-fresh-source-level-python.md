@@ -120,11 +120,14 @@
      crate, judged by the kernel + cross corpora; the kill rate is a
      shrink-only-in-the-wrong-direction ratchet with survivors listed (the
      edit-locality survey ranks mutation first among the 12 laws).
-  4. *Pinned, qualifiable toolchain.* `rust-toolchain.toml` pins a stable
-     channel; no nightly feature; the toolchain version is recorded in the
-     conformance statement beside the candidate binary and platform; the
-     crate must build under a qualified stable toolchain (Ferrocene) when
-     one is available (#18).
+  4. *Pinned, qualifiable toolchain — Ferrocene-tracking.* `rust-toolchain.toml`
+     pins the stable upstream version that the CURRENT Ferrocene release is
+     built from (at ratification: Ferrocene 26.05.0 == Rust 1.95.0; the
+     subscription itself is #18's resource item), so the switch from stock
+     rustc to `criticalup`-installed Ferrocene is a CI-step change with no
+     code or version change; no nightly feature; the toolchain version is
+     recorded in the conformance statement beside the candidate binary and
+     platform. The pin moves only together with a Ferrocene release.
   5. *No host delegation for specified semantics (the host-diversity
      clause).* The native target runs on Rust `std`; a reference that
      wrote `string.split` as `str::split` would share host semantics with
