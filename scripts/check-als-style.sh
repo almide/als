@@ -49,6 +49,21 @@ for prefix, chap in registry.items():
 for f in chapters:
     if f.split("/")[-1] not in registry.values():
         errs.append(f"{f}: chapter owns no registered prefix — add its row to STANDARD.md")
+# ── fixture naming discipline (ADR-0013): subject-first snake_case, never a
+# bare number or an issue-number name — the mechanical key belongs in the
+# contract ledger and doc comments, not the filename.
+import os
+for d in ("spec/wasm_cross", "spec/wasm_fail", "spec/lang", "spec/stdlib", "spec/integration", "spec/programs"):
+    if not os.path.isdir(d):
+        continue
+    for base, _, files in os.walk(d):
+        for fn in files:
+            if not fn.endswith(".almd"):
+                continue
+            if not re.fullmatch(r'[a-z0-9_]+\.almd', fn):
+                errs.append(f"{base}/{fn}: fixture names are lowercase snake_case (ADR-0013)")
+            if re.match(r'^(issue|bug|fix)?[_-]?\d+(_test)?\.almd$', fn):
+                errs.append(f"{base}/{fn}: a number is not a subject — name what the fixture exercises (ADR-0013)")
 for e in errs:
     print(f"::error::{e}")
 if errs: sys.exit(1)
