@@ -19,8 +19,11 @@ pre-commit:
       glob: "{.github/workflows/*.yml,.github/workflows/*.yaml,scripts/check-workflows.sh}"
       run: bash scripts/check-workflows.sh
     runner:
-      glob: "scripts/conformance.py"
-      run: python3 -m py_compile scripts/conformance.py
+      glob: "{scripts/conformance.py,scripts/selftest-conformance.py}"
+      run: python3 -m py_compile scripts/conformance.py && python3 scripts/selftest-conformance.py
+    gate-verification:
+      glob: "{proofs/gate-verification.toml,scripts/check-*.sh,scripts/conformance.py,scripts/selftest-conformance.py}"
+      run: bash scripts/check-gate-verification.sh
 commit-msg:
   scripts:
     "english-only":

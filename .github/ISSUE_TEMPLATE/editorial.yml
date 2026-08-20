@@ -1,0 +1,18 @@
+name: editorial
+description: "S-editorial: wording, links, formatting"
+labels: ["S-editorial"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What, exactly
+      description: "Cite the section (ALS-id), contract (C-NNN), or fixture path. For divergence: both observed behaviours, verbatim."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Executable evidence
+      description: "The program/fixture that demonstrates it, and how you ran it (conformance.py invocation, binary version)."
+    validations:
+      required: true

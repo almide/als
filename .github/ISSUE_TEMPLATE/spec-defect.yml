@@ -1,0 +1,18 @@
+name: spec-defect
+description: "S-unsound suspected: the spec is wrong, contradictory, or its evidence does not establish it"
+labels: ["S-unsound suspected"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What, exactly
+      description: "Cite the section (ALS-id), contract (C-NNN), or fixture path. For divergence: both observed behaviours, verbatim."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Executable evidence
+      description: "The program/fixture that demonstrates it, and how you ran it (conformance.py invocation, binary version)."
+    validations:
+      required: true
