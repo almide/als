@@ -32,7 +32,7 @@ codegen:  auth.authenticate() → Result[Profile, String]
 
 ### 1. `effect fn` の宣言型
 
-```almide
+```almide fragment
 effect fn foo(x: Int) -> String = ...
 ```
 
@@ -48,7 +48,7 @@ foo : (Int) -> Result[String, String]
 
 `effect fn foo() -> T` の呼び出し `foo()` は、**あらゆるコンテキストで** `Result[T, String]` 型を持つ。
 
-```almide
+```almide fragment
 effect fn main() -> Unit = {
   let r = foo()        // r: Result[T, String]  ← これが正式な型
   let v = foo()!       // v: T                  ← ! で unwrap
@@ -60,7 +60,7 @@ effect fn main() -> Unit = {
 
 effect fn body 内の **式文** (let 束縛の右辺、代入の右辺) で、effect fn call が `Result[T, String]` を返す場合、checker が自動的に `?` (Try) を挿入する。
 
-```almide
+```almide fragment
 effect fn main() -> Unit = {
   let content = read_file("test.txt")   // ← auto-? 挿入
   //            ↓ 脱糖
@@ -87,7 +87,7 @@ effect fn call が `Result[T, String]` を返すので、`foo()!` は自然に `
 
 test ブロックは effect context。auto-`?` が同様に適用される。
 
-```almide
+```almide fragment
 test "reads a file" {
   let content = fs.read_text("test.txt")!   // 明示的 ! (stdlib)
   let data = load_data()                     // auto-? (user effect fn)
@@ -99,7 +99,7 @@ test "reads a file" {
 
 lambda は `?` を enclosing fn に propagate できない。auto-`?` は挿入されない。
 
-```almide
+```almide fragment
 effect fn main() -> Unit = {
   let items = [1, 2, 3]
   // lambda 内では明示的に ! or match が必要

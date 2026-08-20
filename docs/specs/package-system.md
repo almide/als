@@ -67,7 +67,7 @@ The type checker tracks which modules each file has imported via `import` statem
 
 A module can re-export a dependency's types by wrapping:
 
-```almide
+```almide fragment
 // B/mod.almd
 import D
 type Logger = D.Logger  // re-export (future: explicit pub use)

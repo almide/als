@@ -28,10 +28,17 @@ lives here versus in an implementation, and why.
 ```bash
 bash scripts/check-contracts.sh              # ledger ⇄ fixture ⇄ ALS traceability
 bash scripts/check-als-element-coverage.sh   # element → section ledger
+bash scripts/check-als-style.sh              # requirements standard (STANDARD.md)
+bash scripts/check-links.sh                  # links and anchors resolve
+bash scripts/check-gate-verification.sh      # the tools' own DO-330 ledger
+python3 scripts/selftest-conformance.py      # the runner can fail correctly
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md
 bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md
-python3 -m py_compile scripts/conformance.py
+bash docs/specs/als/generate-readme.sh      > docs/specs/als/README.md
 ```
+
+Before an edition tag: `python3 scripts/edition-readiness.py --tag vX.Y.Z --almide <bin>` —
+the baseline instrument; a tag is cut only on READY.
 `lefthook install` wires these as pre-commit hooks. The `gates` workflow runs
 them on every push and PR; `main` only takes PRs that pass it.
 

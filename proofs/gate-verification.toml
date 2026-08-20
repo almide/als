@@ -57,3 +57,13 @@ evidence = "scripts/selftest-conformance.py: 21 scenarios drive the real runner 
 path = "scripts/selftest-conformance.py"
 class = "EXERCISED"
 evidence = "Its declared-count guard fired on the landing run (21 scenarios vs a declared 20) and went green only after the declaration was corrected — the harness's own red direction observed before first green. Each scenario asserts a red and its reason, so a runner regression flips at least one scenario."
+
+[[gate]]
+path = "scripts/doctest.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (PR #6, 2026-08-20): a planted lying example (```almide fenced, syntactically broken) flipped it red with the file:line named; restore returned green. Also guarded against instrument death: zero almide blocks measured is a failure, not a pass; and the fragment/untagged ceilings fail in BOTH directions (grow, and un-ratcheted shrink). Introduction measurement: 24 tagged blocks, 3 compile — the 21 fragments are a declared shrink-only debt, not a hidden one."
+
+[[gate]]
+path = "scripts/edition-readiness.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (PR #6, 2026-08-20): --almide /nonexistent produced [FAIL] spec doctest and verdict NOT READY (exit 1); the full run with the real binary produced READY with 13 checks and the two honest WARNs (feature branch, dirty tree). FATAL direction covered by the tag-shape/tag-exists checks."
