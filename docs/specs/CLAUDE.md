@@ -4,7 +4,18 @@
 
 - A normative statement without an executable fixture does not exist. Name the
   test paths in the section ("テスト: `spec/integration/modules/diamond_test.almd`").
-- Write what IS. Code examples compile as-is when pasted into an `.almd` file.
+- Write what IS. Code examples compile as-is when pasted into an `.almd` file —
+  and `scripts/doctest.py` proves it on every conformance run. Every fence
+  declares what it is (the vocabulary is closed, see the script's docstring):
+  ```` ```almide ```` is a complete file that `almide test` compiles AND runs
+  (write `test` blocks that assert the claims of the prose),
+  ```` ```almide check-fail=ENNN ```` must be rejected with that code
+  (`syntax` for a code-less parser rejection),
+  ```` ```almide project ```` is a multi-file example split by `// file: <path>`
+  lines (module dirs, `almide.toml`; negative forms `check-fail=` /
+  `build-fail=`), and anything that is not Almide carries its own language
+  (`text`, `ebnf`, `toml`, `bash`, `rust`). Bare fences and `almide fragment`
+  are both ratcheted to zero.
 - Delete stale spec. No `_deprecated/`. No "〜のはず", no "予定".
 - Unimplemented design goes to an ADR (`docs/adr/`) or the implementation's
   roadmap — never here.

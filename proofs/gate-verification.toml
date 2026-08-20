@@ -61,7 +61,7 @@ evidence = "Its declared-count guard fired on the landing run (21 scenarios vs a
 [[gate]]
 path = "scripts/doctest.py"
 class = "NEGATIVE_TESTED"
-evidence = "Landing run (PR #6, 2026-08-20): a planted lying example (```almide fenced, syntactically broken) flipped it red with the file:line named; restore returned green. Also guarded against instrument death: zero almide blocks measured is a failure, not a pass; and the fragment/untagged ceilings fail in BOTH directions (grow, and un-ratcheted shrink). Introduction measurement: 24 tagged blocks, 3 compile — the 21 fragments are a declared shrink-only debt, not a hidden one."
+evidence = "NEGATIVE_TESTED at landing (PR #6, 2026-08-20: a planted lying example flipped it red; zero-blocks and both ceiling directions fail). Made permanent in the burn-down PR the same day: `scripts/doctest.py --selftest` plants 25 scenarios across every verdict class — a failing assertion is red (blocks are RUN, not only checked), a negative example that compiles or fails with a different code is red, a project whose test lies or whose module is broken is red, a project build-fail that fails for another reason is red, an un-imported module directory is red, an unknown mode is red, zero blocks is red, both ceiling directions are red, and the green cases hold — run in the conformance workflow before the doctest itself. Burn-down measurement: 21 fragments and 163 bare fences at introduction, both 0 afterwards with 167 judged examples holding; the burn-down surfaced nine spec-vs-compiler divergences (listed in that PR) — the instrument found real defects on its first full pass."
 
 [[gate]]
 path = "scripts/check-contract-provenance.py"

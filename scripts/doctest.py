@@ -20,7 +20,11 @@ excluding README/STANDARD/CLAUDE). The fence vocabulary is CLOSED:
   ```almide project         a multi-file example: `// file: <relpath>` lines
                             split the body into files materialized in a fresh
                             directory (module dirs, almide.toml, …); every
-                            .almd file must pass `almide check`, then
+                            ROOT-level .almd file must pass `almide check`
+                            (module files resolve their own imports relative
+                            to themselves, so they are judged through the root
+                            files that import them — a module directory no
+                            file imports is an error, not a silent pass), then
                             `almide test <dir>` runs whatever tests exist
   ```almide project check-fail=ENNN
                             multi-file negative: the LAST file is the consumer
@@ -32,8 +36,9 @@ excluding README/STANDARD/CLAUDE). The fence vocabulary is CLOSED:
                             must fail and name <what> — an ENNN code, `syntax`,
                             or a bare word the diagnostic must contain
   ```almide fragment        not standalone; counted against a shrink-only
-                            ceiling below — honest debt, burned down by
-                            giving examples their missing context
+                            ceiling below — the ceiling is 0 since the
+                            2026-08-20 burn-down, so the mode is documented
+                            history: give the example its context instead
   ```<other-lang> / ```     out of judgment (text, ebnf, toml, bash, rust…);
                             bare ``` fences are counted against their own
                             shrink-only ceiling (every fence should declare
@@ -51,8 +56,8 @@ the same, only the wall-clock differs.
 """
 import argparse, collections, glob, os, re, shutil, subprocess, sys, tempfile
 
-FRAGMENT_CEILING = 21   # measured 2026-08-20 at introduction; shrink-only
-UNTAGGED_CEILING = 163  # bare ``` fences in normative chapters; shrink-only
+FRAGMENT_CEILING = 0    # 21 at introduction (2026-08-20), burned to 0 the same day; shrink-only — a new fragment is red
+UNTAGGED_CEILING = 0    # 163 bare ``` fences at introduction, burned to 0; shrink-only — every fence declares what it is
 
 FILE_MARK = re.compile(r'^// file: (\S+)\s*$')
 FAILED_RE = re.compile(r'(\d+) failed \(of (\d+) files\)')
@@ -63,8 +68,12 @@ def blocks(root):
         if f.endswith(("README.md", "STANDARD.md", "CLAUDE.md")):
             continue
         src = open(f, encoding="utf-8").read()
-        for m in re.finditer(r'```([^\n]*)\n(.*?)```', src, re.S):
-            yield os.path.relpath(f, root), src[:m.start()].count("\n") + 1, m.group(1).strip(), m.group(2)
+        for m in re.finditer(r'^( *)```([^\n]*)\n(.*?)^ *```', src, re.S | re.M):
+            # CommonMark: a fence indented by N spaces (inside a list item) has
+            # up to N spaces of indentation removed from every content line.
+            indent = len(m.group(1))
+            body = "".join(l[min(indent, len(l) - len(l.lstrip(" "))):] for l in m.group(3).splitlines(keepends=True))
+            yield os.path.relpath(f, root), src[:m.start()].count("\n") + 1, m.group(2).strip(), body
 
 
 def run(cmd, cwd=None):
@@ -161,7 +170,14 @@ def judge_project(almide, body, mode):
             if rejected_with(rc, out, what):
                 return None
             return f"negative project example: `almide build {almd[-1]}` must fail naming {what!r} (exit={rc})"
-        for rel in almd:
+        roots = [rel for rel in almd if "/" not in rel]
+        if not roots:
+            return "project block has no root-level .almd file to judge the modules through"
+        all_src = "\n".join(c for rel, c in files if rel.endswith(".almd"))
+        for mod in sorted({rel.split("/")[0] for rel in almd if "/" in rel} - {"src"}):
+            if not re.search(r"^import " + re.escape(mod) + r"(\.|\s|$)", all_src, re.M):
+                return f"module directory `{mod}/` is never imported — its files would go unjudged"
+        for rel in roots:
             rc, out = run([almide, "check", os.path.join(d, rel)])
             if rc != 0:
                 return f"project file `{rel}` does not compile\n  {first_line(out)}"
@@ -254,12 +270,16 @@ SELFTEST_CASES = [
      "almide project build-fail=capability", '// file: almide.toml\n[package]\nname = "permdemo"\nversion = "0.1.0"\n\n[permissions]\nallow = ["IO"]\n// file: main.almd\nimport http\n\neffect fn fetch() -> Result[String, String] = http.get("https://example.com")\n', False, None),
     ("project build-fail is red when the build fails for a DIFFERENT reason",
      "almide project build-fail=capability", '// file: main.almd\nfn f() -> Int = "not an int"\n', True, "must fail naming"),
+    ("project with a module directory nothing imports is red",
+     "almide project", '// file: orphan/mod.almd\nfn f() -> Int = 1\n// file: main.almd\nfn g() -> Int = 2\n', True, "never imported"),
     ("project block without a leading // file: line is red",
      "almide project", 'fn f() -> Int = 1\n', True, "must begin with"),
     ("project file path escaping the directory is red",
      "almide project", '// file: ../escape.almd\nfn f() -> Int = 1\n', True, "must be relative"),
     ("unknown mode is red (closed vocabulary)",
      "almide run", "fn f() -> Int = 1\n", True, "closed"),
+    ("an indented fence (list item) is dedented before judgment",
+     "INDENTED", 'fn f() -> Int = 1\ntest "t" {\n  assert_eq(f(), 1)\n}\n', False, None),
     ("fragment is counted, not judged",
      "almide fragment", "this is not almide at all\n", False, None),
 ]
@@ -272,8 +292,12 @@ def selftest(almide):
         try:
             os.makedirs(os.path.join(root, "docs/specs"))
             n_frag = 1 if info == "almide fragment" else 0
-            open(os.path.join(root, "docs/specs/case.md"), "w", encoding="utf-8").write(
-                f"# case\n\n```{info}\n{body}```\n")
+            if info == "INDENTED":   # the fence and its body sit two spaces in, as under a list item
+                info, body = "almide", "".join("  " + l for l in body.splitlines(keepends=True))
+                page = f"# case\n\n- item\n\n  ```{info}\n{body}  ```\n"
+            else:
+                page = f"# case\n\n```{info}\n{body}```\n"
+            open(os.path.join(root, "docs/specs/case.md"), "w", encoding="utf-8").write(page)
             ok, _, errors = judge(root, almide, fragment_ceiling=n_frag, untagged_ceiling=0)
             red = not ok
             if red != expect_red:
