@@ -25,6 +25,8 @@ jobs:
         run: bash scripts/check-links.sh
       - name: ALS requirements standard (ids, prefixes, vocabulary)
         run: bash scripts/check-als-style.sh
+      - name: ALS validation records — reviews bound to the text they covered
+        run: bash scripts/check-als-validation.sh
       - name: Workflow files parse strictly
         run: bash scripts/check-workflows.sh
       - name: Runner compiles and documents itself

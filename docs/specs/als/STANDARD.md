@@ -34,8 +34,10 @@ a machine can check; the rest is review discipline.
 
 - Ids are **permanent**: never renumbered, never reused. Splitting a section
   mints new ids; merging keeps ONE id and retires the other permanently (the
-  retired id may never come back — 2026-08-20: `ALS-S4` merged into
-  `ALS-ST3`, `ALS-S4` is retired forever).
+  retired meaning may never come back under another id — 2026-08-20: the
+  expressions-chapter `ALS-S4` (`Stmt::Comment`) merged into `ALS-ST3`;
+  `ALS-S4` now names only the strings-chapter section it always also named,
+  and `Stmt::Comment` is `ALS-ST3` forever).
 
 ## Writing a section
 
@@ -54,6 +56,23 @@ a machine can check; the rest is review discipline.
   table of per-target values under a named contract), never avoidance and
   never a prose fudge.
 - Chapters open with `> Last updated: YYYY-MM-DD`.
+
+## Validation record (DO-178C A-3)
+
+The style gate holds what a machine can check. Whether a section is
+**accurate, consistent and complete** is a reviewer's judgment, and a
+judgment that is not recorded does not exist. `proofs/als-validation.toml`
+carries one row per reviewed section — `id`, `hash` (the section text the
+review covered; `bash scripts/check-als-validation.sh --stamp ALS-<id>`
+prints it), `reviewed` (date), `by`, `independent` (`yes` only for a
+reviewer who is not the author), `verdict` (`accurate`, or `revise` with an
+`issue = "#N"`). A text change makes the row STALE and the gate red until
+the section is re-reviewed. Sections without a row are **unvalidated**, a
+shrink-only ceiling: a new section lands with its row, or raises the
+ceiling by exactly one with a justification in the PR. The gate is
+`scripts/check-als-validation.sh`. Today every review on record is by the
+author (QUALIFICATION.md, limitation 1) — the ledger makes that visible
+rather than pretending otherwise.
 
 ## Ratchets (the four-direction law)
 

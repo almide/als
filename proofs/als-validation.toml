@@ -1,0 +1,23 @@
+# ALS VALIDATION LEDGER (almide/als) — who reviewed which normative section, against which text.
+#
+# The requirements standard (docs/specs/als/STANDARD.md) and its gate hold
+# what a machine can check. Whether a section is ACCURATE, CONSISTENT and
+# COMPLETE (DO-178C A-3) is a reviewer's judgment; this ledger is where that
+# judgment is recorded so it exists. One row per reviewed `## ALS-<id>`:
+#
+#   [[section]]
+#   id          = "ALS-T1"
+#   hash        = "sha256:<12 hex>"   the section text the review covered —
+#                                     bash scripts/check-als-validation.sh --stamp ALS-T1
+#                                     prints it; a text change makes the row STALE
+#   reviewed    = "YYYY-MM-DD"
+#   by          = "<github handle>"
+#   independent = "yes" | "no"        yes ONLY for a reviewer who is not the author
+#                                     (QUALIFICATION.md limitation 1: today there is none)
+#   verdict     = "accurate" | "revise"   revise requires issue = "#N" (an S-* issue)
+#
+# A section with no row is UNVALIDATED. The count is a shrink-only ceiling:
+# a new section lands with its review, or raises the ceiling by exactly one
+# with a justification in the PR. Enforced by scripts/check-als-validation.sh.
+#
+# unvalidated_ceiling = "110"

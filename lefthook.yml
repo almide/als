@@ -15,6 +15,9 @@ pre-commit:
     als-style:
       glob: "{docs/specs/als/*.md,scripts/check-als-style.sh}"
       run: bash scripts/check-als-style.sh
+    als-validation:
+      glob: "{docs/specs/als/*.md,proofs/als-validation.toml,scripts/check-als-validation.sh}"
+      run: bash scripts/check-als-validation.sh
     als-element-coverage:
       glob: "{proofs/als-element-coverage.toml,scripts/check-als-element-coverage.sh,docs/specs/als/*.md}"
       run: bash scripts/check-als-element-coverage.sh

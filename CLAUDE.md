@@ -30,6 +30,7 @@ bash scripts/check-contracts.sh              # ledger ⇄ fixture ⇄ ALS tracea
 python3 scripts/check-contract-provenance.py # requirement-before-behaviour ledger (retroactive shrink-only)
 bash scripts/check-als-element-coverage.sh   # element → section ledger
 bash scripts/check-als-style.sh              # requirements standard (STANDARD.md)
+bash scripts/check-als-validation.sh         # per-section review records, hash-bound (unvalidated shrink-only)
 bash scripts/check-links.sh                  # links and anchors resolve
 bash scripts/check-gate-verification.sh      # the tools' own DO-330 ledger
 python3 scripts/selftest-conformance.py      # the runner can fail correctly
@@ -60,6 +61,10 @@ python3 scripts/conformance.py --almide … --legs diag,fail --limit 20   # smok
 - Delete stale spec; a spec that diverges from the corpus misleads. No
   `_deprecated/`.
 - `> Last updated: YYYY-MM-DD` at the top of each chapter.
+- A new or rewritten section lands with its validation row in
+  `proofs/als-validation.toml` (`bash scripts/check-als-validation.sh --stamp
+  ALS-<id>` prints it), or raises the unvalidated ceiling by exactly one with
+  a justification. Editing a reviewed section's text makes its row STALE.
 - Section ids (`ALS-M1`, `ALS-T4`, …) and contract ids (`C-NNN`) are permanent;
   never renumber. Contract ids are contiguous — append.
 
