@@ -42,9 +42,29 @@ unchanged by replacing the compiler with a different correct one.
 | `docs/CHEATSHEET.md` | **open** | The LLM-facing reference; grounds the implementation's misspelling dictionary. Non-normative today. |
 | `docs/TRUST-SPINE.md`, `docs/roadmap/`, `docs/ARCHITECTURE.md`, `research/`, `examples/`, `stdlib/`, `crates/`, `runtime/` | implementation | Trust argument, plans, and the compiler itself. |
 
-## Stage B — replacing the copies with a pin (not yet done; decided separately)
+## Stage B — replacing the copies with a pin
 
-What the implementations must do to stop carrying copies:
+**Executed for the greenfield implementation on 2026-08-20** (almide/almide
+branch `greenfield`, commit `b42f30b57`, ratification R6 in its
+ARCHITECTURE.md): this repository is mounted as the submodule `als/`, the
+copies are deleted, a single indirection crate (`almide-corpus`) resolves
+corpus-relative paths across the two roots, the golden generators run the
+port-SHA oracle with cwd = the fixture's root, and the contract gate runs from
+the mount with `--impl-root`. Two findings from that cutover, recorded for the
+next consumer:
+
+- A fixture whose contract postdates an implementation's oracle SHA may have
+  NO referee there (the oracle's legs wall or disagree on it). Greenfield
+  holds such fixtures out via a shrink-only register
+  (`scripts/lib/run-oracle-exclusions.txt` in its tree) rather than judging
+  against a non-observation.
+- A pin advance may legitimately bring new implementation-evidence forward
+  references and ceiling raises; the rule adopted is: raise by exactly what
+  the advance brings, each named in the port log — outside a pin advance,
+  ratchets only go down.
+
+**The incumbent (`develop`) still carries copies** — its cutover is a
+separately decided step. What it must do:
 
 1. Mount this repository at a pinned commit (a submodule, or a fetch step in
    CI — `actions/checkout` does not fetch submodules by default, the
