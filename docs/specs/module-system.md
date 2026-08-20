@@ -33,12 +33,33 @@ mypackage/
 
 ### 2.1 構文
 
-```almide fragment
-import pkg                    // パッケージ全体
+```almide project
+// file: almide.toml
+[package]
+name = "myapp"
+version = "0.1.0"
+// file: src/mod.almd
+fn hello() -> String = "hello from myapp"
+// file: src/utils.almd
+fn helper() -> String = "helper"
+// file: pkg/src/mod.almd
+fn version() -> String = "1.0"
+// file: pkg/src/sub.almd
+fn func() -> String = "pkg.sub"
+// file: main.almd
+import pkg                    // パッケージ全体 → pkg.version()
 import pkg.sub                // 特定のサブモジュール → sub.func() で呼べる
-import pkg as p               // エイリアス
-import self                   // 自パッケージの mod.almd
-import self.sub               // 自パッケージのサブモジュール
+import pkg as p               // エイリアス → p.version()
+import self                   // 自パッケージの mod.almd → myapp.hello()(almide.toml の name)
+import self.utils             // 自パッケージのサブモジュール → utils.helper()
+
+test "every import form resolves" {
+  assert_eq(pkg.version(), "1.0")
+  assert_eq(sub.func(), "pkg.sub")
+  assert_eq(p.version(), "1.0")
+  assert_eq(myapp.hello(), "hello from myapp")
+  assert_eq(utils.helper(), "helper")
+}
 ```
 
 - `import pkg.sub` は最後のセグメント名で参照可能: `sub.func()`
@@ -111,19 +132,30 @@ Formatted app.almd
 
 ## 3. 呼び出し
 
-```almide fragment
+```almide project
+// file: bindgen/src/mod.almd
+fn version() -> String = "0.1.0"
+// file: bindgen/src/scaffolding.almd
+fn generate(iface: String) -> String = "scaffold:" + iface
+// file: bindgen/src/bindings/python.almd
+fn generate(iface: String) -> String = "py:" + iface
+// file: main.almd
 import bindgen
 import bindgen.scaffolding
 import bindgen.bindings.python
 
-// トップレベル関数
-bindgen.version()
+test "call by the last segment" {
+  let iface = "Api"
 
-// サブモジュール関数（最後のセグメント名で呼ぶ）
-scaffolding.generate(iface)
+  // トップレベル関数
+  assert_eq(bindgen.version(), "0.1.0")
 
-// 深いサブモジュール
-python.generate(iface)
+  // サブモジュール関数（最後のセグメント名で呼ぶ）
+  assert_eq(scaffolding.generate(iface), "scaffold:Api")
+
+  // 深いサブモジュール
+  assert_eq(python.generate(iface), "py:Api")
+}
 ```
 
 import したモジュールの直接の関数のみアクセス可能。サブモジュールにアクセスするには別途 import する（Go, Gleam と同じ方式）。
@@ -134,11 +166,17 @@ import したモジュールの直接の関数のみアクセス可能。サブ�
 
 **直接 import したパッケージのみアクセス可能。推移的依存は不可視。**
 
-```almide fragment
-import B       // B は内部で D を import している
+```almide project check-fail=E003
+// file: d/mod.almd
+fn func() -> String = "d"
+// file: b/mod.almd
+import d
+fn func() -> String = "b via " + d.func()
+// file: main.almd
+import b       // b は内部で d を import している
 
-B.func()       // ✓ 直接 import した
-D.func()       // ✗ undefined variable 'D'
+fn direct() -> String = b.func()       // ✓ 直接 import した
+fn phantom() -> String = d.func()      // ✗ E003 undefined variable 'd'
 ```
 
 D を使いたければ `import D` を明示する。npm の phantom dependency 問題を防ぐ設計。
@@ -154,24 +192,52 @@ main → C → D
 
 D は1回だけロードされ、1回だけコンパイル出力に含まれる。B と C は同じ D を参照する。
 
-```almide fragment
-import B
-import C
-import D
+```almide project
+// file: d/mod.almd
+fn shared() -> String = "from D"
+// file: b/mod.almd
+import d
+fn from_b() -> String = "B says: " + d.shared()
+// file: c/mod.almd
+import d
+fn from_c() -> String = "C says: " + d.shared()
+// file: main.almd
+import b
+import c
+import d
 
-B.from_b()           // "B says: from D" — B 経由で D を呼ぶ
-C.from_c()           // "C says: from D" — C 経由で D を呼ぶ
-D.shared()           // "from D"         — 直接 D を呼ぶ
+test "one D, reached three ways" {
+  assert_eq(b.from_b(), "B says: from D")   // B 経由で D を呼ぶ
+  assert_eq(c.from_c(), "C says: from D")   // C 経由で D を呼ぶ
+  assert_eq(d.shared(), "from D")           // 直接 D を呼ぶ
+}
 ```
 
 ### 型の同一性
 
 D が定義した型は、B 経由でも C 経由でも同一の型として扱われる。
 
-```almide fragment
-let logger = B.make_logger()     // D.Logger 型を返す
-C.process_logger(logger)         // ✓ B が作った D.Logger を C が受け取れる
-D.log_name(logger)               // ✓ 直接 D に渡すのも同じ型
+```almide project
+// file: d/mod.almd
+type Logger = { name: String }
+fn make_logger(n: String) -> Logger = Logger { name: n }
+fn log_name(l: Logger) -> String = l.name
+// file: b/mod.almd
+import d
+fn make_logger() -> d.Logger = d.make_logger("b")
+// file: c/mod.almd
+import d
+fn process_logger(l: d.Logger) -> String = "C got " + d.log_name(l)
+// file: main.almd
+import b
+import c
+import d
+
+test "D's type is one type through B and C" {
+  let logger = b.make_logger()                       // D.Logger 型を返す
+  assert_eq(c.process_logger(logger), "C got b")     // ✓ B が作った D.Logger を C が受け取れる
+  assert_eq(d.log_name(logger), "b")                 // ✓ 直接 D に渡すのも同じ型
+}
 ```
 
 ### バージョン違いのダイヤモンド
@@ -207,10 +273,19 @@ error: function 'internal' is not accessible from module 'extlib'
 
 自パッケージの `src/mod.almd` を参照する。`main.almd` からライブラリ関数を呼ぶ場合に使う。
 
-```almide fragment
-// main.almd
+```almide project
+// file: almide.toml
+[package]
+name = "mylib"
+version = "0.1.0"
+// file: src/mod.almd
+fn exported_function() -> String = "exported"
+// file: main.almd
 import self as mylib
-mylib.exported_function()
+
+test "main reaches its own package through self" {
+  assert_eq(mylib.exported_function(), "exported")
+}
 ```
 
 `almide.toml` の `name` がデフォルトのモジュール名。`as` でエイリアス可。`src/mod.almd` が存在しない場合はエラー。
@@ -221,13 +296,24 @@ mylib.exported_function()
 
 サブモジュールは stdlib や他パッケージを自由に import できる。親パッケージのロード時に再帰的に解決される。
 
-```almide fragment
-// mypackage/src/formatter.almd
+```almide project
+// file: extlib/src/mod.almd
+fn info() -> String = "ext"
+// file: mypackage/src/mod.almd
+fn name() -> String = "mypackage"
+// file: mypackage/src/formatter.almd
 fn format_upper(s: String) -> String = string.to_upper(s)   // stdlib
-
-// mypackage/src/utils.almd
+// file: mypackage/src/utils.almd
 import extlib
 fn describe(s: String) -> String = extlib.info() + ": " + s  // 他パッケージ
+// file: main.almd
+import mypackage.formatter
+import mypackage.utils
+
+test "a submodule's own imports resolve when the parent is loaded" {
+  assert_eq(formatter.format_upper("a"), "A")
+  assert_eq(utils.describe("x"), "ext: x")
+}
 ```
 
 サブモジュール内の型チェックでは、そのサブモジュールが import した stdlib / ユーザーモジュールが正しく認識される。
