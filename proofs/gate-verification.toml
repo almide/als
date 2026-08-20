@@ -1,0 +1,59 @@
+# GATE VERIFICATION LEDGER (almide/als) — who watches the watchmen.
+#
+# Every verdict-bearing tool in this repository carries a row classifying HOW
+# we know the tool itself can fail correctly, with a durable evidence pointer.
+# The judge's tools ARE verification tools (DO-330): a gate nobody has ever
+# seen fail is possibly decorative, and this repository's verdicts justify
+# trusting implementations — so the debt is tracked here, shrink-only.
+# Enforced by scripts/check-gate-verification.sh: every enumerated tool needs
+# exactly one row, stale rows fail, a non-UNVERIFIED row needs `evidence`,
+# and the UNVERIFIED count may only SHRINK (ceiling below).
+#
+# Classes (shared vocabulary with the implementation's ledger):
+#   MUTATION_TESTED — a deliberate corruption of the tool's input/ledger was
+#                     demonstrated to FAIL the tool (recorded where).
+#   NEGATIVE_TESTED — a forged/violating input was demonstrated to FAIL.
+#   EXERCISED       — both verdict directions observed in real operation.
+#   UNVERIFIED      — no recorded evidence the tool can fail correctly.
+#
+# unverified_ceiling = "0"
+
+[[gate]]
+path = "scripts/check-contracts.sh"
+class = "MUTATION_TESTED"
+evidence = "Inherited from the implementation's ledger (F1 2026-07-04 spec-resolution mutation; the 2026-08-16 SIGPIPE membership-race repair with 12 documented one-line mutations in the script's own footer). Two-repo mode re-verified at extraction (2026-08-20, als founding session): removing a judge-resident fixture (spec/wasm_cross/float_parse.almd) flipped the gate red with C-024 named in both the missing-evidence and broken-symmetry directions; restore returned green."
+
+[[gate]]
+path = "scripts/check-als-element-coverage.sh"
+class = "NEGATIVE_TESTED"
+evidence = "Implementation-ledger lineage: unresolvable section (ALS-Z999) and dropped-row UNCLASSIFIED each demonstrated to fail before first green, with the below-ceiling ratchet demand firing in both. Two-repo split preserved both directions: ledger-side checks run here (section resolution, ceiling), enumeration defers loudly — never silently — without ALS_IMPL_ROOT."
+
+[[gate]]
+path = "scripts/check-links.sh"
+class = "EXERCISED"
+evidence = "PR #3 (2026-08-20): on its FIRST run the anchor check caught a live defect — the new ALS index generator's slugger diverged from the gate's on full-width punctuation (dead anchor into text-and-numbers.md) — red on the bug, green after the two sluggers were unified into one law. Both directions observed in real operation."
+
+[[gate]]
+path = "scripts/check-als-style.sh"
+class = "EXERCISED"
+evidence = "PR #4 (2026-08-20): first run found 6 chapters missing their `> Last updated:` header (red), green after repair; the class it was built for — 13 chapter-ambiguous section ids, one three-ways with citations already split across meanings — was repaired in the same PR and the uniqueness + prefix-registry checks pin it closed. The registry-missing path exits 2."
+
+[[gate]]
+path = "scripts/check-workflows.sh"
+class = "NEGATIVE_TESTED"
+evidence = "Inherited verbatim from the implementation (#1234): a forged workflow with a duplicate `if:` key rejected with the key named, exit 1; the empty-glob path fails loud."
+
+[[gate]]
+path = "scripts/check-gate-verification.sh"
+class = "NEGATIVE_TESTED"
+evidence = "Bootstrap run (PR #5, 2026-08-20): before first green, a mis-pathed row failed as STALE and this script's own missing row failed as UNCLASSIFIED — both fail directions demonstrated (same bootstrap protocol as the implementation's ledger)."
+
+[[gate]]
+path = "scripts/conformance.py"
+class = "NEGATIVE_TESTED"
+evidence = "scripts/selftest-conformance.py: 21 scenarios drive the real runner over a scripted stub implementation through every verdict class per leg — cross (stdout/stderr/exit divergence, build refusal, @xt-allow tracked, healed-allow STALE), fail (success-is-failure, wrong message, split legs, missing header is red never skipped, @xf-allow, stale), diag (accepted-broken, missing code, missing hint, unfixable fix), suite (failed-count red even at exit 0) — asserting both the process exit AND the statement's per-leg counters. A dropped scenario fails the declared-count guard (which fired on its own landing run: 21 written, 20 declared). Runs in the gates workflow on every push."
+
+[[gate]]
+path = "scripts/selftest-conformance.py"
+class = "EXERCISED"
+evidence = "Its declared-count guard fired on the landing run (21 scenarios vs a declared 20) and went green only after the declaration was corrected — the harness's own red direction observed before first green. Each scenario asserts a red and its reason, so a runner regression flips at least one scenario."
