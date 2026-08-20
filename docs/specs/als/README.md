@@ -22,11 +22,11 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-D1](./data-formats.md#als-d1-json-パス操作) | JSON パス操作 | C-031, C-202, C-203, C-260 |
-| [ALS-D2](./data-formats.md#als-d2-value-の-json-テキスト表現) | Value の JSON テキスト表現 | C-060, C-204, C-207, C-263 |
-| [ALS-D3](./data-formats.md#als-d3-異種ネスト文書の走査) | 異種ネスト文書の走査 | C-063, C-205 |
-| [ALS-D4](./data-formats.md#als-d4-正規表現エンジン) | 正規表現エンジン | C-032, C-160, C-206, C-285 |
-| [ALS-D5](./data-formats.md#als-d5-半精度浮動小数のデコード) | 半精度浮動小数のデコード | C-037, C-208 |
+| [ALS-D1](./data-formats.md#als-d1-json-パス操作) | JSON パス操作 | C-031 |
+| [ALS-D2](./data-formats.md#als-d2-value-の-json-テキスト表現) | Value の JSON テキスト表現 | C-060 |
+| [ALS-D3](./data-formats.md#als-d3-異種ネスト文書の走査) | 異種ネスト文書の走査 | C-063 |
+| [ALS-D4](./data-formats.md#als-d4-正規表現エンジン) | 正規表現エンジン | C-032, C-160, C-285 |
+| [ALS-D5](./data-formats.md#als-d5-半精度浮動小数のデコード) | 半精度浮動小数のデコード | C-037 |
 | [ALS-D6](./data-formats.md#als-d6-codec-と-json-デコード) | Codec と JSON デコード | C-084, C-085, C-095, C-098, C-103, C-209, C-211, C-216, C-217 |
 | [ALS-D7](./data-formats.md#als-d7-バイト列ブリッジ) | バイト列ブリッジ | C-062, C-090 |
 
@@ -34,13 +34,13 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-D1](./deterministic-time.md#als-d1-時間構築子と代数) | 時間構築子と代数 | C-031, C-202, C-203, C-260 |
-| [ALS-D2](./deterministic-time.md#als-d2-決定的予算（fanbounded）) | 決定的予算（fan.bounded） | C-060, C-204, C-207, C-263 |
-| [ALS-D3](./deterministic-time.md#als-d3-決定的-race（fanrace）) | 決定的 race（fan.race） | C-063, C-205 |
-| [ALS-D4](./deterministic-time.md#als-d4-settle-の-tuple-契約) | settle の tuple 契約 | C-032, C-160, C-206, C-285 |
-| [ALS-D5](./deterministic-time.md#als-d5-壁時計期限（fantimeout、oracle-層）) | 壁時計期限（fan.timeout、oracle 層） | C-037, C-208 |
+| [ALS-DT1](./deterministic-time.md#als-dt1-時間構築子と代数) | 時間構築子と代数 | C-202, C-203 |
+| [ALS-DT2](./deterministic-time.md#als-dt2-決定的予算（fanbounded）) | 決定的予算（fan.bounded） | C-204, C-207 |
+| [ALS-DT3](./deterministic-time.md#als-dt3-決定的-race（fanrace）) | 決定的 race（fan.race） | C-205 |
+| [ALS-DT4](./deterministic-time.md#als-dt4-settle-の-tuple-契約) | settle の tuple 契約 | C-206 |
+| [ALS-DT5](./deterministic-time.md#als-dt5-壁時計期限（fantimeout、oracle-層）) | 壁時計期限（fan.timeout、oracle 層） | C-208 |
 
-## expressions.md — 39 section(s)
+## expressions.md — 38 section(s)
 
 | ID | Section | Contracts |
 |----|---------|-----------|
@@ -54,7 +54,7 @@
 | [ALS-E10](./expressions.md#als-e10-レンジ式exprkindrange) | レンジ式(`ExprKind::Range`) | C-238 |
 | [ALS-E11](./expressions.md#als-e11-リストリテラルと索引exprkindlist--exprkindindexaccess) | リストリテラルと索引(`ExprKind::List` / `ExprKind::IndexAccess`) | C-239 |
 | [ALS-E12](./expressions.md#als-e12-マップリテラルexprkindmapliteral--exprkindemptymap) | マップリテラル(`ExprKind::MapLiteral` / `ExprKind::EmptyMap`) | C-240 |
-| [ALS-S1](./expressions.md#als-s1-束縛文stmtlet--stmtvar--stmtassign) | 束縛文(`Stmt::Let` / `Stmt::Var` / `Stmt::Assign`) | C-016, C-065, C-241 |
+| [ALS-ST1](./expressions.md#als-st1-束縛文stmtlet--stmtvar--stmtassign) | 束縛文(`Stmt::Let` / `Stmt::Var` / `Stmt::Assign`) | C-241 |
 | [ALS-E13](./expressions.md#als-e13-条件式exprkindif) | 条件式(`ExprKind::If`) | C-242 |
 | [ALS-E14](./expressions.md#als-e14-ブロック式exprkindblock) | ブロック式(`ExprKind::Block`) | C-243 |
 | [ALS-E15](./expressions.md#als-e15-while-文exprkindwhile) | while 文(`ExprKind::While`) | C-244 |
@@ -62,25 +62,24 @@
 | [ALS-E17](./expressions.md#als-e17-識別子exprkindident) | 識別子(`ExprKind::Ident`) | C-246 |
 | [ALS-E18](./expressions.md#als-e18-match-式exprkindmatch) | match 式(`ExprKind::Match`) | C-247, C-281 |
 | [ALS-E19](./expressions.md#als-e19-for-in-文exprkindforin) | for-in 文(`ExprKind::ForIn`) | C-248, C-279 |
-| [ALS-S2](./expressions.md#als-s2-分解束縛stmtletdestructure) | 分解束縛(`Stmt::LetDestructure`) | C-017, C-249 |
+| [ALS-ST2](./expressions.md#als-st2-分解束縛stmtletdestructure) | 分解束縛(`Stmt::LetDestructure`) | C-249 |
 | [ALS-E20](./expressions.md#als-e20-パイプと合成exprkindpipe--exprkindcompose) | パイプと合成(`ExprKind::Pipe` / `ExprKind::Compose`) | C-250 |
 | [ALS-E21](./expressions.md#als-e21-if-letexprkindiflet) | if let(`ExprKind::IfLet`) | C-251 |
-| [ALS-S3](./expressions.md#als-s3-式文stmtexpr) | 式文(`Stmt::Expr`) | C-018, C-019, C-252, C-280 |
-| [ALS-S4](./expressions.md#als-s4-コメントstmtcomment) | コメント(`Stmt::Comment`) | C-022 |
-| [ALS-S5](./expressions.md#als-s5-場所代入stmtindexassign--stmtfieldassign) | 場所代入(`Stmt::IndexAssign` / `Stmt::FieldAssign`) | C-050, C-253 |
+| [ALS-ST3](./expressions.md#als-st3-式文とコメントstmtexpr--stmtcomment) | 式文とコメント(`Stmt::Expr` / `Stmt::Comment`) | C-252, C-280 |
+| [ALS-ST4](./expressions.md#als-st4-場所代入stmtindexassign--stmtfieldassign) | 場所代入(`Stmt::IndexAssign` / `Stmt::FieldAssign`) | C-253 |
 | [ALS-E22](./expressions.md#als-e22-型注釈式exprkindtypeascription) | 型注釈式(`ExprKind::TypeAscription`) | C-254 |
 | [ALS-E23](./expressions.md#als-e23-レコードexprkindrecord--exprkindspreadrecord--exprkindmember) | レコード(`ExprKind::Record` / `ExprKind::SpreadRecord` / `ExprKind::Member`) | C-255 |
 | [ALS-E24](./expressions.md#als-e24-break-と-continueexprkindbreak--exprkindcontinue) | break と continue(`ExprKind::Break` / `ExprKind::Continue`) | C-256 |
 | [ALS-E25](./expressions.md#als-e25-エラー演算子exprkindunwrap--exprkindtooption--exprkindunwrapor--exprkindtry) | エラー演算子(`ExprKind::Unwrap` / `ExprKind::ToOption` / `ExprKind::UnwrapOr` / `ExprKind::Try`) | C-257, C-271 |
 | [ALS-E26](./expressions.md#als-e26-呼び出しとラムダexprkindcall--exprkindlambda) | 呼び出しとラムダ(`ExprKind::Call` / `ExprKind::Lambda`) | C-258 |
 | [ALS-E27](./expressions.md#als-e27-コンストラクタ参照exprkindtypename) | コンストラクタ参照(`ExprKind::TypeName`) | C-259 |
-| [ALS-D1](./expressions.md#als-d1-宣言declmodule--declimport--decltype--declfn--decltoplet--declprotocol--decltest--decltestwheredef) | 宣言(`Decl::Module` / `Decl::Import` / `Decl::Type` / `Decl::Fn` / `Decl::TopLet` / `Decl::Protocol` / `Decl::Test` / `Decl::TestWhereDef`) | C-031, C-202, C-203, C-260 |
+| [ALS-DL1](./expressions.md#als-dl1-宣言declmodule--declimport--decltype--declfn--decltoplet--declprotocol--decltest--decltestwheredef) | 宣言(`Decl::Module` / `Decl::Import` / `Decl::Type` / `Decl::Fn` / `Decl::TopLet` / `Decl::Protocol` / `Decl::Test` / `Decl::TestWhereDef`) | C-260 |
 | [ALS-E3](./expressions.md#als-e3-浮動小数点リテラルexprkindfloat—-部分節) | 浮動小数点リテラル(`ExprKind::Float`)— 部分節 | C-261 |
 | [ALS-E5](./expressions.md#als-e5-文字列リテラルexprkindstring—-部分節) | 文字列リテラル(`ExprKind::String`)— 部分節 | C-262 |
-| [ALS-D2](./expressions.md#als-d2-回復ノードexprkinderror--stmterror) | 回復ノード(`ExprKind::Error` / `Stmt::Error`) | C-060, C-204, C-207, C-263 |
+| [ALS-DL2](./expressions.md#als-dl2-回復ノードexprkinderror--stmterror) | 回復ノード(`ExprKind::Error` / `Stmt::Error`) | C-263 |
 | [ALS-E28](./expressions.md#als-e28-オプショナルチェーンexprkindoptionalchain) | オプショナルチェーン(`ExprKind::OptionalChain`) | C-264 |
-| [ALS-S6](./expressions.md#als-s6-guard-文stmtguard) | guard 文(`Stmt::Guard`) | C-074, C-265 |
-| [ALS-S7](./expressions.md#als-s7-guard-let-文stmtguardlet) | guard let 文(`Stmt::GuardLet`) | C-266 |
+| [ALS-ST5](./expressions.md#als-st5-guard-文stmtguard) | guard 文(`Stmt::Guard`) | C-265 |
+| [ALS-ST6](./expressions.md#als-st6-guard-let-文stmtguardlet) | guard let 文(`Stmt::GuardLet`) | C-266 |
 | [ALS-E29](./expressions.md#als-e29-二項演算子exprkindbinary) | 二項演算子(`ExprKind::Binary`) | C-267 |
 | [ALS-E30](./expressions.md#als-e30-ホールと未実装マーカーexprkindhole--todo--placeholder) | ホールと未実装マーカー(`ExprKind::Hole` / `Todo` / `Placeholder`) | C-268 |
 
@@ -102,8 +101,8 @@
 | [ALS-R4](./runtime.md#als-r4-非有限浮動小数の定数表示) | 非有限浮動小数の定数表示 | C-012 |
 | [ALS-R5](./runtime.md#als-r5-プロセス環境) | プロセス環境 | C-096, C-112, C-118, C-133, C-189, C-214, C-215, C-290 |
 | [ALS-R6](./runtime.md#als-r6-ファイルシステムのパス解決) | ファイルシステムのパス解決 | C-042, C-137, C-220, C-225, C-227, C-228, C-229, C-230, C-270, C-272, C-273, C-278, C-282, C-283, C-284 |
-| [ALS-R7](./runtime.md#als-r7-ストリーミング行走査の可謬コールバック) | ストリーミング行走査の可謬コールバック | C-274, C-275 |
-| [ALS-R7](./runtime.md#als-r7-http-レスポンスヘッダの規範) | HTTP レスポンスヘッダの規範 | C-274, C-275 |
+| [ALS-R7](./runtime.md#als-r7-ストリーミング行走査の可謬コールバック) | ストリーミング行走査の可謬コールバック | C-274 |
+| [ALS-R8](./runtime.md#als-r8-http-レスポンスヘッダの規範) | HTTP レスポンスヘッダの規範 | C-275 |
 
 ## semantics.md — 15 section(s)
 
@@ -129,12 +128,12 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-S1](./strings.md#als-s1-コードポイント意味論) | コードポイント意味論 | C-016, C-065, C-241 |
-| [ALS-S2](./strings.md#als-s2-空パターンの検索規則) | 空パターンの検索規則 | C-017, C-249 |
-| [ALS-S3](./strings.md#als-s3-文字種述語) | 文字種述語 | C-018, C-019, C-252, C-280 |
+| [ALS-S1](./strings.md#als-s1-コードポイント意味論) | コードポイント意味論 | C-016, C-065 |
+| [ALS-S2](./strings.md#als-s2-空パターンの検索規則) | 空パターンの検索規則 | C-017 |
+| [ALS-S3](./strings.md#als-s3-文字種述語) | 文字種述語 | C-018, C-019 |
 | [ALS-S4](./strings.md#als-s4-バイト列との相互変換) | バイト列との相互変換 | C-022 |
-| [ALS-S5](./strings.md#als-s5-split-の区切り規範) | split の区切り規範 | C-050, C-253 |
-| [ALS-S6](./strings.md#als-s6-規模不変性) | 規模不変性 | C-074, C-265 |
+| [ALS-S5](./strings.md#als-s5-split-の区切り規範) | split の区切り規範 | C-050 |
+| [ALS-S6](./strings.md#als-s6-規模不変性) | 規模不変性 | C-074 |
 
 ## text-and-numbers.md — 18 section(s)
 
@@ -159,4 +158,4 @@
 | [ALS-T17](./text-and-numbers.md#als-t17-datetimeformat-の指定子置換) | datetime.format の指定子置換 | C-128 |
 | [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153 |
 
-111 sections across 9 chapters.
+110 sections across 10 chapters.

@@ -1,5 +1,7 @@
 # ALS — コレクション（Collections）
 
+> Last updated: 2026-08-20
+
 コレクション型（List / Map / Set / タプル / レコード）の観測規範。参照方法は
 [strings.md](strings.md) 冒頭と同じ（契約台帳の `spec` キーから参照される）。
 

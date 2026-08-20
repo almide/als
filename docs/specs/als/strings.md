@@ -1,5 +1,7 @@
 # ALS — 文字列（Strings）
 
+> Last updated: 2026-08-20
+
 Almide Language Specification の文字列規範。実装（v0 native / v1 wasm）から独立に、
 観測可能な振る舞い（stdout・stderr・終了コード）を定義する。各節は契約台帳
 （docs/contracts/contracts.toml の `spec` フィールド）から参照され、

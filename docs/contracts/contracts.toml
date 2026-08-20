@@ -2541,7 +2541,7 @@ evidence  = [
 # ── DETERMINISTIC TIME: CONSTRUCTOR GUARDS ─
 [[contract]]
 id        = "C-202"
-spec      = "ALS-D1"
+spec      = "ALS-DT1"
 title     = "Time constructors guard their domain: negative aborts, overflow saturates"
 statement = "A NEGATIVE argument to any `compute.*` / `duration.*` constructor, and a negative scale factor in `T * Int`, terminate through the §13 convention (`Error: negative time: compute.us(-5)` / `Error: negative time scale: -2` on stderr + exit 1) identically on both targets; an overflowing construction or `T + T` sum SATURATES to the maximum representable time instead of wrapping (a wrapped-negative budget would exhaust instantly — saturation admits the work). Non-negative literal arguments fold at compile time to the same erased value the runtime guard produces."
 since     = "0.47.0"
@@ -2555,7 +2555,7 @@ evidence  = [
 # ── DETERMINISTIC TIME: OPERATOR ALGEBRA ─
 [[contract]]
 id        = "C-203"
-spec      = "ALS-D1"
+spec      = "ALS-DT1"
 title     = "The time-type operator algebra is unit-exact and saturating on both targets"
 statement = "`T + T` (saturating), `T - T` (0-saturating), `T * Int` in either operand order (saturating), and same-clock comparisons agree native == wasm at CHARGE-UNIT precision: the fixture pins every cell by driving a `fan.bounded` verdict across an exact unit boundary, so a one-unit drift in any operator's erasure flips an observable verdict. `T * T`, any Compute⊕Duration mix, bare-Int joins, and `/` are compile-time type errors (checker matrix, not runtime behaviour)."
 since     = "0.47.0"
@@ -2567,7 +2567,7 @@ evidence  = [
 # ── DETERMINISTIC BUDGET VERDICT (fan.bounded) ─
 [[contract]]
 id        = "C-204"
-spec      = "ALS-D2"
+spec      = "ALS-DT2"
 title     = "A fan.bounded verdict is a function of the program and its inputs alone"
 statement = "`fan.bounded(c) { body }` yields Err (the ledger-constant message) exactly when the region's metered spend in charge units exceeds `floor(ns / CM-1)`, and the Ok ⇄ Err flip happens at the SAME declared nanosecond on both targets — the boundary fixtures pin the flip at unit exactness (heavy(1000) = 1002 units flips at 3006ns under CM-1 v0.3). Bind statements inside a block body add zero charge; the bare (no-`??`) form produces the same verdict as a real `Result[T, String]` value; the region body is pure by typing, so no wall-clock input can reach the verdict. The budget expression may reach the head through variables (a let-bound sum, a nested-block binding, an effect-fn boundary) — the nominal time tag erases at MIR, so the variable spelling meters identically to the inline one."
 since     = "0.47.0"
@@ -2584,7 +2584,7 @@ evidence  = [
 # ── DETERMINISTIC RACE WINNER (fan.race) ─
 [[contract]]
 id        = "C-205"
-spec      = "ALS-D3"
+spec      = "ALS-DT3"
 title     = "The fan.race winner is the (spend, index) lexicographic minimum among admitted arms"
 statement = "Every arm is metered on the deterministic clock; an arm is ADMITTED iff it completes within the (optional) budget AND — when it returns a `Result` — it returned Ok (an arm's Err self-disqualifies it, never propagates). The winner is the admitted arm with the least `(spend, index)`: the cheapest arm, ties to source order; no admitted arm yields the ledger-constant Err. The winner-appearance boundary is unit-exact and identical on both targets (heavy(500) = 502 units appears at 1506ns under CM-1 v0.3). The MAPPER form `fan.race(budget?, xs, f)` obeys the SAME law over a dynamic list — arm i is `f(xs[i])` (a pure 1-param lambda returning `Result[T, String]`), index order is list order, the budget is per-element — so an equal-spend tie takes the earlier element and an empty list is the no-admitted-arm Err."
 since     = "0.47.0"
@@ -2601,7 +2601,7 @@ evidence  = [
 # ── SETTLE TUPLE ─
 [[contract]]
 id        = "C-206"
-spec      = "ALS-D4"
+spec      = "ALS-DT4"
 title     = "A settle block settles every arm into its own tuple slot, in arm order"
 statement = "`fan.settle { a; b; … }` evaluates its arms in arm order and yields the TUPLE `(Result[A, String], Result[B, String], …)`: heterogeneous arm types are allowed, a plain arm's value wraps in Ok, and an EFFECTFUL arm's Err is CAPTURED into its slot — never propagated out of the block. Both targets agree byte-for-byte, including the captured-Err case and a tuple-pattern match over the settled slots."
 since     = "0.47.0"
@@ -2613,9 +2613,9 @@ evidence  = [
 # ── CM-1: THE VERSIONED COST MODEL ─
 [[contract]]
 id        = "C-207"
-spec      = "ALS-D2"
+spec      = "ALS-DT2"
 title     = "CM-1 is a versioned constant with a ratio-only wall-clock claim"
-statement = "Deterministic time is `charge units × CM-1` where CM-1 v0.3 = 3ns/unit, defined ONCE (`almide_types::time_units::CM1_NS_PER_CHARGE`) and consumed by both renderers, the interpreter, and `--time-report` from that single definition. The wall-clock claim is RATIO-ONLY: a standing calibration gate measures the declared/measured ratio on a 100M-unit reference workload and asserts it inside the declared 5x band (ADR-0001 D5) — the gate falsified both prior draft constants (21x and 18x out). Changing CM-1 is a versioned cost-model revision (CM-2, …), never a silent retune: every unit-exact fixture in ALS-D2/D3 pins the current value."
+statement = "Deterministic time is `charge units × CM-1` where CM-1 v0.3 = 3ns/unit, defined ONCE (`almide_types::time_units::CM1_NS_PER_CHARGE`) and consumed by both renderers, the interpreter, and `--time-report` from that single definition. The wall-clock claim is RATIO-ONLY: a standing calibration gate measures the declared/measured ratio on a 100M-unit reference workload and asserts it inside the declared 5x band (ADR-0001 D5) — the gate falsified both prior draft constants (21x and 18x out). Changing CM-1 is a versioned cost-model revision (CM-2, …), never a silent retune: every unit-exact fixture in ALS-DT2/DT3 pins the current value."
 since     = "0.47.0"
 status    = "active"
 evidence  = [
@@ -2626,7 +2626,7 @@ evidence  = [
 # ── WALL-CLOCK DEADLINE (fan.timeout) — the R_OMEGA contract ─
 [[contract]]
 id        = "C-208"
-spec      = "ALS-D5"
+spec      = "ALS-DT5"
 title     = "fan.timeout is omega-relative: fixed ends everywhere, fixed omega replays byte-identically"
 statement = "`fan.timeout(duration.ms(n)) { body }` checks its wall deadline COOPERATIVELY at charge sites (never mid-operation) and nests by min-cap on the absolute deadline. The contract is RELATIVE TO omega (which check the deadline fires at — a host input, ADR-0001 S8): a recorded omega REPLAYED (the ordinal baked at compile time, the clock never read) reproduces the observations byte-identically on EVERY target — record on native, replay on wasm included. Only the two ends are absolute: a deadline larger than the work always completes Ok, and a diverging body under any finite deadline is always cut at a charge site (Err, the fallback runs, the program continues). The v1 omega encoding is the single ordinal of the FIRST hit."
 since     = "0.47.0"
@@ -3018,9 +3018,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-241"
-spec      = "ALS-S1"
+spec      = "ALS-ST1"
 title     = "Binding statements: let shadowing, var reassignment, and their check-time guards are identical on both targets"
-statement = "ALS-S1 (the first statement-direction section): immutable `let` with SHADOWING (the new binding's initializer sees the old one — let x = 1 then let x = x + 10 gives 11), mutable `var` with sequential and in-loop reassignment (10, 6), and a conditional-expression initializer, byte-identical native <-> wasm. The negative half is check-time and pinned by tests/binding_diag_test.rs: assigning a `let` is E009 whose hint steers to `var`; reassigning a `var` at a different type is E001 (the declared type never silently widens)."
+statement = "ALS-ST1 (the first statement-direction section): immutable `let` with SHADOWING (the new binding's initializer sees the old one — let x = 1 then let x = x + 10 gives 11), mutable `var` with sequential and in-loop reassignment (10, 6), and a conditional-expression initializer, byte-identical native <-> wasm. The negative half is check-time and pinned by tests/binding_diag_test.rs: assigning a `let` is E009 whose hint steers to `var`; reassigning a `var` at a different type is E001 (the declared type never silently widens)."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3075,7 +3075,7 @@ evidence  = [
 id        = "C-246"
 spec      = "ALS-E17"
 title     = "Identifiers resolve to their nearest binding; unresolved names are check-time E003 naming the identifier"
-statement = "ALS-E17: an identifier expression resolves to the nearest binding (shadowing per ALS-S1) with identical observables on both targets; an unresolved name is check-time E003 whose diagnostic CONTAINS the failed name (tests/ident_diag_test.rs) — no runtime name-resolution failure exists (a checked name always resolves; NameTotality is the v1 proof obligation for this)."
+statement = "ALS-E17: an identifier expression resolves to the nearest binding (shadowing per ALS-ST1) with identical observables on both targets; an unresolved name is check-time E003 whose diagnostic CONTAINS the failed name (tests/ident_diag_test.rs) — no runtime name-resolution failure exists (a checked name always resolves; NameTotality is the v1 proof obligation for this)."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3106,9 +3106,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-249"
-spec      = "ALS-S2"
+spec      = "ALS-ST2"
 title     = "Tuple let-destructuring binds each component positionally, identically on both targets"
-statement = "ALS-S2: `let (a, b) = e` binds each component to the corresponding positional value with the tuple's positional types — pinned in the for-in fixture (p + q participating in the 53 sum) and in tuple_ops.almd (C-236). One norm shared by three positions: let-destructure, fn-parameter tuple destructure, and the for-in head (ALS-E19)."
+statement = "ALS-ST2: `let (a, b) = e` binds each component to the corresponding positional value with the tuple's positional types — pinned in the for-in fixture (p + q participating in the 53 sum) and in tuple_ops.almd (C-236). One norm shared by three positions: let-destructure, fn-parameter tuple destructure, and the for-in head (ALS-E19)."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3140,9 +3140,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-252"
-spec      = "ALS-S3"
+spec      = "ALS-ST3"
 title     = "Expression statements and comments: Unit calls execute, discards are explicit, comments are invisible"
-statement = "ALS-S3/S4: a Unit-returning call in statement position executes in order; a pure value is discarded only through `let _ = e`; and every comment form (leading line, trailing, multi-line block, before a declaration) is semantically invisible — the fixture threads all forms between two prints and both targets emit exactly first/second. The negative half is check-time E042 (ADR-0008 must-use): a bare statement-position Result is rejected with BOTH escapes spelled in the hint (`expr!` propagates, `let _ = expr` discards without propagating — C-217's pinned semantics), tested by tests/expr_stmt_diag_test.rs."
+statement = "ALS-ST3: a Unit-returning call in statement position executes in order; a pure value is discarded only through `let _ = e`; and every comment form (leading line, trailing, multi-line block, before a declaration) is semantically invisible — the fixture threads all forms between two prints and both targets emit exactly first/second. The negative half is check-time E042 (ADR-0008 must-use): a bare statement-position Result is rejected with BOTH escapes spelled in the hint (`expr!` propagates, `let _ = expr` discards without propagating — C-217's pinned semantics), tested by tests/expr_stmt_diag_test.rs."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3151,9 +3151,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-253"
-spec      = "ALS-S5"
+spec      = "ALS-ST4"
 title     = "Place assignments and type ascription behave identically on both targets"
-statement = "ALS-S5/E22: list-element `xs[i] = v`, record-field `p.x = v`, and map-key `m[k] = v` (upsert: insert-if-absent, overwrite-if-present — 6 then 100 pinned) all observe the new value on the next read, byte-identical native <-> wasm (fixture pins 21/12/6/100/7); the OOB-write abort stays C-067's ruling. The type-ascription expression `(e: T)` supplies an expected type without changing the value or its runtime representation."
+statement = "ALS-ST4/E22: list-element `xs[i] = v`, record-field `p.x = v`, and map-key `m[k] = v` (upsert: insert-if-absent, overwrite-if-present — 6 then 100 pinned) all observe the new value on the next read, byte-identical native <-> wasm (fixture pins 21/12/6/100/7); the OOB-write abort stays C-067's ruling. The type-ascription expression `(e: T)` supplies an expected type without changing the value or its runtime representation."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3228,9 +3228,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-260"
-spec      = "ALS-D1"
+spec      = "ALS-DL1"
 title     = "The declaration family compiles and runs identically on both targets"
-statement = "ALS-D1: one program threading the declaration family — explicit import (json parse -> stringify round-trip prints [1,2]), a variant type declaration eliminated by match, top-level lets (Int and String) read from a fn body, fn and effect-fn declarations — byte-identical native <-> wasm (fixture pins 300/hi/careful/[1,2]). Protocol resolution stays with C-094/C-126; test blocks are evidenced by the whole spec/lang suite running its wasm leg. The fixture now leads with a `module` header under its comment block — the shape #1323 made un-formattable — so it also pins that a commented module header survives fmt; the multi-module execution evidence stays with the spec/integration/modules suite. `strict` is deliberately OUTSIDE: parsed but consumed by nothing (#1321), its row stays UNWRITTEN."
+statement = "ALS-DL1: one program threading the declaration family — explicit import (json parse -> stringify round-trip prints [1,2]), a variant type declaration eliminated by match, top-level lets (Int and String) read from a fn body, fn and effect-fn declarations — byte-identical native <-> wasm (fixture pins 300/hi/careful/[1,2]). Protocol resolution stays with C-094/C-126; test blocks are evidenced by the whole spec/lang suite running its wasm leg. The fixture now leads with a `module` header under its comment block — the shape #1323 made un-formattable — so it also pins that a commented module header survives fmt; the multi-module execution evidence stays with the spec/integration/modules suite. `strict` is deliberately OUTSIDE: parsed but consumed by nothing (#1321), its row stays UNWRITTEN."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3261,9 +3261,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-263"
-spec      = "ALS-D2"
+spec      = "ALS-DL2"
 title     = "Recovery nodes never appear in accepted programs; a broken file still reports past its first error"
-statement = "ALS-D2: ExprKind::Error / Stmt::Error are recovery vocabulary — placeholders that keep diagnostic collection going past a parse error, never present in an accepted program. Both directions are pinned: the whole spec/wasm_cross corpus (300+ accepted, both-target-executed programs) parses with ZERO recovery nodes, and a deliberately broken file reports diagnostics while parsing CONTINUES past the error (the following declaration is still seen). The fixture leg is any accepted program executing identically with zero recovery artifacts."
+statement = "ALS-DL2: ExprKind::Error / Stmt::Error are recovery vocabulary — placeholders that keep diagnostic collection going past a parse error, never present in an accepted program. Both directions are pinned: the whole spec/wasm_cross corpus (300+ accepted, both-target-executed programs) parses with ZERO recovery nodes, and a deliberately broken file reports diagnostics while parsing CONTINUES past the error (the following declaration is still seen). The fixture leg is any accepted program executing identically with zero recovery artifacts."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3285,9 +3285,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-265"
-spec      = "ALS-S6"
+spec      = "ALS-ST5"
 title     = "The guard statement's pass and raise paths behave identically on both targets"
-statement = "ALS-S6: `guard cond else err(e)` is an EARLY EXIT — on the true path the following statements run and the tail value flows out (10 pinned); on the false path the else's err propagates to the caller, where a `!` or match receives it (\"must be positive\" pinned) — byte-identical native <-> wasm. Both raise spellings (`err(e)` and `err(e)!`) normalize identically since #1336, which found the recognizer accepted only the Unwrap-wrapped leaf: the class was wider than guard (a hand-written `{ let m = ..; if m > 0 then m * 2 else err(e) }` walled the same way). `guard let` is a separate class (frontend-desugared to a tail-position variant match, still walled) and is outside this contract."
+statement = "ALS-ST5: `guard cond else err(e)` is an EARLY EXIT — on the true path the following statements run and the tail value flows out (10 pinned); on the false path the else's err propagates to the caller, where a `!` or match receives it (\"must be positive\" pinned) — byte-identical native <-> wasm. Both raise spellings (`err(e)` and `err(e)!`) normalize identically since #1336, which found the recognizer accepted only the Unwrap-wrapped leaf: the class was wider than guard (a hand-written `{ let m = ..; if m > 0 then m * 2 else err(e) }` walled the same way). `guard let` is a separate class (frontend-desugared to a tail-position variant match, still walled) and is outside this contract."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3296,9 +3296,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-266"
-spec      = "ALS-S7"
+spec      = "ALS-ST6"
 title     = "guard let binds the success payload and raises on the failing polarity, identically on both targets"
-statement = "ALS-S7: `guard let x = scrut else err(e)` binds the Ok/Some payload for the rest of the block on the success polarity (int.parse(\"21\") -> 42 pinned) and propagates the else's err to the caller on the failing one (\"not a number\" pinned) — byte-identical native <-> wasm; chained guard lets fold into a single carrier bind (#1340). The wall that stood here was POSITIONAL, not polarity- or pattern-shaped: guard let desugars in the frontend to a BLOCK-NESTED variant match, and auto_wrap_abi_body retypes only the body ROOT to the Result carrier, so the nested match kept its scalar type and fell off the carrier-typed tail path. The fix taught the proven bind-shape normalizer about variant matches — the same machinery ALS-S6 uses."
+statement = "ALS-ST6: `guard let x = scrut else err(e)` binds the Ok/Some payload for the rest of the block on the success polarity (int.parse(\"21\") -> 42 pinned) and propagates the else's err to the caller on the failing one (\"not a number\" pinned) — byte-identical native <-> wasm; chained guard lets fold into a single carrier bind (#1340). The wall that stood here was POSITIONAL, not polarity- or pattern-shaped: guard let desugars in the frontend to a BLOCK-NESTED variant match, and auto_wrap_abi_body retypes only the body ROOT to the Result carrier, so the nested match kept its scalar type and fell off the carrier-typed tail path. The fix taught the proven bind-shape normalizer about variant matches — the same machinery ALS-ST5 uses."
 since     = "0.57.1"
 status    = "active"
 evidence  = [
@@ -3405,7 +3405,7 @@ evidence  = [
 # ── http RESPONSE HEADERS ──────────────────────────────────────────────
 [[contract]]
 id        = "C-275"
-spec      = "ALS-R7"
+spec      = "ALS-R8"
 title     = "The http response-header surface answers identically on both targets, with case-insensitive field names"
 statement = "ALS-R7: header field names are CASE-INSENSITIVE under an ASCII fold (RFC 9110 §5.1 — a field name is a `token`, so the fold matches `eq_ignore_ascii_case` and must not reach for the Unicode string.to_lower), a response carries AT MOST ONE entry per field name because every write upserts the matching entry's value in place, and `with_headers` yields EXACTLY the caller's map — no seeded Content-Type, which only `response` (text/plain) and `json` (application/json) carry because they give the caller no other way to name one, while `redirect` carries only Location. #1352 measured NINE divergent cells here: native seeded a Content-Type in `with_headers` and matched case-insensitively in `get_header` while the self-host seeded nothing and matched with `==`, so a wasm-target program inspecting a response it had just built silently read `none`. The seeding side lost the ruling on REACHABILITY — with the seed, `with_headers` cannot express a response without a Content-Type (there is no remove_header), without it both shapes are reachable — and `set_header`'s case-SENSITIVE match lost on both legs at once: setting `content-type` on a response holding `Content-Type` appended a second entry the case-insensitive lookup then shadowed, so the write vanished natively too."
 since     = "0.57.1"
@@ -3473,9 +3473,9 @@ evidence  = [
 
 [[contract]]
 id        = "C-280"
-spec      = "ALS-S3"
+spec      = "ALS-ST3"
 title     = "The kernel-conformance family behaves per the machine-checked λ_almd semantics on both targets"
-statement = "ALS-S3 (statement-position effects, execution order) as pinned by the edit-locality kernel: spec/wasm_cross/kernel_conformance.almd is the almide-surface image of the λ_almd program `kAll` (crates/almide-edit-belt/AlmideEditBelt/Conformance.lean), whose observables — nine stdout lines covering print order, pure ok/err through match, `!` on err reified at the call boundary, `!` on ok under the effect-fn tail lift, and callee effects ordered before the caller continues — are KERNEL-CHECKED theorems (k1_obs..kAll_obs, `:= by rfl` kernel reduction; eval_sound + ev_det make them the unique Ev derivations, kAll_ev; axiom sets pinned by #guard_msgs — the third 0-sorry belt). tests/kernel_conformance_test.rs pins the native stdout to the same nine lines; the wasm_cross harness carries the claim to wasm. Beyond the family, the GENERATED corpus (proofs/kernel-conformance/, 48 typed λ_almd-image programs from Corpus.lean's deterministic generator) extends the claim generator-totally over the fragment with a two-tier standing: totality is kernel-checked (theorem corpus_total — every program evaluates to some observables), while the committed .expected traces are EVALUATOR-PINNED (emitted by the compiled Lean evaluator, the trustCompiler-class seam) and held to Corpus.lean byte-for-byte by the CI conformancegen --check step; tests/kernel_conformance_test.rs runs every program on native and wasm against those traces. The erase/render pair is the one reviewed seam; the tier map is docs/contracts/proven-vs-trusted.md (edit-locality Stage 3; the corpus's first run caught almide#1428 and almide#1429)."
+statement = "ALS-ST3 (statement-position effects, execution order) as pinned by the edit-locality kernel: spec/wasm_cross/kernel_conformance.almd is the almide-surface image of the λ_almd program `kAll` (crates/almide-edit-belt/AlmideEditBelt/Conformance.lean), whose observables — nine stdout lines covering print order, pure ok/err through match, `!` on err reified at the call boundary, `!` on ok under the effect-fn tail lift, and callee effects ordered before the caller continues — are KERNEL-CHECKED theorems (k1_obs..kAll_obs, `:= by rfl` kernel reduction; eval_sound + ev_det make them the unique Ev derivations, kAll_ev; axiom sets pinned by #guard_msgs — the third 0-sorry belt). tests/kernel_conformance_test.rs pins the native stdout to the same nine lines; the wasm_cross harness carries the claim to wasm. Beyond the family, the GENERATED corpus (proofs/kernel-conformance/, 48 typed λ_almd-image programs from Corpus.lean's deterministic generator) extends the claim generator-totally over the fragment with a two-tier standing: totality is kernel-checked (theorem corpus_total — every program evaluates to some observables), while the committed .expected traces are EVALUATOR-PINNED (emitted by the compiled Lean evaluator, the trustCompiler-class seam) and held to Corpus.lean byte-for-byte by the CI conformancegen --check step; tests/kernel_conformance_test.rs runs every program on native and wasm against those traces. The erase/render pair is the one reviewed seam; the tier map is docs/contracts/proven-vs-trusted.md (edit-locality Stage 3; the corpus's first run caught almide#1428 and almide#1429)."
 since     = "0.57.1"
 status    = "active"
 evidence  = [

@@ -1,5 +1,7 @@
 # ALS — 実行時規範（Runtime）
 
+> Last updated: 2026-08-20
+
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
 
@@ -118,7 +120,7 @@ native 限定の性質であり、観測可能な約束には含まれない。
 
 Contracts: C-042。
 
-## ALS-R7 HTTP レスポンスヘッダの規範
+## ALS-R8 HTTP レスポンスヘッダの規範
 
 `http` のレスポンス構築族（`response` / `json` / `redirect` / `with_headers` /
 `status` / `body` / `set_header` / `get_header`）は**ネットワークに触れない純
