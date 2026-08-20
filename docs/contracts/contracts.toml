@@ -2993,6 +2993,7 @@ evidence  = [
   { path = "spec/wasm_cross/range_bind_no_materialize.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_bind_huge.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_materialize_oom.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fuzz_found_range_concat.almd", class = "fixture" },
 ]
 
 [[contract]]
