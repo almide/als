@@ -69,10 +69,13 @@ let s = set.from_list([1, 2, 3])  // Set[Int]
 
 Fixed-length heterogeneous product type. Variable arity.
 
-```
-let t = (1, "hello", true)     // (Int, String, Bool)
-let x = t.0                    // Int — positional access
-let (a, b) = (1, 2)            // destructuring
+```almide
+test "tuples" {
+  let t = (1, "hello", true)     // (Int, String, Bool)
+  let x = t.0                    // Int — positional access
+  let (a, b) = (1, 2)            // destructuring
+  assert_eq(x + a + b, 4)
+}
 ```
 
 Tests: `spec/lang/data_types_test.almd`, `spec/lang/tuple_test.almd`, `spec/lang/map_literal_test.almd`
@@ -87,12 +90,18 @@ Built-in parameterized types for nullable values and error handling. Both are `A
 
 Kind: `* -> *`. Constructors: `some(v)`, `none`.
 
-```
+```almide
 let x: Option[Int] = some(42)
 let y: Option[Int] = none
-match x {
+
+fn or_zero(o: Option[Int]) -> Int = match o {
   some(v) => v,
   none => 0,
+}
+
+test "both constructors" {
+  assert_eq(or_zero(x), 42)
+  assert_eq(or_zero(y), 0)
 }
 ```
 
@@ -107,7 +116,9 @@ let y: Result[Int, String] = err("fail")
 
 In `effect fn` bodies, `Result` is auto-unwrapped with `!`:
 
-```
+```almide
+import fs
+
 effect fn read(path: String) -> Result[String, String] = {
   let content = fs.read_text(path)!   // propagates err
   ok(content)
@@ -145,15 +156,17 @@ let n = user.name                        // String
 
 A parameter typed `{ field: Type, .. }` accepts any record that has at least the required fields. Extra fields are allowed and preserved.
 
-```
+```almide
 fn greet(who: { name: String, .. }) -> String = "Hello, ${who.name}!"
 
 type Dog = { name: String, breed: String }
 type Person = { name: String, age: Int, email: String }
 
-greet(Dog { name: "Rex", breed: "Lab" })       // ok
-greet(Person { name: "Alice", age: 30, email: "a@b" })  // ok
-greet({ name: "Bob" })                          // ok — exact match
+test "any record carrying the field is accepted" {
+  assert_eq(greet(Dog { name: "Rex", breed: "Lab" }), "Hello, Rex!")                    // ok
+  assert_eq(greet(Person { name: "Alice", age: 30, email: "a@b" }), "Hello, Alice!")    // ok
+  assert_eq(greet({ name: "Bob" }), "Hello, Bob!")                                      // ok — exact match
+}
 ```
 
 Open records can be used as type aliases (shape aliases):
@@ -217,12 +230,23 @@ type Pat =
 
 Record variant construction and pattern matching:
 
-```
-let p = Match { scope: "keyword", regex: "\\bfn\\b" }
-match p {
+```almide
+type Pat =
+  | Match { scope: String, regex: String }
+  | BeginEnd { scope: String, begin: String, end_pat: String, patterns: List[Pat] }
+  | Include(String)
+  | Empty
+
+fn describe(p: Pat) -> String = match p {
   Match { scope, regex } => scope + " " + regex,
   BeginEnd { scope, .. } => scope,
   _ => "other",
+}
+
+test "record-payload construction and matching" {
+  let p = Match { scope: "keyword", regex: "\\bfn\\b" }
+  assert_eq(describe(p), "keyword \\bfn\\b")
+  assert_eq(describe(Empty), "other")
 }
 ```
 
@@ -250,13 +274,15 @@ Tests: `spec/lang/data_types_test.almd`, `spec/lang/type_system_test.almd`, `spe
 
 Functions are first-class values. The type syntax uses `fn(Params) -> Ret`.
 
-```
+```almide
 fn apply(f: fn(Int) -> Int, x: Int) -> Int = f(x)
 
 fn make_adder(n: Int) -> fn(Int) -> Int = (x) => x + n
 
-let add5 = make_adder(5)
-apply(add5, 10)              // 15
+test "function values" {
+  let add5 = make_adder(5)
+  assert_eq(apply(add5, 10), 15)
+}
 ```
 
 Internally represented as `Ty::Fn { params: Vec<Ty>, ret: Box<Ty> }`.
@@ -267,7 +293,9 @@ Function types are never Eq and never hashable.
 
 `effect fn` marks functions that perform side effects. The type checker enforces that pure functions cannot call effect functions (error E006). The `is_effect` flag on `FnSig` tracks this.
 
-```
+```almide
+import fs
+
 effect fn read_file(path: String) -> Result[String, String] = fs.read_text(path)
 ```
 
@@ -294,9 +322,13 @@ fn pair[A, B](a: A, b: B) -> (A, B) = (a, b)
 
 Type arguments can be inferred or explicit:
 
-```
-id(42)           // T inferred as Int
-id[String]("hi") // T explicitly String
+```almide
+fn id[T](x: T) -> T = x
+
+test "type arguments" {
+  assert_eq(id(42), 42)              // T inferred as Int
+  assert_eq(id[String]("hi"), "hi")  // T explicitly String
+}
 ```
 
 ### Generic Record Types
@@ -332,7 +364,14 @@ The bound `T: { name: String, .. }` is an `OpenRecord` constraint. The checker s
 
 ### Protocol Bounds on Generics
 
-```
+```almide
+protocol Showable {
+  fn show(a: Self) -> String
+}
+protocol Nameable {
+  fn get_name(a: Self) -> String
+}
+
 fn display[T: Showable](item: T) -> String = item.show()
 fn show_named[T: Showable + Nameable](item: T) -> String = item.get_name() + ": " + item.show()
 ```
@@ -361,27 +400,36 @@ Fresh type variables are named `?N` (e.g., `?0`, `?1`). They are distinct from u
 
 Types flow both forward (from arguments to return) and backward (from expected type to expression):
 
-```
-let xs: List[Int] = []         // [] gets type List[Int] from annotation
-let f = (x) => x + 1          // x inferred as Int from + operator
+```almide
+test "inference from annotation and from use" {
+  let xs: List[Int] = []         // [] gets type List[Int] from annotation
+  let f = (x) => x + 1           // x inferred as Int from + operator
+  assert_eq(list.len(xs), 0)
+  assert_eq(f(1), 2)
+}
 ```
 
 ### Let-Polymorphism
 
 Generic functions are instantiated with fresh inference variables at each call site:
 
-```
+```almide
 fn id[T](x: T) -> T = x
-id(42)          // T = Int at this call
-id("hello")     // T = String at this call
+
+test "instantiated per call" {
+  assert_eq(id(42), 42)             // T = Int at this call
+  assert_eq(id("hello"), "hello")   // T = String at this call
+}
 ```
 
 ### Lambda Parameter Inference
 
 Lambda parameters are inferred from how they are used:
 
-```
-list.map([1, 2, 3], (x) => x * 2)   // x: Int inferred from List[Int]
+```almide
+test "lambda parameter inferred from the list" {
+  assert_eq(list.map([1, 2, 3], (x) => x * 2), [2, 4, 6])   // x: Int inferred from List[Int]
+}
 ```
 
 ### Constraint Solving
@@ -450,9 +498,17 @@ Two ways to declare that a type implements a protocol:
 
 **Convention methods** (the only mechanism — `impl` blocks were removed):
 
-```
+```almide
+protocol Showable {
+  fn show(a: Self) -> String
+}
+
 type Dog: Showable = { name: String }
 fn Dog.show(d: Dog) -> String = "Dog: " + d.name
+
+test "conformance by convention method" {
+  assert_eq(Dog { name: "Rex" }.show(), "Dog: Rex")
+}
 ```
 
 Convention methods register as `Type.method` in the function environment.
@@ -485,9 +541,23 @@ At each call site, the checker verifies that the concrete type for `T` has decla
 
 ### Multiple Protocols
 
-```
+```almide
+protocol Showable {
+  fn show(a: Self) -> String
+}
+protocol Nameable {
+  fn get_name(a: Self) -> String
+}
+
 type Widget: Showable, Nameable = { id: Int, name: String }
+fn Widget.show(w: Widget) -> String = "#${int.to_string(w.id)}"
+fn Widget.get_name(w: Widget) -> String = w.name
+
 fn show_named[T: Showable + Nameable](item: T) -> String = item.get_name() + ": " + item.show()
+
+test "multiple bounds" {
+  assert_eq(show_named(Widget { id: 1, name: "knob" }), "knob: #1")
+}
 ```
 
 ### Marker Protocols

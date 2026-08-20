@@ -25,6 +25,12 @@ excluding README/STANDARD/CLAUDE). The fence vocabulary is CLOSED:
   ```almide project check-fail=ENNN
                             multi-file negative: the LAST file is the consumer
                             and `almide check` on it must fail with the code
+  ```almide project build-fail=<what>
+                            multi-file negative judged at BUILD time (the
+                            capability gate runs after codegen, not in check):
+                            `almide build` of the last file, cwd = the project,
+                            must fail and name <what> — an ENNN code, `syntax`,
+                            or a bare word the diagnostic must contain
   ```almide fragment        not standalone; counted against a shrink-only
                             ceiling below — honest debt, burned down by
                             giving examples their missing context
@@ -71,14 +77,17 @@ def first_line(out):
     return lines[0] if lines else "?"
 
 
-def rejected_with(rc, out, code):
-    """check-fail=ENNN: the diagnostic carries that code. check-fail=syntax: the
-    rejection is a code-less `error:` from the lexer/parser (no [E…] at all)."""
+def rejected_with(rc, out, what):
+    """ENNN: the diagnostic carries that code. `syntax`: the rejection is a
+    code-less `error:` from the lexer/parser (no [E…] at all). Any other word:
+    the output must contain it (the capability gate has no code)."""
     if rc == 0:
         return False
-    if code == "syntax":
+    if what == "syntax":
         return bool(re.search(r"^error: ", out, re.M)) and "error[E" not in out
-    return f"[{code}]" in out
+    if re.fullmatch(r"E\d+", what):
+        return f"[{what}]" in out
+    return what in out
 
 
 def judge_single(almide, body, mode):
@@ -146,6 +155,12 @@ def judge_project(almide, body, mode):
             if rejected_with(rc, out, code):
                 return None
             return f"negative project example: `{almd[-1]}` must be rejected with [{code}] (exit={rc})"
+        if mode.startswith("build-fail="):
+            what = mode.split("=", 1)[1]
+            rc, out = run([almide, "build", almd[-1], "-o", os.path.join(d, "doctest-out")], cwd=d)
+            if rejected_with(rc, out, what):
+                return None
+            return f"negative project example: `almide build {almd[-1]}` must fail naming {what!r} (exit={rc})"
         for rel in almd:
             rc, out = run([almide, "check", os.path.join(d, rel)])
             if rc != 0:
@@ -178,7 +193,7 @@ def judge(root, almide, fragment_ceiling, untagged_ceiling):
         if rest and rest[0] == "project":
             sub = rest[1:]
             mode = "check" if not sub else sub[0]
-            if len(sub) > 1 or (mode != "check" and not mode.startswith("check-fail=")):
+            if len(sub) > 1 or (mode != "check" and not mode.startswith(("check-fail=", "build-fail="))):
                 failures.append(f"{where}: unknown doctest mode {info!r} — the vocabulary is closed"); continue
             why = judge_project(almide, body, mode)
         else:
@@ -235,6 +250,10 @@ SELFTEST_CASES = [
      "almide project check-fail=E003", '// file: d/mod.almd\nfn shared() -> String = "d"\n// file: b/mod.almd\nimport d\nfn from_b() -> String = d.shared()\n// file: main.almd\nimport b\nfn f() -> String = d.shared()\n', False, None),
     ("project negative example that compiles is red",
      "almide project check-fail=E003", '// file: d/mod.almd\nfn shared() -> String = "d"\n// file: main.almd\nimport d\nfn f() -> String = d.shared()\n', True, "must be rejected"),
+    ("project build-fail holds when the capability gate refuses the build",
+     "almide project build-fail=capability", '// file: almide.toml\n[package]\nname = "permdemo"\nversion = "0.1.0"\n\n[permissions]\nallow = ["IO"]\n// file: main.almd\nimport http\n\neffect fn fetch() -> Result[String, String] = http.get("https://example.com")\n', False, None),
+    ("project build-fail is red when the build fails for a DIFFERENT reason",
+     "almide project build-fail=capability", '// file: main.almd\nfn f() -> Int = "not an int"\n', True, "must fail naming"),
     ("project block without a leading // file: line is red",
      "almide project", 'fn f() -> Int = 1\n', True, "must begin with"),
     ("project file path escaping the directory is red",
