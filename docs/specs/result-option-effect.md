@@ -25,7 +25,7 @@ none    : Option[T]       // 値なし
 `?` は直前の型アトム(名前+ジェネリクス、または括弧で閉じた型)に最結合し、
 `->` をまたがない:
 
-```almide
+```almide fragment
 fn f(v: Int?) -> Int? = v          // 引数・戻りどちらも可
 f: (Int) -> Int?                    // fn 型 slot: Option[Int] を返す fn
 on_tick: ((Int) -> Unit)?           // fn 値そのものが Option — 括弧必須
@@ -49,7 +49,7 @@ Never はどの型にも代入可能。guard else, if then, match arm で使え�
 fn 宣言の戻り位置に限り、`T!` は `Result[T, String]` の糖衣。可謬性(fallibility)と
 効果(effect)は直交する 2 軸であり、4 象限すべてが綴れる:
 
-```almide
+```almide fragment
 fn        f() -> Int      // pure ・総
 fn        f() -> Int!     // pure ・可謬(= Result[Int, String])
 effect fn f() -> Int      // effect・総(暗黙 lift、§3)
@@ -142,7 +142,7 @@ Option/Result でない被演算子は `E034`。
   意味は「最初の成功が勝つ」。
 - **行またぎ禁止(E038)**: 文レベルでは fallback は `??` と同じ行に置く。
   複数行は括弧 + `??` 後置:
-  ```almide
+  ```almide fragment
   let v = (int.parse(s) ??
     -5)
   ```
@@ -153,7 +153,7 @@ Option/Result でない被演算子は `E034`。
 
 ### `expr?.field` — optional chaining(Option 専用)
 
-```almide
+```almide fragment
 fn getx(o: Option[P]) -> Int = o?.x ?? 0    // some(P{x:5}) → 5、none → 0
 ```
 
@@ -166,7 +166,7 @@ fn getx(o: Option[P]) -> Int = o?.x ?? 0    // some(P{x:5}) → 5、none → 0
 
 ### 宣言と lift
 
-```almide
+```almide fragment
 effect fn read_file(path: String) -> String = fs.read_text(path)!
 ```
 
@@ -205,7 +205,7 @@ lambda は「ミニ可謬 fn」— 本体の `!` は **lambda 自身の失敗チ
 (`Result[T, String]`)に落ち、クロージャ境界は越えない(#489 の不変条件は保存)。
 使用駆動で可謬性が推論される(L1〜L9、2026-08-07 批准):
 
-```almide
+```almide fragment
 let g = (x) => int.parse(x)! * 2      // g: (String) -> Result[Int, String] — 第一級
 g("21") ?? -1                          // 呼べば Result 値、普通に消費
 list.map(xs, (s) => halve(parse(s)!)!) // 複合可謬 callback → first-err 形(L6)
@@ -239,7 +239,7 @@ fn retry(op: (Int) -> Int!) -> Int! = op(1)!   // fn 型 slot の `!`(L7/L8)
 
 ## 5. test ブロック
 
-```almide
+```almide fragment
 test "name" {
   assert_eq(f(), expected)
 }
@@ -262,7 +262,7 @@ almide repr 形(ok/err)への統一は未実施(既知の表示形差)。
 
 ## 6. guard else
 
-```almide
+```almide fragment
 guard condition else { diverge_expr }
 ```
 

@@ -31,10 +31,18 @@ git histories are the evidence that requirements preceded code.
 bash scripts/check-contracts.sh              # ledger ⇄ fixture ⇄ ALS traceability
 bash scripts/check-als-element-coverage.sh   # element → section ledger
 bash scripts/check-links.sh                  # every relative link and anchor resolves
+bash scripts/check-als-style.sh              # requirements standard
+bash scripts/check-gate-verification.sh      # the tools' own verification ledger
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md
 bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md
 bash docs/specs/als/generate-readme.sh      > docs/specs/als/README.md
 ```
+
+Spec code examples are judged: a ```almide fence must pass `almide check`
+standalone, ```almide check-fail=ENNN must be rejected with that code, and
+```almide fragment is counted against a shrink-only ceiling
+(`scripts/doctest.py`). Prefer completing an example over tagging it
+fragment.
 
 `lefthook install` wires these as pre-commit hooks. Derived documents are
 regenerated, never edited.

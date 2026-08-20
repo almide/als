@@ -51,6 +51,9 @@ jobs:
           python3 scripts/conformance.py --almide "$ALMIDE" \
             --legs "${{ inputs.legs || 'suite,cross,pkg,programs,fail,diag' }}" \
             --jobs 4 --report "conformance-${TAG}.toml"
+      - name: Spec doctest — the release binary against the spec's own examples
+        run: python3 scripts/doctest.py --almide "$ALMIDE"
+        continue-on-error: true
       - name: Upload the conformance statement
         if: always()
         uses: actions/upload-artifact@v4

@@ -33,7 +33,7 @@ mypackage/
 
 ### 2.1 構文
 
-```almide
+```almide fragment
 import pkg                    // パッケージ全体
 import pkg.sub                // 特定のサブモジュール → sub.func() で呼べる
 import pkg as p               // エイリアス
@@ -111,7 +111,7 @@ Formatted app.almd
 
 ## 3. 呼び出し
 
-```almide
+```almide fragment
 import bindgen
 import bindgen.scaffolding
 import bindgen.bindings.python
@@ -134,7 +134,7 @@ import したモジュールの直接の関数のみアクセス可能。サブ�
 
 **直接 import したパッケージのみアクセス可能。推移的依存は不可視。**
 
-```almide
+```almide fragment
 import B       // B は内部で D を import している
 
 B.func()       // ✓ 直接 import した
@@ -154,7 +154,7 @@ main → C → D
 
 D は1回だけロードされ、1回だけコンパイル出力に含まれる。B と C は同じ D を参照する。
 
-```almide
+```almide fragment
 import B
 import C
 import D
@@ -168,7 +168,7 @@ D.shared()           // "from D"         — 直接 D を呼ぶ
 
 D が定義した型は、B 経由でも C 経由でも同一の型として扱われる。
 
-```almide
+```almide fragment
 let logger = B.make_logger()     // D.Logger 型を返す
 C.process_logger(logger)         // ✓ B が作った D.Logger を C が受け取れる
 D.log_name(logger)               // ✓ 直接 D に渡すのも同じ型
@@ -207,7 +207,7 @@ error: function 'internal' is not accessible from module 'extlib'
 
 自パッケージの `src/mod.almd` を参照する。`main.almd` からライブラリ関数を呼ぶ場合に使う。
 
-```almide
+```almide fragment
 // main.almd
 import self as mylib
 mylib.exported_function()
@@ -221,7 +221,7 @@ mylib.exported_function()
 
 サブモジュールは stdlib や他パッケージを自由に import できる。親パッケージのロード時に再帰的に解決される。
 
-```almide
+```almide fragment
 // mypackage/src/formatter.almd
 fn format_upper(s: String) -> String = string.to_upper(s)   // stdlib
 
