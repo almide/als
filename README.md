@@ -109,9 +109,9 @@ paths that were renamed into place lives in the implementation repository.
   yet**. `proofs/ALS.v` in almide/almide is the *implementation's* ownership
   checker model (it imports `OwnershipChecker`) and stays there; a
   language-level mechanized semantics, when written, belongs here.
-- The implementations (`almide/almide` `develop` and the `greenfield` rebuild)
-  still carry copies of everything in this repository. Replacing those copies
-  with a pin is the next, separately decided step (BOUNDARY.md, "Stage B").
+- The `greenfield` rebuild pins this repository as a submodule since
+  2026-08-20 (BOUNDARY.md, "Stage B"); `almide/almide` `develop` still carries
+  copies, and its cutover is a separately decided step.
 - `docs/stdlib/` (the per-module API reference) and `docs/CHEATSHEET.md` remain
   in the implementation pending classification; both are partly generated from
   compiler source today.
