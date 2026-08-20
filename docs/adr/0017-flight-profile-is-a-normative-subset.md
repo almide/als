@@ -1,4 +1,4 @@
-# ADR-0016: The flight profile is a normative subset of the language, specified here before any checker enforces it
+# ADR-0017: The flight profile is a normative subset of the language, specified here before any checker enforces it
 
 - **Status**: Proposed (draft for adjudication — the implementation's design
   document `docs/roadmap/active/flight-subset-spec.md` already resolves the
@@ -43,7 +43,7 @@
      not yet built) are still specified now — that is the point of
      requirements-first — and the implementation's pin advance is what
      makes them green.
-  4. ⚖ **Float is OUT of the flight profile until ADR-0015's family is
+  4. ⚖ **Float is OUT of the flight profile until ADR-0016's family is
      normative AND the cert seat has a float operation set** (the MIR has no
      `FloatOp` today). The section says so in the indicative ("a `@flight`
      function that performs Float arithmetic is rejected with E…") and is
@@ -90,12 +90,12 @@
   attribute present vs absent refutes rule 1 and the chapter is wrong, not
   the program. A certification assessor (#15) preferring a whole-module or
   whole-program unit of enforcement overturns rule 5. A Float operation set
-  landing in the cert seat without ADR-0015's family being normative is a
+  landing in the cert seat without ADR-0016's family being normative is a
   process violation, not a reason to relax rule 4.
 - **References**: almide/almide `docs/roadmap/active/flight-subset-spec.md`
   (§2 table, §3 resolved questions, §4 enforcement, §6 residuals);
   `flight-profile.md` §3.5, §7.2 (G-F1); `flight-qualification.md` §1;
   MISRA C:2012 Rules 17.2, 21.3, 15.x; Ada Ravenscar profile (ISO/IEC
-  8652 D.13); SPARK subset rationale; ADR-0015; this repository's
+  8652 D.13); SPARK subset rationale; ADR-0016; this repository's
   CONTRIBUTING.md (the order of change), QUALIFICATION.md limitation 7,
   issues #11 and #9.

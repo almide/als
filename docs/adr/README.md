@@ -59,5 +59,5 @@ ADR はその**決定に至る過程**（調査した証拠、比較した代替
 | [0012](./0012-typed-error-refinement-in-the-marker.md) | Error-surface end state — refinement stays in the marker (`T!E`), erasure stays the default | Accepted | 2026-08-11 |
 | [0013](./0013-corpus-stays-id-keyed.md) | The conformance corpus stays contract-ID-keyed; semantic reorganization rejected, naming discipline gated | Accepted | 2026-08-20 |
 | [0014](./0014-expectations-are-derived.md) | Pinned expectations are machine-derived or absent — never hand-maintained | Accepted | 2026-08-20 |
-| [0015](./0015-numeric-determinism-is-normative.md) | Numeric determinism is one normative family, written once — not a property the targets happen to share | Proposed | 2026-08-21 |
-| [0016](./0016-flight-profile-is-a-normative-subset.md) | The flight profile is a normative subset of the language, specified here before any checker enforces it | Proposed | 2026-08-21 |
+| [0016](./0016-numeric-determinism-is-normative.md) | Numeric determinism is one normative family, written once — not a property the targets happen to share | Proposed | 2026-08-21 |
+| [0017](./0017-flight-profile-is-a-normative-subset.md) | The flight profile is a normative subset of the language, specified here before any checker enforces it | Proposed | 2026-08-21 |
