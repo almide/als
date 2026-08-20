@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LEDGER="$ROOT/proofs/gate-verification.toml"
 
 enumerate() {
-  (cd "$ROOT" && ls scripts/check-*.sh scripts/conformance.py scripts/selftest-conformance.py scripts/doctest.py scripts/edition-readiness.py) | sort -u
+  (cd "$ROOT" && ls scripts/check-*.sh scripts/check-*.py scripts/conformance.py scripts/selftest-conformance.py scripts/doctest.py scripts/edition-readiness.py) | sort -u
 }
 
 python3 - "$LEDGER" <<PYEOF

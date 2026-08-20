@@ -24,6 +24,13 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 `fixture` < `fuzz` < `exhaustive` < `lean`. An **active** contract must carry
 ≥1 evidence of class ≥ `fixture`.
 
+## Provenance — did the requirement precede the behaviour?
+
+Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
+(`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
+the `since` release was tagged). Of 301 contracts: **requirements-first 2** (two-repo regime, since 2026-08-20),
+contemporaneous 156, **retroactive 126** (shrink-only ceiling 126), unmeasured 17.
+
 301 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |

@@ -36,9 +36,11 @@ second judge: correctness.
 | `spec/wasm_fail/`, `spec/programs/`, `spec/wasm_cross_pkg/` | Failure-shape fixtures (`// @expect-fail:`), whole programs, the package-form cross-target fixture. |
 | `tests/diagnostics/` | 752 diagnostic cases (`broken.almd` must be rejected with the pinned code/hint; `fixed.almd` must compile). Rejection behaviour is part of the language surface. |
 | `proofs/als-element-coverage.toml` | Every surface-syntax element → the ALS section that specifies it (72/72 sectioned, 0 UNWRITTEN — a freeze precondition). |
+| `proofs/contract-provenance.toml` | Every contract → the instant its id entered the ledger vs the instant its `since` release was tagged: `requirements-first` / `contemporaneous` / `retroactive` (shrink-only) / `unmeasured`. The two-PR order, measured. |
 | `proofs/dialect-epochs.toml` | The dialect-epoch record: what each epoch added, deprecated, removed. |
 | `scripts/check-contracts.sh` | Contract-ledger traceability gate (schema, evidence floor, symmetric links, spec keying, generated-doc freshness, retired-path citations). |
 | `scripts/check-als-element-coverage.sh` | Element-coverage gate (ledger side here; AST enumeration with an implementation root). |
+| `scripts/check-contract-provenance.py` | Provenance gate: every contract classified, classes derived from the recorded instants (a hand-edited class fails), retroactive count pinned to a shrink-only ceiling. `--write` regenerates from history. |
 | `scripts/conformance.py` | **The runner.** Executes the corpus against a binary and writes a conformance statement. |
 | `BOUNDARY.md` | The classification of every path that was and was not moved here, with rationale, and the provenance of the extraction. |
 
@@ -74,7 +76,8 @@ the copies the implementations still carry.
   declaring it, in one PR to this repository. The implementation then bumps its
   pin and makes the judge pass — a second, separately reviewed PR. The git
   history of the two repositories is the evidence that requirements preceded
-  code.
+  code, and `proofs/contract-provenance.toml` measures it per contract (the
+  retroactive count may only shrink).
 - Fixture headers: `// @contract: C-NNN[, C-MMM]` (mandatory in
   `spec/wasm_cross`), `// @xt-allow: <reason + ref>` (a known, tracked
   divergence — logged, and flagged *stale* the moment it heals),

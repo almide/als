@@ -27,6 +27,7 @@ lives here versus in an implementation, and why.
 
 ```bash
 bash scripts/check-contracts.sh              # ledger ⇄ fixture ⇄ ALS traceability
+python3 scripts/check-contract-provenance.py # requirement-before-behaviour ledger (retroactive shrink-only)
 bash scripts/check-als-element-coverage.sh   # element → section ledger
 bash scripts/check-als-style.sh              # requirements standard (STANDARD.md)
 bash scripts/check-links.sh                  # links and anchors resolve
@@ -83,7 +84,13 @@ Flat TOML, one scalar per line (awk-parsed). Required: `id`, `spec`, `title`,
 `statement`, `since` (MAJOR.MINOR.PATCH of the behaviour, not of the entry),
 `status`, `evidence` (≥1 `{ path, class[, name][, n] }`). `flagged-for-revision`
 is a shrink-only ratchet (ceiling 0). The header comment of the file is the
-schema's authoritative prose.
+schema's authoritative prose. Every contract also has a row in
+`proofs/contract-provenance.toml` (entry instant vs `since` release instant →
+requirements-first / contemporaneous / retroactive / unmeasured); after adding
+a contract run `python3 scripts/check-contract-provenance.py --write` on a full
+clone and commit the ledger. `retroactive` is shrink-only — a new contract over
+already-shipped behaviour must name its justification and raise the ceiling by
+exactly one.
 
 ## Git
 

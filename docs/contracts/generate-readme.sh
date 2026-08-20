@@ -55,6 +55,24 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 HEADER
 
+# Provenance block — did the requirement precede the behaviour? Counts come from
+# proofs/contract-provenance.toml (scripts/check-contract-provenance.py); the
+# README is regenerated whenever that ledger changes (lefthook glob + CI diff).
+PROV="proofs/contract-provenance.toml"
+[ -f "$PROV" ] || { echo "::error::$PROV missing — run scripts/check-contract-provenance.py --write" >&2; exit 2; }
+awk '
+  /^# regime_start[ \t]*=/        { v=$0; sub(/^.*=[ \t]*"/,"",v); sub(/".*$/,"",v); regime=v }
+  /^# retroactive_ceiling[ \t]*=/ { v=$0; sub(/^.*=[ \t]*"/,"",v); sub(/".*$/,"",v); ceiling=v }
+  /^class[ \t]*=/ { v=$0; sub(/^class[ \t]*=[ \t]*"/,"",v); sub(/".*$/,"",v); n[v]++; total++ }
+  END {
+    printf "## Provenance — did the requirement precede the behaviour?\n\n"
+    printf "Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)\n"
+    printf "(`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant\n"
+    printf "the `since` release was tagged). Of %d contracts: **requirements-first %d** (two-repo regime, since %s),\n", total, n["requirements-first"], regime
+    printf "contemporaneous %d, **retroactive %d** (shrink-only ceiling %s), unmeasured %d.\n\n", n["contemporaneous"], n["retroactive"], ceiling, n["unmeasured"]
+  }
+' "$PROV"
+
 # Emit the table by walking the ledger in awk and printing one row per contract.
 awk -v classes="$CLASSES_CSV" '
   BEGIN {

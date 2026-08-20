@@ -64,6 +64,11 @@ class = "NEGATIVE_TESTED"
 evidence = "Landing run (PR #6, 2026-08-20): a planted lying example (```almide fenced, syntactically broken) flipped it red with the file:line named; restore returned green. Also guarded against instrument death: zero almide blocks measured is a failure, not a pass; and the fragment/untagged ceilings fail in BOTH directions (grow, and un-ratcheted shrink). Introduction measurement: 24 tagged blocks, 3 compile — the 21 fragments are a declared shrink-only debt, not a hidden one."
 
 [[gate]]
+path = "scripts/check-contract-provenance.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-20): six fail directions demonstrated against the freshly written ledger, each restored to green — a dropped row (C-150: 'no provenance row' + the ceiling's below-direction fired together); a hand-edited class (C-001 retroactive→contemporaneous: 'does not follow from entry … / release … — recorded classes are derived, not declared'); ceiling +1 ('BELOW the ceiling — ratchet it down'); ceiling −1 ('exceeds ceiling'); a contract renamed in the ledger (STALE row for the old id + missing row for the new); every class forced to unmeasured ('zero measured rows — a broken instrument is not a pass'). --write refuses a shallow clone (rev-list < 500)."
+
+[[gate]]
 path = "scripts/edition-readiness.py"
 class = "NEGATIVE_TESTED"
 evidence = "Landing run (PR #6, 2026-08-20): --almide /nonexistent produced [FAIL] spec doctest and verdict NOT READY (exit 1); the full run with the real binary produced READY with 13 checks and the two honest WARNs (feature branch, dirty tree). FATAL direction covered by the tag-shape/tag-exists checks."

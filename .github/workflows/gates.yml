@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Contract ledger traceability (two-repo mode)
         run: bash scripts/check-contracts.sh
+      - name: Contract provenance — requirements precede behaviour, measured
+        run: python3 scripts/check-contract-provenance.py
       - name: ALS element coverage (ledger side)
         run: bash scripts/check-als-element-coverage.sh
       - name: Derived documents are regenerated, not edited

@@ -15,7 +15,14 @@ A behaviour change lands HERE before it lands in any implementation:
    judge pass — a second, separately reviewed PR in its own repository.
 
 Never the reverse order; never one PR spanning both repositories. The two
-git histories are the evidence that requirements preceded code.
+git histories are the evidence that requirements preceded code — and that
+evidence is measured, not assumed: `proofs/contract-provenance.toml` records,
+per contract, the instant its id entered the ledger against the instant its
+`since` release was tagged (`requirements-first` / `contemporaneous` /
+`retroactive` / `unmeasured`; `scripts/check-contract-provenance.py`). The
+retroactive count is shrink-only. After adding a contract, regenerate the
+ledger on a full clone — `python3 scripts/check-contract-provenance.py --write`
+— and commit it.
 
 ## Identifiers are permanent
 
@@ -29,6 +36,7 @@ git histories are the evidence that requirements preceded code.
 
 ```bash
 bash scripts/check-contracts.sh              # ledger ⇄ fixture ⇄ ALS traceability
+python3 scripts/check-contract-provenance.py # requirement-before-behaviour ledger
 bash scripts/check-als-element-coverage.sh   # element → section ledger
 bash scripts/check-links.sh                  # every relative link and anchor resolves
 bash scripts/check-als-style.sh              # requirements standard

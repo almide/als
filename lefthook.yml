@@ -1,8 +1,11 @@
 pre-commit:
   commands:
     contracts:
-      glob: "{docs/contracts/**,spec/wasm_cross/*.almd,docs/specs/als/*.md,scripts/check-contracts.sh,scripts/lib/contract-classes.txt}"
+      glob: "{docs/contracts/**,spec/wasm_cross/*.almd,docs/specs/als/*.md,scripts/check-contracts.sh,scripts/lib/contract-classes.txt,proofs/contract-provenance.toml}"
       run: bash docs/contracts/generate-readme.sh > docs/contracts/README.md && bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md && git add docs/contracts/README.md docs/contracts/conformance.md && bash scripts/check-contracts.sh
+    contract-provenance:
+      glob: "{docs/contracts/contracts.toml,proofs/contract-provenance.toml,scripts/check-contract-provenance.py}"
+      run: python3 scripts/check-contract-provenance.py
     als-index:
       glob: "{docs/specs/als/*.md,docs/contracts/contracts.toml}"
       run: bash docs/specs/als/generate-readme.sh > docs/specs/als/README.md && git add docs/specs/als/README.md
@@ -22,7 +25,7 @@ pre-commit:
       glob: "{scripts/conformance.py,scripts/selftest-conformance.py}"
       run: python3 -m py_compile scripts/conformance.py && python3 scripts/selftest-conformance.py
     gate-verification:
-      glob: "{proofs/gate-verification.toml,scripts/check-*.sh,scripts/conformance.py,scripts/selftest-conformance.py}"
+      glob: "{proofs/gate-verification.toml,scripts/check-*.sh,scripts/check-*.py,scripts/conformance.py,scripts/selftest-conformance.py}"
       run: bash scripts/check-gate-verification.sh
 commit-msg:
   scripts:
