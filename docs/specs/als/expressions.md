@@ -203,7 +203,7 @@ JSON/他言語からの転記ミスは検査時に止まる)。
 
 テスト: `spec/wasm_cross/collection_literals.almd`(契約 C-239)。
 
-## ALS-S1 束縛文(`Stmt::Let` / `Stmt::Var` / `Stmt::Assign`)
+## ALS-ST1 束縛文(`Stmt::Let` / `Stmt::Var` / `Stmt::Assign`)
 
 **受理形**: 不変束縛 `let x = e`(型注釈 `let x: T = e` 任意)、可変束縛
 `var x = e`、再代入 `x = e`(`var` のみ)。
@@ -286,7 +286,7 @@ t + 1 }` → 11、if アーム内ブロック → 9、両ターゲット同一)�
 ## ALS-E17 識別子(`ExprKind::Ident`)
 
 **受理形**: 束縛済みの名前。解決は**最も近い束縛**(シャドーイングの規範は
-ALS-S1)。
+ALS-ST1)。
 
 **裁定**: 未解決の名前は**検査時 E003** — 診断は解決に失敗した名前そのもの
 を含む(どの識別子が誤りかを診断単体で特定できる;
@@ -333,7 +333,7 @@ v1 の wall(#1277)。
 `range_first_class.almd`(C-238)、マップ反復は
 `collection_literals.almd`(C-240)。
 
-## ALS-S2 分解束縛(`Stmt::LetDestructure`)
+## ALS-ST2 分解束縛(`Stmt::LetDestructure`)
 
 **受理形**: `let (a, b, …) = e` — 右辺はタプル。各成分が対応位置の値に
 不変束縛される。
@@ -370,7 +370,7 @@ none → "empty"、両ターゲット同一)。
 
 テスト: `spec/wasm_cross/if_let_forms.almd`(契約 C-251)。
 
-## ALS-S3 式文(`Stmt::Expr`)
+## ALS-ST3 式文とコメント(`Stmt::Expr` / `Stmt::Comment`)
 
 **受理形**: 文位置の式。`Unit` を返す呼び出し(`println(…)` 等)はそのまま
 文になる。値を持つ純粋式の意図的破棄は `let _ = e`。
@@ -381,12 +381,7 @@ none → "empty"、両ターゲット同一)。
 破棄; err は伝搬しない — C-217)。負例は `tests/expr_stmt_diag_test.rs` が
 pin。
 
-テスト: `spec/wasm_cross/expr_stmt_comment.almd`(契約 C-252)、
-`tests/expr_stmt_diag_test.rs`(負例)。
-
-## ALS-S4 コメント(`Stmt::Comment`)
-
-**受理形**: 行コメント `// …`(行頭・行末尾)、ブロックコメント
+**受理形(コメント)**: 行コメント `// …`(行頭・行末尾)、ブロックコメント
 `/* … */`(複数行可、宣言前・文間)。
 
 **値の規範**: コメントは**意味論的に不可視** — どの位置のどの形も観測可能
@@ -394,13 +389,14 @@ pin。
 コメント無しと同一)。fmt はコメントを保存する(comment_map / doc_map が
 宣言単位で担持)。
 
-テスト: `spec/wasm_cross/expr_stmt_comment.almd`(契約 C-252)。
+テスト: `spec/wasm_cross/expr_stmt_comment.almd`(契約 C-252)、
+`tests/expr_stmt_diag_test.rs`(負例)。
 
-## ALS-S5 場所代入(`Stmt::IndexAssign` / `Stmt::FieldAssign`)
+## ALS-ST4 場所代入(`Stmt::IndexAssign` / `Stmt::FieldAssign`)
 
 **受理形**: リスト要素 `xs[i] = v`、レコードフィールド `p.x = v`、マップ
 キー `m[k] = v`(存在キーは上書き、不在キーは挿入 — upsert)。対象は
-`var` 束縛(`let` への場所代入は不変性違反、ALS-S1 の E009 系)。
+`var` 束縛(`let` への場所代入は不変性違反、ALS-ST1 の E009 系)。
 
 **値の規範**: 代入後の読みは新値を観測する(fixture: 21 / 12 / 6 / 100、
 両ターゲット同一)。値意味論 — 代入は共有を通じて漏れない(COW)。**範囲外
@@ -427,7 +423,7 @@ pin。
 **値の規範**: フィールド読みは宣言型の値を返す。スプレッドは**新しい値**を
 作り、**元の値は不変**(fixture: `q = { ...p, y: 20 }` 後も `p.y` は 2 —
 値意味論、共有を通じた変異は観測されない)。フィールドへの代入は `var`
-束縛上でのみ(ALS-S5)。
+束縛上でのみ(ALS-ST4)。
 
 テスト: `spec/wasm_cross/record_forms.almd`(契約 C-255)。
 
@@ -477,7 +473,7 @@ match wall(loud)に当たるため、行は UNWRITTEN 維持。
 
 **受理形**: 名前呼び出し `f(a, b)`(位置引数)、ラムダ `(x: Int) => e`
 (型注釈任意)・`(x) => e`・零引数 `() => e`、HOF 引数位置のインライン
-ラムダ。effect 呼び出しの消費規範は ALS-S3/E25(E041/E042)。
+ラムダ。effect 呼び出しの消費規範は ALS-ST3/E25(E041/E042)。
 
 **値の規範**: 引数は先頭から順に一度ずつ評価され、値渡し(値意味論)。
 ラムダは関数値 — 束縛して呼ぶ・引数に渡すの両経路が同一観測
@@ -498,7 +494,7 @@ match の網羅性は ALS-E18(E010)。
 
 テスト: `spec/wasm_cross/call_lambda_ctor.almd`(契約 C-259)。
 
-## ALS-D1 宣言(`Decl::Module` / `Decl::Import` / `Decl::Type` / `Decl::Fn` / `Decl::TopLet` / `Decl::Protocol` / `Decl::Test` / `Decl::TestWhereDef`)
+## ALS-DL1 宣言(`Decl::Module` / `Decl::Import` / `Decl::Type` / `Decl::Fn` / `Decl::TopLet` / `Decl::Protocol` / `Decl::Test` / `Decl::TestWhereDef`)
 
 **受理形**: `module name`(先頭、任意)/ `import mod`(自動 import 外の
 stdlib と外部パッケージに必須 — ALS の import 規範は module-system spec)/
@@ -550,7 +546,7 @@ OPEN(#1263)**。未知エスケープ(`\q`)と範囲外 `\u{…}` の黙過は
 1 字(fixture が可視括りで pin)。空文字列は長さ 0 の値。
 
 テスト: `spec/wasm_cross/string_float_stable.almd`(契約 C-262)。
-## ALS-D2 回復ノード(`ExprKind::Error` / `Stmt::Error`)
+## ALS-DL2 回復ノード(`ExprKind::Error` / `Stmt::Error`)
 
 **裁定**: 両ノードは**回復語彙** — parse エラーの位置を占位して後続の診断
 収集を継続させるためだけに存在し、**受理されたプログラムには決して現れ
@@ -585,7 +581,7 @@ AST に回復ノードが**ゼロ**であること、(2) 壊れたファイル�
 テスト: `spec/wasm_cross/optional_chain_scalar.almd`(契約 C-264)、
 `spec/lang/optional_chain_test.almd`(wasm レグ 4 ケース)。
 
-## ALS-S6 guard 文(`Stmt::Guard`)
+## ALS-ST5 guard 文(`Stmt::Guard`)
 
 **受理形**: `guard cond else raise-expr` — 文位置。`raise-expr` は
 `err(e)` または `err(e)!`(両綴りが同一に正規化される、#1336)。
@@ -605,7 +601,7 @@ match が受け取る(fixture: `checked(-3)` の err を match が拾って
 テスト: `spec/wasm_cross/guard_statement.almd`(契約 C-265)、
 `spec/lang/guard_test.almd`(wasm レグ)。
 
-## ALS-S7 guard let 文(`Stmt::GuardLet`)
+## ALS-ST6 guard let 文(`Stmt::GuardLet`)
 
 **受理形**: `guard let x = scrut else raise-expr` — 文位置。`scrut` は
 Result / Option、`x` は Ok / Some のペイロードに束縛され、後続文の全域で
@@ -622,7 +618,7 @@ v=21 → 42)。失敗極性なら else の err が呼び出し元へ伝搬する
 `auto_wrap_abi_body` が本体の**ルートのみ**を Result キャリアに retype
 するため。したがって壁の原因は極性でも wildcard アームでもなく**位置**で
 あり、修正は「証明済みの bind 形へ正規化する認識器」に variant match を
-教えることだった(ALS-S6 と同じ機構の別の顔)。
+教えることだった(ALS-ST5 と同じ機構の別の顔)。
 
 テスト: `spec/wasm_cross/guard_let_statement.almd`(契約 C-266)、
 `spec/lang/guard_let_test.almd`(wasm レグ)。

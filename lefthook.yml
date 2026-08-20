@@ -9,6 +9,9 @@ pre-commit:
     links:
       glob: "*.md"
       run: bash scripts/check-links.sh
+    als-style:
+      glob: "{docs/specs/als/*.md,scripts/check-als-style.sh}"
+      run: bash scripts/check-als-style.sh
     als-element-coverage:
       glob: "{proofs/als-element-coverage.toml,scripts/check-als-element-coverage.sh,docs/specs/als/*.md}"
       run: bash scripts/check-als-element-coverage.sh

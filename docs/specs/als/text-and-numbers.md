@@ -1,5 +1,7 @@
 # ALS §T — Text and Number Semantics (normative)
 
+> Last updated: 2026-08-20
+
 > **Status**: normative. これらの節は実装から独立した**規範**であり、v0（native）と
 > v1（MIR/wasm）の両実装がこの節に適合する義務を負う。適合の証拠は
 > `spec/wasm_cross/` の対応 fixture（3点観測: stdout・stderr・exit code）。

@@ -1,5 +1,7 @@
 # ALS — データ形式（Data Formats）
 
+> Last updated: 2026-08-20
+
 JSON / 正規表現 / バイナリ形式の観測規範。参照方法は [strings.md](strings.md)
 冒頭と同じ。
 
