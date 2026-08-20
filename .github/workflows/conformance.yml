@@ -1,0 +1,60 @@
+# The judge, run against a RELEASED almide binary. Informational by design:
+# a release predates fixtures added here since, so a red run is a finding
+# (a statement of what the release does not yet satisfy), not a merge gate.
+# Blocking runs belong in each implementation's CI against its own build.
+name: conformance
+on:
+  workflow_dispatch:
+    inputs:
+      almide_tag:
+        description: "almide/almide release tag (e.g. v0.57.2); empty = latest"
+        required: false
+        default: ""
+      legs:
+        description: "comma list of legs (suite,cross,pkg,programs,fail,diag)"
+        required: false
+        default: "suite,cross,pkg,programs,fail,diag"
+  schedule:
+    - cron: "17 3 * * 1"
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WASMTIME_VERSION: v47.0.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve and download the almide release
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.almide_tag }}"
+          [ -n "$TAG" ] || TAG="$(gh release view -R almide/almide --json tagName -q .tagName)"
+          mkdir -p /tmp/almide
+          gh release download "$TAG" -R almide/almide -p almide-linux-x86_64.tar.gz -D /tmp/almide --clobber
+          tar xzf /tmp/almide/almide-linux-x86_64.tar.gz -C /tmp/almide
+          BIN="$(find /tmp/almide -type f -name almide | head -1)"
+          chmod +x "$BIN"
+          "$BIN" --version
+          echo "ALMIDE=$BIN" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - name: Install wasmtime (same pin as the implementation's CI)
+        run: |
+          set -euo pipefail
+          TARBALL="wasmtime-${WASMTIME_VERSION}-x86_64-linux.tar.xz"
+          curl -fLO "https://github.com/bytecodealliance/wasmtime/releases/download/${WASMTIME_VERSION}/${TARBALL}"
+          tar xJf "$TARBALL"
+          echo "$PWD/wasmtime-${WASMTIME_VERSION}-x86_64-linux" >> "$GITHUB_PATH"
+      - name: Judge
+        run: |
+          wasmtime --version
+          python3 scripts/conformance.py --almide "$ALMIDE" \
+            --legs "${{ inputs.legs || 'suite,cross,pkg,programs,fail,diag' }}" \
+            --jobs 4 --report "conformance-${TAG}.toml"
+      - name: Upload the conformance statement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-statement
+          path: conformance-*.toml
+          if-no-files-found: ignore

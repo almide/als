@@ -37,6 +37,22 @@
 #       the ledger (the same diff CI's "Emit & Format" job runs);
 #   (j) a source path cited in a contract statement or a fixture header lives
 #       under a directory that no longer exists (a retired subsystem — #941).
+#
+# TWO-REPO MODE (almide/als ⇄ an implementation)
+# ----------------------------------------------
+# This ledger lives in the LANGUAGE repo (almide/als). Most evidence is
+# judge-resident (spec/wasm_cross, spec/*, tests/diagnostics) and is checked
+# here. Some evidence is IMPLEMENTATION-resident (tests/*.rs cargo gates,
+# crates/**/*.lean theorems, proofs/*.v, spec/churn, spec/pass_isolated): it
+# certifies how ONE compiler keeps the promise, so it is resolved against an
+# implementation checkout:
+#   ALS_IMPL_ROOT=<path>   or   --impl-root <path>
+# With a root, implementation paths MUST exist there (the implementation's CI
+# runs this gate that way and owns the verdict). Without one, they are COUNTED
+# and reported as deferred — never silently passed, never falsely red.
+# Judge-resident paths are required unconditionally.
+# (The former check (g) — the README claims block derived by gen-claims.sh —
+# is an implementation-README artifact and runs in the implementation's CI.)
 set -uo pipefail
 
 # Byte-order collation, pinned: `sort`'s last-resort comparison follows the ambient
@@ -53,6 +69,35 @@ CLASS_FILE="scripts/lib/contract-classes.txt"
 [ -f "$LEDGER" ]      || { echo "::error::$LEDGER not found (run from repo root)"; exit 2; }
 [ -d "$FIXTURE_DIR" ] || { echo "::error::$FIXTURE_DIR not found"; exit 2; }
 [ -f "$CLASS_FILE" ]  || { echo "::error::$CLASS_FILE not found"; exit 2; }
+
+# ── IMPLEMENTATION ROOT (two-repo mode, see header) ─────────────────────────
+IMPL_ROOT="${ALS_IMPL_ROOT:-}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --impl-root) IMPL_ROOT="${2:-}"; shift 2 ;;
+    *) echo "::error::unknown argument '$1' (usage: $0 [--impl-root <implementation checkout>])"; exit 2 ;;
+  esac
+done
+if [ -n "$IMPL_ROOT" ] && [ ! -d "$IMPL_ROOT" ]; then
+  echo "::error::ALS_IMPL_ROOT '$IMPL_ROOT' is not a directory"; exit 2
+fi
+# The on-disk location of a repo-relative path: here, else under the
+# implementation root, else "" (unresolvable in this configuration).
+resolve_path() {
+  if [ -e "$1" ]; then printf '%s' "$1"
+  elif [ -n "$IMPL_ROOT" ] && [ -e "$IMPL_ROOT/$1" ]; then printf '%s' "$IMPL_ROOT/$1"
+  fi
+}
+# Judge-resident prefixes: evidence that MUST live in this repo. Everything
+# else is implementation evidence (deferred without a root, required with one).
+is_judge_path() {
+  case "$1" in
+    spec/lang/*|spec/stdlib/*|spec/integration/*|spec/programs/*|spec/wasm_cross/*|spec/wasm_cross_pkg/*|spec/wasm_fail/*|tests/diagnostics/*|docs/*|proofs/als-element-coverage.toml|proofs/dialect-epochs.toml|scripts/check-contracts.sh|scripts/check-als-element-coverage.sh|scripts/lib/contract-classes.txt) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+deferred_evidence=0
+deferred_cited=0
 
 # ── The canonical evidence-class vocabulary (shared with the registry gate). ──
 # Strip comments/blanks; the LINE ORDER is the rank (line 1 = rank 0). One list
@@ -184,9 +229,14 @@ while IFS=$'\t' read -r _tag id path class name n; do
       err "$id: class='fuzz' evidence ($path) requires n=<int >= 1> (got '$n')"
     fi
   fi
-  # path must exist
-  if [ ! -f "$path" ]; then
-    err "$id evidence path does not exist: $path"
+  # path must exist — here, or (implementation evidence) under ALS_IMPL_ROOT
+  loc="$(resolve_path "$path")"
+  if [ -z "$loc" ] || [ ! -f "$loc" ]; then
+    if is_judge_path "$path" || [ -n "$IMPL_ROOT" ]; then
+      err "$id evidence path does not exist: $path"
+    else
+      deferred_evidence=$((deferred_evidence + 1))
+    fi
     continue
   fi
   # named-unit grep: required for *.rs / *.lean / *.toml and for fuzz/lean/exhaustive
@@ -199,10 +249,10 @@ while IFS=$'\t' read -r _tag id path class name n; do
   fi
   if [ "$name" != "-" ]; then
     case "$path" in
-      *.rs)   grep -qE "fn[[:space:]]+${name}[[:space:]]*\(" "$path" || err "$id evidence '$name' (fn) not found in $path" ;;
-      *.lean) grep -qE "(theorem|lemma|def)[[:space:]]+${name}\b" "$path" || err "$id evidence '$name' (theorem/def) not found in $path" ;;
-      *.toml) grep -qE "routine = \"${name}\"" "$path" || err "$id evidence '$name' (routine) not found in $path" ;;
-      *.almd) grep -qE "test[[:space:]]+\"${name}\"" "$path" || err "$id evidence '$name' (test) not found in $path" ;;
+      *.rs)   grep -qE "fn[[:space:]]+${name}[[:space:]]*\(" "$loc" || err "$id evidence '$name' (fn) not found in $path" ;;
+      *.lean) grep -qE "(theorem|lemma|def)[[:space:]]+${name}\b" "$loc" || err "$id evidence '$name' (theorem/def) not found in $path" ;;
+      *.toml) grep -qE "routine = \"${name}\"" "$loc" || err "$id evidence '$name' (routine) not found in $path" ;;
+      *.almd) grep -qE "test[[:space:]]+\"${name}\"" "$loc" || err "$id evidence '$name' (test) not found in $path" ;;
     esac
   fi
 done <<< "$EV"
@@ -301,11 +351,21 @@ while IFS= read -r cited; do
   [ -e "$cited" ] && continue
   parent="$(dirname "$cited")"
   [ -d "$parent" ] && continue
+  if [ -n "$IMPL_ROOT" ]; then
+    { [ -e "$IMPL_ROOT/$cited" ] || [ -d "$IMPL_ROOT/$parent" ]; } && continue
+  elif ! is_judge_path "$cited"; then
+    deferred_cited=$((deferred_cited + 1)); continue
+  fi
   err "cited path '$cited' lives under '$parent', which does not exist (retired subsystem?)"
   dead_paths=$((dead_paths + 1))
 done <<< "$(grep -rhoE '(crates|runtime|stdlib|spec|tests|scripts|proofs)/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.(rs|almd|lean|toml|sh)' \
               "$LEDGER" "$FIXTURE_DIR"/*.almd 2>/dev/null | sort -u)"
 [ "$dead_paths" -eq 0 ] && echo "cited-paths: every source path named in a statement or fixture header resolves to a live directory."
+if [ -z "$IMPL_ROOT" ]; then
+  echo "two-repo mode: no ALS_IMPL_ROOT — $deferred_evidence implementation evidence path(s) and $deferred_cited implementation citation(s) DEFERRED to the implementation's CI (judge-resident paths were required)."
+else
+  echo "two-repo mode: implementation evidence resolved against $IMPL_ROOT."
+fi
 
 # ── (f) COVERAGE: ids must be contiguous C-001..C-NNN, no gaps ──────────────
 sorted_ids="$(printf '%s\n' "$ALL_IDS" | sort -u)"
@@ -396,11 +456,10 @@ if [ -d "$ALS_DIR" ]; then
   [ "$n_orphan" -eq 0 ] && echo "spec-coverage: every normative ALS section is cited by >=1 contract."
 fi
 
-# ── (g) README claims block (#766) ───────────────────────────────────────────
-# The equivalence-claim numbers and the exceptions clause quoted in README.md
-# are DERIVED from this ledger by scripts/gen-claims.sh. A stale or hand-edited
-# block is a public claim drifting from what the gates verify — red.
-bash scripts/gen-claims.sh --check || fail=1
+# ── (g) README claims block (#766) — IMPLEMENTATION-SIDE ─────────────────────
+# The equivalence-claim numbers quoted in the compiler's README.md are derived
+# from this ledger by the implementation's scripts/gen-claims.sh; that README
+# and that check live with the implementation (see header, two-repo mode).
 
 # ── (i) ALS CONFORMANCE REPORT freshness (F1, #811) ──────────────────────────
 # docs/contracts/conformance.md joins section → contracts → executable fixtures
@@ -437,7 +496,10 @@ echo "  fixtures: $n_with_header/$n_fixtures carry a // @contract: header; bidir
 #   (4) typo a class                                       -> (e) bad-class.
 #   (5) flag any contract                                  -> (f) ratchet.
 #   (6) renumber a contract to leave a gap                 -> (f) coverage.
-#   (7) hand-edit a number inside README's claims markers  -> (g) stale-claims.
+#   (7) (implementation-side since the almide/als split: README claims block.)
+#   (7b) delete a judge-resident evidence file (e.g. a spec/wasm_cross fixture
+#        still listed in the ledger)                      -> (a) missing-evidence,
+#        in BOTH modes; delete an implementation one      -> (a) only with a root.
 #   (8) add a contract without regenerating the index      -> (h) stale-index.
 #   (9) cite a new section without regenerating conformance -> (i) stale-report.
 #  (10) delete a `since = ` line from any contract         -> (e) missing-required.

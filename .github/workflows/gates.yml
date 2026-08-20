@@ -1,0 +1,26 @@
+# The judge's self-consistency gates. Pure bash/python — no compiler, no
+# network. Required for merge into main.
+name: gates
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract ledger traceability (two-repo mode)
+        run: bash scripts/check-contracts.sh
+      - name: ALS element coverage (ledger side)
+        run: bash scripts/check-als-element-coverage.sh
+      - name: Derived documents are regenerated, not edited
+        run: |
+          bash docs/contracts/generate-readme.sh      | diff -u - docs/contracts/README.md
+          bash docs/contracts/generate-conformance.sh | diff -u - docs/contracts/conformance.md
+      - name: Workflow files parse strictly
+        run: bash scripts/check-workflows.sh
+      - name: Runner compiles and documents itself
+        run: |
+          python3 -m py_compile scripts/conformance.py
+          python3 scripts/conformance.py --help > /dev/null

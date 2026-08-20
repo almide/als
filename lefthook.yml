@@ -1,0 +1,18 @@
+pre-commit:
+  commands:
+    contracts:
+      glob: "{docs/contracts/**,spec/wasm_cross/*.almd,docs/specs/als/*.md,scripts/check-contracts.sh,scripts/lib/contract-classes.txt}"
+      run: bash docs/contracts/generate-readme.sh > docs/contracts/README.md && bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md && git add docs/contracts/README.md docs/contracts/conformance.md && bash scripts/check-contracts.sh
+    als-element-coverage:
+      glob: "{proofs/als-element-coverage.toml,scripts/check-als-element-coverage.sh,docs/specs/als/*.md}"
+      run: bash scripts/check-als-element-coverage.sh
+    workflow-parse:
+      glob: "{.github/workflows/*.yml,.github/workflows/*.yaml,scripts/check-workflows.sh}"
+      run: bash scripts/check-workflows.sh
+    runner:
+      glob: "scripts/conformance.py"
+      run: python3 -m py_compile scripts/conformance.py
+commit-msg:
+  scripts:
+    "english-only":
+      runner: python3
