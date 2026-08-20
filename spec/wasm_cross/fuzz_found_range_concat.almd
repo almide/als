@@ -1,0 +1,19 @@
+// @contract: C-238
+// Greenfield fuzz catch #4 (2026-08-21, seeds 47/83/89): a bound range READ
+// by list concatenation — `[1, 2] + r` — is one of C-238's "read anywhere
+// else" shapes and materializes. The reference evaluator's ConcatList arm
+// accepted only (List, List) operands and aborted "internal: list concat"
+// where native and the wasm leg both answer the materialized list; all
+// three failing seeds shared this shape. The syntactic value-position
+// forms — a range as either concat operand and inside a slice — are
+// pinned alongside the bound var so the materializing readings stay
+// covered from both spellings.
+fn main() -> Unit = {
+  let r = 0...1
+  for i in r {
+    println("${i}")
+  }
+  println("${[1, 2] + r}")
+  println("${(3..<6) + [7]}")
+  println("${list.slice([9] + (1..<4), 1, 3)}")
+}
