@@ -1,0 +1,12 @@
+# RUNNER COVERAGE LEDGER (almide/als) — how much of scripts/conformance.py the
+# self-test exercises. Measured by scripts/check-runner-coverage.py: the 21
+# selftest scenarios run with ALS_RUNNER_TRACE_DIR set, the runner's stdlib
+# settrace hook records executed lines, divided by the executable lines of the
+# compiled module. LINE coverage (not branch, not MC/DC — said plainly).
+# The floor is EXACT: below it is a regression, above it the floor must be
+# ratcheted up (--write records the measured value).
+#
+# line_floor = "85.1"
+# executable_lines = "261"
+# module_level_lines_excluded = "33"
+# uncovered = "110-113 145-146 166 199 234 248 299-302 304-305 309-313 380-389 407-408 410-411 413-414 440-441"

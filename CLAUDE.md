@@ -34,6 +34,7 @@ bash scripts/check-als-validation.sh         # per-section review records, hash-
 bash scripts/check-links.sh                  # links and anchors resolve
 bash scripts/check-gate-verification.sh      # the tools' own DO-330 ledger
 python3 scripts/selftest-conformance.py      # the runner can fail correctly
+python3 scripts/check-runner-coverage.py     # and how much of it the self-test reaches (exact line floor)
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md
 bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md
 bash docs/specs/als/generate-readme.sh      > docs/specs/als/README.md

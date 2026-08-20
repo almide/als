@@ -19,7 +19,7 @@ claimed.
 | Requirements precede code (the two-PR order, [CONTRIBUTING.md](CONTRIBUTING.md)) | `proofs/contract-provenance.toml` — per contract, the instant its id entered the ledger against the instant its `since` release was tagged: `requirements-first` (two-repo regime) / `contemporaneous` / `retroactive` / `unmeasured`; classes are derived from the recorded instants, the retroactive count is a shrink-only ceiling | `scripts/check-contract-provenance.py` (`--write` regenerates from full history; the gate itself needs none) |
 | Configuration management (§7) | Separate repository; protected `main` (PR-only, required gate, admins included, linear history); baselines = tags; consumers pin commits | GitHub branch protection + the two-PR requirements-first order ([CONTRIBUTING.md](CONTRIBUTING.md)) |
 | Verification results records | Conformance statements (TOML): corpus commit, binary, platform, legs, limit, per-leg counts, every failure verbatim | `scripts/conformance.py --report`; the `conformance` workflow uploads them as artifacts |
-| Tool qualification (DO-330) | [proofs/gate-verification.toml](proofs/gate-verification.toml) — every verdict-bearing tool carries evidence it can FAIL correctly; UNVERIFIED ceiling **0** | `scripts/check-gate-verification.sh`; the runner's evidence is `scripts/selftest-conformance.py` (21 verdict-class scenarios against a scripted stub implementation, run in CI) |
+| Tool qualification (DO-330) | [proofs/gate-verification.toml](proofs/gate-verification.toml) — every verdict-bearing tool carries evidence it can FAIL correctly; UNVERIFIED ceiling **0** | `scripts/check-gate-verification.sh`; the runner's evidence is `scripts/selftest-conformance.py` (21 verdict-class scenarios against a scripted stub implementation, run in CI), and how much of the runner those scenarios exercise is measured — `proofs/runner-coverage.toml`, line coverage under an exact floor with the uncovered lines listed (`scripts/check-runner-coverage.py`; line, not branch) |
 | Problem reporting | [docs/ISSUE-TAXONOMY.md](docs/ISSUE-TAXONOMY.md) — closed severity set; `S-unsound` / `S-ambiguous` block an edition tag | Issue templates + labels; the edition-readiness instrument (planned with the first tag) re-checks |
 | Documentation integrity | Generated documents regenerated-never-edited; links and anchors resolve | freshness diffs in `gates`; `scripts/check-links.sh` |
 
@@ -61,7 +61,10 @@ Stated so they cannot be mistaken for claims:
 5. **The runner self-test verifies judgment, not the world.** The 21
    scenarios drive the real runner over stub processes; they prove the
    verdict logic, not wasmtime's or the OS's behaviour. Those are exercised
-   by the real conformance runs.
+   by the real conformance runs. How much of the runner the scenarios reach
+   is measured, not assumed — `proofs/runner-coverage.toml` records the line
+   coverage (not branch) and names the uncovered lines; the remainder is the
+   self-test's own burn-down list.
 6. **The proof-qualified checker certifies safety properties, not values.**
    What the implementation's kernel-proven checker establishes on every
    build is RC balance, name totality, the capability bound and type

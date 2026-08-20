@@ -38,14 +38,41 @@ Exit status: 0 = every leg PASS (no failure, no stale allow); 1 = a failure;
 leg (a smoke run — the statement records the limit so it can never be read
 as a full verdict).
 """
+import os
+import sys
+
+# ── self-coverage hook ───────────────────────────────────────────────────────
+# scripts/check-runner-coverage.py runs the self-test with ALS_RUNNER_TRACE_DIR
+# set; this records which lines of THIS file executed (stdlib settrace, main
+# thread + worker threads) and writes them at exit. Off unless the variable is
+# set; the verdict logic is untouched either way.
+if os.environ.get("ALS_RUNNER_TRACE_DIR"):
+    import atexit as _atexit
+    import threading as _threading
+    _ME = os.path.abspath(__file__)
+    _HIT = set()
+
+    def _trace(frame, event, arg):
+        if os.path.abspath(frame.f_code.co_filename) != _ME:
+            return None
+        if event == "line":
+            _HIT.add(frame.f_lineno)
+        return _trace
+
+    def _flush():
+        out = os.path.join(os.environ["ALS_RUNNER_TRACE_DIR"], f"{os.getpid()}.lines")
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("\n".join(str(n) for n in sorted(_HIT)))
+    sys.settrace(_trace)
+    _threading.settrace(_trace)
+    _atexit.register(_flush)
+
 import argparse
 import concurrent.futures as cf
 import datetime as dt
-import os
 import platform
 import re
 import subprocess
-import sys
 import tempfile
 
 RUN_TIMEOUT = 300  # seconds per single compile+run; a hang is a failure, not a wait

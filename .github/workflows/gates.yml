@@ -37,3 +37,5 @@ jobs:
         run: bash scripts/check-gate-verification.sh
       - name: Runner self-test — every verdict class fails for its reason
         run: python3 scripts/selftest-conformance.py
+      - name: Runner structural coverage under the self-test (line, exact floor)
+        run: python3 scripts/check-runner-coverage.py

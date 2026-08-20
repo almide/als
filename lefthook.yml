@@ -27,6 +27,9 @@ pre-commit:
     runner:
       glob: "{scripts/conformance.py,scripts/selftest-conformance.py}"
       run: python3 -m py_compile scripts/conformance.py && python3 scripts/selftest-conformance.py
+    runner-coverage:
+      glob: "{scripts/conformance.py,scripts/selftest-conformance.py,scripts/check-runner-coverage.py,proofs/runner-coverage.toml}"
+      run: python3 scripts/check-runner-coverage.py
     gate-verification:
       glob: "{proofs/gate-verification.toml,scripts/check-*.sh,scripts/check-*.py,scripts/conformance.py,scripts/selftest-conformance.py}"
       run: bash scripts/check-gate-verification.sh
