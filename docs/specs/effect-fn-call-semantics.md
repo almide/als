@@ -6,7 +6,7 @@
 
 `effect fn` の呼び出しが、checker と codegen で異なる型を持つ。
 
-```
+```text
 checker:  auth.authenticate() → Profile
 codegen:  auth.authenticate() → Result[Profile, String]
 ```
@@ -38,7 +38,7 @@ effect fn foo(x: Int) -> String = ...
 
 これは以下の糖衣構文:
 
-```
+```text
 foo : (Int) -> Result[String, String]
 ```
 
@@ -122,7 +122,7 @@ v0.34.x で完全統一された: never-err な lifted effect fn は raw `T` を
 
 ## 検証テスト
 
-```
+```text
 spec/lang/effect_fn_test.almd
 spec/lang/effect_assign_unwrap_test.almd
 spec/lang/effect_if_branch_unwrap_test.almd

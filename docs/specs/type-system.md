@@ -22,7 +22,7 @@ Seven built-in primitive types. Each has kind `*` (concrete, zero type parameter
 
 `Float` is not hashable (cannot be a `Map` key or `Set` element). Function types (`Fn`) are neither Eq nor hashable.
 
-```
+```almide
 let x = 42          // Int
 let y = 3.14        // Float
 let s = "hello"     // String
@@ -40,7 +40,7 @@ Tests: `spec/lang/expr_test.almd`, `spec/lang/bytes_test.almd`, `spec/lang/matri
 
 Homogeneous ordered sequence. Kind: `* -> *`.
 
-```
+```almide
 let xs = [1, 2, 3]              // List[Int]
 let ys: List[String] = []       // empty list requires annotation
 let zs = xs + [4, 5]            // + concatenates lists
@@ -51,7 +51,7 @@ let first = xs[0]               // Int (index access)
 
 Key-value dictionary. Kind: `* -> * -> *`. Keys must be hashable (no `Float`, `Fn`, or `Map` keys).
 
-```
+```almide
 let m = ["a": 1, "b": 2]       // Map[String, Int]
 let empty: Map[String, Int] = [:]
 let v = m["a"]                  // Option[Int]
@@ -61,7 +61,7 @@ let v = m["a"]                  // Option[Int]
 
 Unique element collection. Kind: `* -> *`. Elements must be hashable.
 
-```
+```almide
 let s = set.from_list([1, 2, 3])  // Set[Int]
 ```
 
@@ -100,7 +100,7 @@ match x {
 
 Kind: `* -> * -> *`. Constructors: `ok(v)`, `err(e)`.
 
-```
+```almide
 let x: Result[Int, String] = ok(42)
 let y: Result[Int, String] = err("fail")
 ```
@@ -124,7 +124,7 @@ Tests: `spec/lang/data_types_test.almd`, `spec/lang/error_test.almd`, `spec/lang
 
 Declared with `type`. Fields are accessed by name.
 
-```
+```almide
 type Point = { x: Float, y: Float }
 
 let p: Point = { x: 1.0, y: 2.0 }
@@ -136,7 +136,7 @@ let p2 = { ...p, y: 5.0 }            // spread update
 
 Record literals without a type name are structurally typed.
 
-```
+```almide
 let user = { name: "alice", age: 30 }   // { name: String, age: Int }
 let n = user.name                        // String
 ```
@@ -158,14 +158,14 @@ greet({ name: "Bob" })                          // ok — exact match
 
 Open records can be used as type aliases (shape aliases):
 
-```
+```almide
 type Named = { name: String, .. }
 fn greet_named(who: Named) -> String = "Hi, ${who.name}!"
 ```
 
 Nested open records are supported:
 
-```
+```almide
 fn get_port(app: { config: { port: Int, .. }, .. }) -> Int = app.config.port
 ```
 
@@ -181,7 +181,7 @@ Algebraic data types (tagged unions). Declared with `|`-separated cases.
 
 ### Unit Payload (Enum-like)
 
-```
+```almide
 type Direction = | North | South | East | West
 
 fn to_str(d: Direction) -> String = match d {
@@ -194,7 +194,7 @@ fn to_str(d: Direction) -> String = match d {
 
 ### Tuple Payload
 
-```
+```almide
 type Shape = | Circle(Float) | Rect(Float, Float)
 
 fn area(s: Shape) -> Float = match s {
@@ -207,7 +207,7 @@ fn area(s: Shape) -> Float = match s {
 
 Variant cases can carry named fields:
 
-```
+```almide
 type Pat =
   | Match { scope: String, regex: String }
   | BeginEnd { scope: String, begin: String, end_pat: String, patterns: List[Pat] }
@@ -230,7 +230,7 @@ match p {
 
 Variant types can reference themselves. The type checker uses cycle detection to prevent infinite loops in Eq/Hash checks.
 
-```
+```almide
 type Tree[T] = | Leaf(T) | Node(T, List[T])
 ```
 
@@ -238,7 +238,7 @@ type Tree[T] = | Leaf(T) | Node(T, List[T])
 
 When omitting the leading `|`, the first case starts immediately:
 
-```
+```almide
 type AppError = NotFound(String) | Io(String)
 ```
 
@@ -273,7 +273,7 @@ effect fn read_file(path: String) -> Result[String, String] = fs.read_text(path)
 
 ### Type Aliases for Function Types
 
-```
+```almide
 type Handler = (String) -> String
 ```
 
@@ -287,7 +287,7 @@ Generic type parameters use `[]` syntax (not `<>`).
 
 ### Generic Functions
 
-```
+```almide
 fn id[T](x: T) -> T = x
 fn pair[A, B](a: A, b: B) -> (A, B) = (a, b)
 ```
@@ -301,7 +301,7 @@ id[String]("hi") // T explicitly String
 
 ### Generic Record Types
 
-```
+```almide
 type Box[T] = { value: T, label: String }
 
 fn unbox[T](b: Box[T]) -> T = b.value
@@ -309,7 +309,7 @@ fn unbox[T](b: Box[T]) -> T = b.value
 
 ### Generic Variant Types
 
-```
+```almide
 type Either[A, B] = | Left(A) | Right(B)
 
 fn map_right[A, B, C](e: Either[A, B], f: fn(B) -> C) -> Either[A, C] = match e {
@@ -322,7 +322,7 @@ fn map_right[A, B, C](e: Either[A, B], f: fn(B) -> C) -> Either[A, C] = match e 
 
 Generic parameters can require specific record fields:
 
-```
+```almide
 fn describe[T: { name: String, .. }](x: T) -> String = "name: ${x.name}"
 
 fn set_name[T: { name: String, .. }](x: T, n: String) -> T = { ...x, name: n }
@@ -421,7 +421,7 @@ Open records use order-independent field matching. For `{ a: Int, .. }` vs `{ a:
 
 Open record parameters compose: a function accepting `{ name: String, breed: String, .. }` can pass its argument to a function accepting `{ name: String, .. }`.
 
-```
+```almide
 fn chain_b(x: { name: String, .. }) -> String = x.name
 fn chain_a(x: { name: String, breed: String, .. }) -> String = chain_b(x)
 ```
@@ -436,7 +436,7 @@ Protocols define a set of methods that conforming types must implement. They ser
 
 ### Defining a Protocol
 
-```
+```almide
 protocol Showable {
   fn show(a: Self) -> String
 }
@@ -477,7 +477,7 @@ After all declarations are registered, the checker validates:
 
 ### Using Protocols as Generic Bounds
 
-```
+```almide
 fn display[T: Showable](item: T) -> String = item.show()
 ```
 
@@ -494,7 +494,7 @@ fn show_named[T: Showable + Nameable](item: T) -> String = item.get_name() + ": 
 
 Protocols with no methods serve as markers:
 
-```
+```almide
 protocol Serializable {}
 type Marker: Serializable = { tag: String }
 ```
@@ -507,7 +507,7 @@ Tests: `spec/lang/protocol_test.almd`, `spec/lang/trait_impl_test.almd`, `spec/l
 
 `type Name = ExistingType` creates a transparent alias. The alias is interchangeable with the underlying type.
 
-```
+```almide
 type Score = Int
 type Label = String
 
@@ -525,7 +525,7 @@ Tests: `spec/lang/type_alias_test.almd`
 
 Inline union types represent a value that can be one of several types:
 
-```
+```almide
 type StringOrInt = Int | String
 ```
 
@@ -540,7 +540,7 @@ Unification with unions tries each member with snapshotted bindings, committing 
 
 ## 13. How Types Flow Through the Compiler
 
-```
+```text
 Source (.almd)
     │
     ▼
