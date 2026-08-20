@@ -1,6 +1,6 @@
-# ADR-0015: The reference evaluator is a fresh, source-level, judge-owned evaluator behind a black-box protocol — seeded by λ_almd, ratcheted by an abstain ledger
+# ADR-0015: The reference evaluator is a fresh, source-level, judge-owned evaluator behind a black-box protocol — seeded by λ_almd, ratcheted by an abstain ledger (amended: Rust)
 
-- **Status**: Accepted (ratified 2026-08-21 — Python with the aviation-quality clauses below)
+- **Status**: Accepted (ratified 2026-08-21 as Python with the aviation-quality clauses; **amended the same day to Rust** — see Amendment; the file name keeps its original slug, ADR ids and paths are permanent)
 - **Date**: 2026-08-20
 - **Context**: QUALIFICATION.md limitation 2 — the cross legs judge
   AGREEMENT, not truth; both targets being wrong identically is invisible.
@@ -45,15 +45,19 @@
      (Int as unbounded-then-wrapped per ALS, String, List, Map, Set, Tuple,
      Record, Variant, Option, Result, Fn) — no byte heap: the judge models
      *what* a program observes, not *how* the implementation lays it out.
-  3. **Python, behind a black-box protocol.** The first evaluator is Python
-     (the judge's existing toolchain; the corpus is small programs and
-     wall-clock is bounded by a ratchet, see Consequences). The runner never
-     imports it: it calls a REF PROTOCOL — `<ref> run <file.almd> --json`
+  3. **Rust (stable, pinned), a standalone crate, behind a black-box
+     protocol.** The evaluator is the crate `ref/` in this repository:
+     stable Rust only (`rust-toolchain.toml` pins the channel; no nightly
+     feature, so a qualified toolchain — Ferrocene, [#18](https://github.com/almide/als/issues/18)
+     — can rebuild it unchanged), no dependency on any `almide-*` crate
+     (gated), dependencies kept to zero or a vetted few. The runner never
+     links it: it calls a REF PROTOCOL — `<ref> run <file.almd> --json`
      emits `{"exit": n, "stdout": s, "stderr": s}` or
      `{"abstain": {"class": c, "reason": r}}` — so any evaluator in any
-     language (a Rust port if Python proves too slow, the compiled Lean
-     evaluator on its fragment) is pluggable, and the judge's seam is the
-     protocol, not the implementation.
+     language (the compiled Lean evaluator on its fragment, a future port)
+     is pluggable, and the judge's seam is the protocol, not the
+     implementation. (Amendment — the first ratification said Python; see
+     below for why it changed before a line was written.)
   4. **Seeded by λ_almd, 100% from day one.** The 48 kernel programs and
      `kernel_conformance.almd` are the first oracle: the evaluator must
      reproduce their evaluator-pinned traces byte-for-byte before it judges
@@ -92,45 +96,79 @@
   rejected: copies the semantics under test. (c) *tree-sitter-almide as the
   front end* — rejected: a third hand-maintained grammar with its own drift,
   a native build in a Python-gated repository, and a parser that accepts
-  what the compiler rejects. (d) *Rust from the start* — rejected for the
-  first cut: a cargo toolchain in `gates` and a slower write/measure loop;
-  the protocol keeps it open. (e) *Judge only a hand-picked subset* —
+  what the compiler rejects. (d) *Python first* — the original ratification; superseded the same
+  day by the Amendment below: at zero switching cost the option with the
+  higher ceiling wins. (e) *Judge only a hand-picked subset* —
   rejected: the abstain ledger judges everything and says what it skipped.
-- **Aviation-quality clauses** (ratified with the decision — what makes the
-  host language immaterial to the claim; each is a GATE, not a guideline):
+- **Aviation-quality clauses** (ratified with the decision; each is a
+  GATE, not a guideline — restated for Rust by the Amendment):
   1. *Determinism.* The evaluator depends on no host ordering: every
      iteration over a Map/Set follows the ALS-specified order, never the
-     host's; the gate runs the whole corpus under two different
-     `PYTHONHASHSEED` values and requires byte-identical traces and
-     verdicts.
-  2. *Totality-or-abstain.* Dispatch totality is measured: every node kind
-     the parser can produce has a handler or a registered abstain class;
-     every stdlib signature in the specified index is implemented or in
-     `proofs/ref-abstain.toml`; an unhandled form at run time is an
-     evaluator FAILURE (exit non-zero, protocol error), never a silent
+     host's. `HashMap`/`HashSet` (randomized iteration per process) are
+     forbidden types (`clippy.toml` `disallowed-types`); ordered
+     structures only. The gate runs the corpus twice and requires
+     byte-identical traces and verdicts.
+  2. *Totality-or-abstain.* Syntactic totality is by construction — every
+     AST node kind is a variant and every `match` over the AST is
+     exhaustive (the compiler rejects a forgotten form); an unimplemented
+     form is an explicit `Abstain` arm with a class, never a wildcard.
+     Stdlib totality is measured: every `module.fn` the judged corpora call
+     is implemented or in `proofs/ref-abstain.toml`; an unhandled call at
+     run time is an evaluator FAILURE (protocol error), never a silent
      pass — the gate enumerates both tables and fails on any gap.
-  3. *Mutation testing of the evaluator itself.* Single-token mutants of
-     the evaluator (operator flips, wrap removal, boundary ±1, branch
-     inversion) are run over the kernel + cross corpora; the kill rate is
-     a shrink-only-in-the-wrong-direction ratchet with survivors listed
-     (the edit-locality survey ranks mutation first among the 12 laws).
-  4. *Pinned interpreter.* The Python version is fixed by `setup-python`
-     in every workflow that runs the evaluator and recorded in the
-     conformance statement beside the candidate binary and platform.
-  The host-diversity argument that tipped the choice: the native target
-  runs on Rust `std`; a Rust-hosted reference would share host semantics
-  with it for every stdlib function written over `std` (agreement would
-  then measure the shared host, not the ALS text). wasm is self-hosted
-  Almide; Python is a third, unrelated host — N-version diversity is the
-  property a reference exists to supply.
+  3. *Mutation testing of the evaluator itself.* `cargo-mutants` over the
+     crate, judged by the kernel + cross corpora; the kill rate is a
+     shrink-only-in-the-wrong-direction ratchet with survivors listed (the
+     edit-locality survey ranks mutation first among the 12 laws).
+  4. *Pinned, qualifiable toolchain.* `rust-toolchain.toml` pins a stable
+     channel; no nightly feature; the toolchain version is recorded in the
+     conformance statement beside the candidate binary and platform; the
+     crate must build under a qualified stable toolchain (Ferrocene) when
+     one is available (#18).
+  5. *No host delegation for specified semantics (the host-diversity
+     clause).* The native target runs on Rust `std`; a reference that
+     wrote `string.split` as `str::split` would share host semantics with
+     the implementation and agreement would measure the shared host, not
+     the ALS text. Therefore the std operations whose behaviour the ALS
+     specifies itself (string splitting/trimming/case, float formatting
+     and parsing, integer parsing, sorting/ordering, collection iteration
+     order, hashing) are **forbidden methods** (`clippy.toml`
+     `disallowed-methods`) — the evaluator writes them over char/byte
+     primitives from the ALS text. The wasm target (self-hosted Almide)
+     remains a genuinely different host, so the three-way vote keeps one
+     unrelated leg.
+  6. *Independence from the implementation.* `cargo tree` of the crate
+     names no `almide-*` crate, no path/git dependency into the
+     implementation repository (gated).
+- **Amendment (2026-08-21, before any evaluator code existed)**: the
+  first ratification chose Python on the grounds that DO-330 does not
+  require the compiler of a TQL-4/5 verification tool to be qualified (it
+  does not — the claim rests on the tool's own verification, clauses 1–4)
+  and that a Python host adds N-version diversity. Re-judged against the
+  claim ladder ([#9](https://github.com/almide/als/issues/9),
+  [#18](https://github.com/almide/als/issues/18)): the credibility ceiling
+  differs — a judge whose reference evaluator is a stable-Rust crate
+  rebuildable under a qualified toolchain is a stronger statement to a
+  future reviewer than a CPython script, Rust supplies syntactic totality
+  by construction (the one clause Python could only measure), and the
+  host-diversity loss is recoverable by a structural gate (clause 5), not
+  by discipline. Python's advantages were authoring speed and a zero
+  toolchain — real, but reversible only by a rewrite. With zero code
+  written the switching cost was zero; the option with the higher ceiling
+  was taken. What did NOT change: fresh from the normative text, own front
+  end, abstract values, the black-box protocol, the λ_almd seed at 1.0,
+  the abstain ledger, the verdict rule. `gates` gains a cached cargo step
+  for the crate (its header no longer says "no compiler").
 - **Falsifiers**: (1) the evaluator's wall-clock over the corpus exceeds the
-  cross leg's own — then the Rust port behind the same protocol; (2) the
+  cross leg's own — the design is wrong, not the language; (2) the
   abstain ledger stops shrinking for two releases — then the stdlib-spec
   gap, not the evaluator, is the blocker and goes to #10 as a chapter debt;
   (3) a kernel-agreement regression — the evaluator is wrong by definition
   (the kernel is proven), never the other way.
-- **Consequences**: `scripts/ref/` (parser, evaluator, stdlib) + `scripts/ref.py`
-  (the protocol CLI); `scripts/conformance.py --legs ref` with a `--ref`
+- **Consequences**: `ref/` (a standalone crate: lexer, parser, evaluator,
+  stdlib, and the protocol CLI `ref run <file> --json`); `scripts/check-ref-*.sh`
+  gates (kernel agreement 1.0, independence, lints, totality, abstain
+  ledger, mutation ratchet); `scripts/conformance.py --legs ref` with a `--ref`
   command; `selftest-conformance.py` scenarios for every ref verdict class
   (ref pass, native ≠ ref, wasm ≠ ref, both ≠ ref while agreeing — the
   co-drift class — abstain counted, malformed protocol output is red); a
