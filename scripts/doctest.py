@@ -14,7 +14,9 @@ excluding README/STANDARD/CLAUDE). The fence vocabulary is CLOSED:
                             claim "compiles as-is when pasted", enforced and
                             then some)
   ```almide check-fail=ENNN must be REJECTED by `almide check` with that code —
-                            negative examples are assertions too
+                            negative examples are assertions too;
+                            `check-fail=syntax` names a code-less lexer/parser
+                            rejection (no [E…] diagnostic at all)
   ```almide project         a multi-file example: `// file: <relpath>` lines
                             split the body into files materialized in a fresh
                             directory (module dirs, almide.toml, …); every
@@ -69,6 +71,16 @@ def first_line(out):
     return lines[0] if lines else "?"
 
 
+def rejected_with(rc, out, code):
+    """check-fail=ENNN: the diagnostic carries that code. check-fail=syntax: the
+    rejection is a code-less `error:` from the lexer/parser (no [E…] at all)."""
+    if rc == 0:
+        return False
+    if code == "syntax":
+        return bool(re.search(r"^error: ", out, re.M)) and "error[E" not in out
+    return f"[{code}]" in out
+
+
 def judge_single(almide, body, mode):
     """Return None when the example holds, else a reason string."""
     d = tempfile.mkdtemp(prefix="doctest-")
@@ -84,7 +96,7 @@ def judge_single(almide, body, mode):
             return None
         code = mode.split("=", 1)[1]
         rc, out = run([almide, "check", path])
-        if rc != 0 and f"[{code}]" in out:
+        if rejected_with(rc, out, code):
             return None
         return f"negative example must be rejected with [{code}] (exit={rc})"
     finally:
@@ -131,7 +143,7 @@ def judge_project(almide, body, mode):
         if mode.startswith("check-fail="):
             code = mode.split("=", 1)[1]
             rc, out = run([almide, "check", os.path.join(d, almd[-1])])
-            if rc != 0 and f"[{code}]" in out:
+            if rejected_with(rc, out, code):
                 return None
             return f"negative project example: `{almd[-1]}` must be rejected with [{code}] (exit={rc})"
         for rel in almd:
@@ -209,6 +221,10 @@ SELFTEST_CASES = [
      "almide check-fail=E003", "fn f() -> Int = 1\n", True, "must be rejected"),
     ("negative example rejected with a DIFFERENT code is red",
      "almide check-fail=E999", "fn f() -> Int = undefined_name\n", True, "must be rejected"),
+    ("check-fail=syntax holds for a code-less parser rejection",
+     "almide check-fail=syntax", "fn broken( -> Int = 1\n", False, None),
+    ("check-fail=syntax is red when the rejection carries an [E…] code",
+     "almide check-fail=syntax", "fn f() -> Int = undefined_name\n", True, "must be rejected"),
     ("project example with a sibling module holds",
      "almide project", '// file: lib/mod.almd\nfn hello() -> String = "hi"\n// file: main.almd\nimport lib\ntest "calls" {\n  assert_eq(lib.hello(), "hi")\n}\n', False, None),
     ("project example whose test lies is red",

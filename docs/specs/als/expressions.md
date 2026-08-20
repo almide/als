@@ -13,7 +13,7 @@
 
 **受理形**:
 
-```
+```ebnf
 int     := dec | hex | oct | bin
 dec     := digit (digit | "_")*
 hex     := "0x" hexdigit (hexdigit | "_")*

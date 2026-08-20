@@ -24,7 +24,7 @@ Fixture: `spec/wasm_cross/string_whitespace.almd`。
 
 受理文法（大文字小文字不問の `inf` / `infinity` / `nan` を含む）:
 
-```
+```ebnf
 float   := ws* sign? (number | "inf" | "infinity" | "nan") ws*
 number  := digits ("." digits?)? exponent? | "." digits exponent?
 exponent:= ("e"|"E") sign? digits

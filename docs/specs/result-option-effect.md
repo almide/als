@@ -8,13 +8,13 @@
 ## 1. 型
 
 ### Result[T, E]
-```
+```text
 ok(v)   : Result[T, E]   // 成功値
 err(e)  : Result[T, E]   // エラー値
 ```
 
 ### Option[T]
-```
+```text
 some(v) : Option[T]       // 値あり
 none    : Option[T]       // 値なし
 ```
@@ -39,7 +39,7 @@ stdlib も `fmt --no-import-edit` で正規化済み(2026-08-07 — 単一化の
 spec/lang/option_marker_test.almd が担う)。
 
 ### Never (bottom type)
-```
+```text
 process.exit(n) : Never   // 戻らない関数の戻り値型
 ```
 Never はどの型にも代入可能。guard else, if then, match arm で使える。
@@ -78,7 +78,7 @@ fn checked(s: String) -> Int! = {
 すべての値レベル演算子は名前付き stdlib 関数への脱糖として定義される(ADR-0005)。
 定義表:
 
-```
+```text
 x ?? d      ≡  option.unwrap_or_else(x, () => d)   // Option operand
 r ?? d      ≡  result.unwrap_or_else(r, (_) => d)   // Result operand
 r?          ≡  result.to_option(r)

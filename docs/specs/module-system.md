@@ -6,7 +6,7 @@
 
 ## 1. Package Structure
 
-```
+```text
 mypackage/
   almide.toml              [package] name = "mypackage", version = "0.1.0"
   src/
@@ -65,7 +65,7 @@ stdlib モジュールは2層に分かれる。
 
 未 import のモジュールを使った場合、コンパイラが候補を提示する。
 
-```
+```text
 error[E003]: undefined variable 'json'
   --> app.almd:3:11
   hint: Add `import json` (stdlib: JSON parsing and querying)
@@ -73,7 +73,7 @@ error[E003]: undefined variable 'json'
 ```
 
 外部パッケージ（`almide.toml` に依存あり）の場合:
-```
+```text
 error[E003]: undefined variable 'yaml'
   --> app.almd:5:11
   hint: Add `import yaml` (dependency: almide/yaml)
@@ -147,7 +147,7 @@ D を使いたければ `import D` を明示する。npm の phantom dependency 
 
 ## 5. ダイヤモンド依存
 
-```
+```text
 main → B → D
 main → C → D
 ```
@@ -178,7 +178,7 @@ D.log_name(logger)               // ✓ 直接 D に渡すのも同じ型
 
 `PkgId(name, major)` で管理。同じ `(name, major)` は1つに統一（MVS: 最大の最小バージョンを選択）。異なる major は別モジュールとして共存し、codegen でシンボル名にバージョンが付く（`pkg_v1_func`, `pkg_v2_func`）。異なる major の同名型は互換性がない。
 
-```
+```text
 B requires D v1.x → almide_rt_D_v1_func()
 C requires D v2.x → almide_rt_D_v2_func()
 D_v1.Logger ≠ D_v2.Logger
@@ -196,7 +196,7 @@ D_v1.Logger ≠ D_v2.Logger
 
 外部から `mod fn` / `local fn` にアクセスするとコンパイルエラー:
 
-```
+```text
 error: function 'internal' is not accessible from module 'extlib'
   hint: 'internal' has restricted visibility
 ```

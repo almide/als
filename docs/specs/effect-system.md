@@ -46,7 +46,7 @@ In the Rust target, `effect fn` return types are lifted to `Result[T, String]` d
 2. The body's tail expression is wrapped in `ok(...)`
 3. Already-Result return types (e.g., `-> Result[Int, String]`) are left unchanged
 
-```
+```almide
 // Source: returns String
 effect fn greet(name: String) -> String = "hello ${name}"
 
@@ -66,7 +66,7 @@ Test: `spec/lang/effect_fn_test.almd` -- `safe_div`, `require_positive`
 
 Almide uses the `!` operator for explicit Result/Option unwrapping with error propagation. Inside an `effect fn`, `expr!` unwraps the value and propagates the error to the caller.
 
-```
+```almide
 effect fn add_strings(a: String, b: String) -> Result[Int, String] = {
   let x = int.parse(a)!   // unwrap or propagate err
   let y = int.parse(b)!
