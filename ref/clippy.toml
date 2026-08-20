@@ -1,0 +1,39 @@
+# ADR-0015 aviation-quality clauses, made structural.
+#
+# Clause 1 (determinism): no host-ordered collection may exist in the
+# evaluator — iteration order is what the ALS says, never what a hash seed
+# says.
+disallowed-types = [
+  { path = "std::collections::HashMap", reason = "ADR-0015 clause 1: iteration order is ALS-specified; use an insertion-ordered Vec or BTreeMap" },
+  { path = "std::collections::HashSet", reason = "ADR-0015 clause 1: iteration order is ALS-specified; use an insertion-ordered Vec or BTreeSet" },
+]
+# Clause 5 (no host delegation for specified semantics): every std operation
+# whose behaviour the ALS specifies itself is forbidden here — the evaluator
+# writes it over char/byte primitives from the ALS text, so agreement with the
+# native target measures the text, not the shared Rust std.
+disallowed-methods = [
+  { path = "str::split", reason = "ADR-0015 clause 5: string splitting is specified by ALS — write it over chars" },
+  { path = "str::splitn", reason = "ADR-0015 clause 5" },
+  { path = "str::rsplit", reason = "ADR-0015 clause 5" },
+  { path = "str::rsplitn", reason = "ADR-0015 clause 5" },
+  { path = "str::split_terminator", reason = "ADR-0015 clause 5" },
+  { path = "str::split_whitespace", reason = "ADR-0015 clause 5: whitespace is an ALS-defined set" },
+  { path = "str::lines", reason = "ADR-0015 clause 5: line splitting is ALS-defined" },
+  { path = "str::trim", reason = "ADR-0015 clause 5: trim's whitespace set is ALS-defined" },
+  { path = "str::trim_start", reason = "ADR-0015 clause 5" },
+  { path = "str::trim_end", reason = "ADR-0015 clause 5" },
+  { path = "str::trim_matches", reason = "ADR-0015 clause 5" },
+  { path = "str::to_uppercase", reason = "ADR-0015 clause 5: case mapping is ALS-defined" },
+  { path = "str::to_lowercase", reason = "ADR-0015 clause 5: case mapping is ALS-defined" },
+  { path = "str::to_ascii_uppercase", reason = "ADR-0015 clause 5" },
+  { path = "str::to_ascii_lowercase", reason = "ADR-0015 clause 5" },
+  { path = "str::parse", reason = "ADR-0015 clause 5: numeric parsing is ALS-defined (ALS-T*) — write it over chars" },
+  { path = "core::str::FromStr::from_str", reason = "ADR-0015 clause 5: numeric parsing is ALS-defined" },
+  { path = "slice::sort", reason = "ADR-0015 clause 5: ordering is ALS-defined — the evaluator's own sort over its own comparison" },
+  { path = "slice::sort_unstable", reason = "ADR-0015 clause 5" },
+  { path = "slice::sort_by", reason = "ADR-0015 clause 5" },
+  { path = "slice::sort_by_key", reason = "ADR-0015 clause 5" },
+  { path = "slice::sort_unstable_by", reason = "ADR-0015 clause 5" },
+  { path = "slice::sort_unstable_by_key", reason = "ADR-0015 clause 5" },
+  { path = "str::cmp", reason = "ADR-0015 clause 5: string ordering is ALS-defined (byte vs code point) — compare explicitly" },
+]

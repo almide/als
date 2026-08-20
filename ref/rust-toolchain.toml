@@ -1,0 +1,12 @@
+# ADR-0015 clause 4: a pinned STABLE channel, no nightly feature anywhere in
+# the crate. The pin is chosen to be the upstream version that the current
+# qualified toolchain is built from, so that the day a Ferrocene subscription
+# exists (als#18) the evaluator is rebuilt under `criticalup` WITHOUT a code
+# or version change:
+#   Ferrocene 26.05.0 (released 2026-07-28) == upstream Rust 1.95.0
+#   (https://ferrous-systems.com/blog/ferrocene-26-05-0/)
+# Until then CI builds with stock rustc of the same version. Recorded in the
+# conformance statement. Bump both lines together when Ferrocene moves.
+[toolchain]
+channel = "1.95.0"
+components = ["clippy", "rustfmt"]
