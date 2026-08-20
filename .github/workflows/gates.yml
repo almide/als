@@ -18,6 +18,9 @@ jobs:
         run: |
           bash docs/contracts/generate-readme.sh      | diff -u - docs/contracts/README.md
           bash docs/contracts/generate-conformance.sh | diff -u - docs/contracts/conformance.md
+          bash docs/specs/als/generate-readme.sh      | diff -u - docs/specs/als/README.md
+      - name: Every relative link and anchor resolves
+        run: bash scripts/check-links.sh
       - name: Workflow files parse strictly
         run: bash scripts/check-workflows.sh
       - name: Runner compiles and documents itself
