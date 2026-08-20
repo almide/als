@@ -16,9 +16,10 @@ verdict here and a verdict in the compiler's own CI mean the same thing):
   suite     `almide test <dir> --target rust` and `--target wasm` over
             spec/lang, spec/stdlib, spec/integration (test blocks pass on each
             target, judged separately — never the CLI's fallback mode).
-  cross     spec/wasm_cross/*.almd: `almide run f` vs `almide run f --target
-            wasm` must agree BYTE-FOR-BYTE on (exit code, stdout, stderr),
-            trimmed. `// @xt-allow: <reason>` marks a known divergence: exempt
+  cross     spec/wasm_cross/*.almd: `almide build` then EXECUTE on each target
+            (native binary; wasm under `wasmtime --dir=/ -S inherit-env=y`) —
+            the executions must agree BYTE-FOR-BYTE on (exit code, stdout,
+            stderr), trimmed. Build-time diagnostics are not observables. `// @xt-allow: <reason>` marks a known divergence: exempt
             but logged, and flagged STALE once the legs agree again.
             (tests/wasm_runtime_test_parts/p2.rs::wasm_cross_target_spec)
   pkg       spec/wasm_cross_pkg: the package form of `cross` (cwd = the package).
@@ -45,6 +46,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 
 RUN_TIMEOUT = 300  # seconds per single compile+run; a hang is a failure, not a wait
 
@@ -143,12 +145,28 @@ def leg_suite(args, root):
     return leg
 
 
+def build_and_run(args, src, target, cwd=None):
+    """BUILD then EXECUTE, as the implementation gates do (p4_corpus.rs):
+    compile-time diagnostics (warnings on the build's stderr) are not the
+    program's observable behaviour, so `almide run` would conflate them.
+    A build failure is reported as exit -3 with the build's stderr."""
+    with tempfile.TemporaryDirectory(prefix="als-") as td:
+        out = os.path.join(td, "prog.wasm" if target == "wasm" else "prog")
+        cmd = [args.almide, "build", src, "-o", out] + (["--target", "wasm"] if target == "wasm" else [])
+        bcode, bout, berr = run(cmd, cwd=cwd)
+        if bcode != 0:
+            return (-3, "", f"<{target} build failed (exit {bcode})>\n{berr}")
+        if target == "wasm":
+            return run(["wasmtime", "--dir=/", "-S", "inherit-env=y", out], cwd=cwd)
+        return run([out], cwd=cwd)
+
+
 def cross_item(args, root, rel, cwd=None, allow_key="xt-allow"):
     """Run one program on both targets; classify like wasm_cross_target_spec."""
     path = os.path.join(root, rel)
     src = os.path.basename(rel) if cwd else path
-    native = run([args.almide, "run", src], cwd=cwd)
-    wasm = run([args.almide, "run", src, "--target", "wasm"], cwd=cwd)
+    native = build_and_run(args, src, "rust", cwd=cwd)
+    wasm = build_and_run(args, src, "wasm", cwd=cwd)
     allow = header_directive(path, allow_key)
     if native[0] == -2 or wasm[0] == -2:
         return ("failed", rel, fmt_leg("native", native) + "\n  " + fmt_leg("wasm", wasm))
@@ -168,8 +186,8 @@ def fail_item(args, root, rel):
     if expect is None:
         return ("failed", rel, "missing `// @expect-fail:` header — a wasm_fail fixture must say how it breaks")
     allow = header_directive(path, "xf-allow")
-    native = run([args.almide, "run", path])
-    wasm = run([args.almide, "run", path, "--target", "wasm"])
+    native = build_and_run(args, path, "rust")
+    wasm = build_and_run(args, path, "wasm")
     nc, _, nerr = native
     if not (nc != 0 and expect in nerr):
         return ("failed", rel, f"native did not fail as declared\n  expected: nonzero exit, stderr containing {expect!r}\n  " + fmt_leg("native", native))
