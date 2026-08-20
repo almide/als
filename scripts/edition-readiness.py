@@ -54,10 +54,11 @@ def main():
         verdict("OK", "tag shape", args.tag)
 
     # 2. every gate, re-run now
-    for gate in ["scripts/check-contracts.sh", "scripts/check-als-element-coverage.sh",
+    for gate in ["scripts/check-contracts.sh", "scripts/check-contract-provenance.py",
+                 "scripts/check-als-element-coverage.sh",
                  "scripts/check-als-style.sh", "scripts/check-links.sh",
                  "scripts/check-workflows.sh", "scripts/check-gate-verification.sh"]:
-        r = run(["bash", gate])
+        r = run(["python3" if gate.endswith(".py") else "bash", gate])
         verdict("OK" if r.returncode == 0 else "FAIL", gate,
                 "" if r.returncode == 0 else (r.stdout + r.stderr).strip().splitlines()[0][:120])
 

@@ -1,0 +1,2305 @@
+# CONTRACT PROVENANCE LEDGER (almide/als) — did the requirement precede the behaviour?
+#
+# One row per contract: the committer timestamp at which its id first appeared
+# in docs/contracts/contracts.toml (ENTRY, git pickaxe) against the committer
+# timestamp of the `since` release tag (RELEASE). Classes — recomputed by the
+# gate from these two instants, so a hand-edited class fails:
+#   requirements-first  entry in the two-repo regime (>= regime_start) and the
+#                       release not yet cut at entry
+#   contemporaneous     entry <= release (single-repo era: shipped together)
+#   retroactive         entry > release (written over shipped behaviour)
+#   unmeasured          no recorded date for the `since` release
+# Regenerate: python3 scripts/check-contract-provenance.py --write [--impl-root ..]
+# Gate:       python3 scripts/check-contract-provenance.py   (no history needed)
+# The retroactive count is SHRINK-ONLY: growth needs a named justification in
+# the PR that raises the ceiling; a count below the ceiling must ratchet it.
+#
+# regime_start = "2026-08-20"
+# retroactive_ceiling = "126"
+
+[[release]]
+version = "0.24.0"
+date = "2026-06-06T00:54:08+09:00"
+source = "tag v0.24.0 (almide/almide)"
+
+[[release]]
+version = "0.25.0"
+date = "2026-06-07T11:30:23+09:00"
+source = "tag v0.25.0 (almide/almide)"
+
+[[release]]
+version = "0.26.7"
+date = "2026-06-09T14:23:15+09:00"
+source = "tag v0.26.7 (almide/almide)"
+
+[[release]]
+version = "0.26.9"
+date = "2026-06-09T17:28:26+09:00"
+source = "tag v0.26.9 (almide/almide)"
+
+[[release]]
+version = "0.26.15"
+date = "2026-06-10T02:30:57+09:00"
+source = "tag v0.26.15 (almide/almide)"
+
+[[release]]
+version = "0.26.19"
+date = "2026-06-10T08:41:14+09:00"
+source = "tag v0.26.19 (almide/almide)"
+
+[[release]]
+version = "0.26.20"
+date = "2026-06-10T11:47:32+09:00"
+source = "tag v0.26.20 (almide/almide)"
+
+[[release]]
+version = "0.27.0"
+date = "2026-06-10T22:33:12+09:00"
+source = "tag v0.27.0 (almide/almide)"
+
+[[release]]
+version = "0.27.4"
+date = "2026-06-12T08:04:01+09:00"
+source = "tag v0.27.4 (almide/almide)"
+
+[[release]]
+version = "0.27.6"
+date = "2026-06-13T02:12:33+09:00"
+source = "tag v0.27.6 (almide/almide)"
+
+[[release]]
+version = "0.27.7"
+date = "2026-06-14T19:50:12+09:00"
+source = "tag v0.27.7 (almide/almide)"
+
+[[release]]
+version = "0.27.8"
+date = "2026-06-15T18:53:42+09:00"
+source = "tag v0.27.8 (almide/almide)"
+
+[[release]]
+version = "0.28.1"
+date = "2026-07-07T15:23:52+09:00"
+source = "tag v0.28.1 (almide/almide)"
+
+[[release]]
+version = "0.28.4"
+date = "2026-07-07T22:46:27+09:00"
+source = "tag v0.28.4 (almide/almide)"
+
+[[release]]
+version = "0.28.5"
+date = "2026-07-08T01:21:50+09:00"
+source = "tag v0.28.5 (almide/almide)"
+
+[[release]]
+version = "0.28.6"
+date = "2026-07-09T18:12:33+09:00"
+source = "tag v0.28.6 (almide/almide)"
+
+[[release]]
+version = "0.29.0"
+date = "2026-07-15T12:14:22+09:00"
+source = "tag v0.29.0 (almide/almide)"
+
+[[release]]
+version = "0.30.0"
+date = "2026-07-16T09:07:38+09:00"
+source = "tag v0.30.0 (almide/almide)"
+
+[[release]]
+version = "0.31.0"
+date = "2026-07-16T18:44:26+09:00"
+source = "tag v0.31.0 (almide/almide)"
+
+[[release]]
+version = "0.32.0"
+date = "2026-07-19T10:58:35+09:00"
+source = "tag v0.32.0 (almide/almide)"
+
+[[release]]
+version = "0.35.0"
+date = "2026-07-25T20:10:44+09:00"
+source = "tag v0.35.0 (almide/almide)"
+
+[[release]]
+version = "0.36.0"
+date = "2026-07-26T14:42:42+09:00"
+source = "tag v0.36.0 (almide/almide)"
+
+[[release]]
+version = "0.37.0"
+date = "2026-07-28T17:53:33+09:00"
+source = "tag v0.37.0 (almide/almide)"
+
+[[release]]
+version = "0.41.0"
+date = "2026-07-31T08:43:15+09:00"
+source = "tag v0.41.0 (almide/almide)"
+
+[[release]]
+version = "0.42.0"
+date = "2026-07-31T22:41:36+09:00"
+source = "tag v0.42.0 (almide/almide)"
+
+[[release]]
+version = "0.44.0"
+date = "2026-08-01T05:52:13+09:00"
+source = "tag v0.44.0 (almide/almide)"
+
+[[release]]
+version = "0.47.0"
+date = "2026-08-01T15:02:16+09:00"
+source = "tag v0.47.0 (almide/almide)"
+
+[[release]]
+version = "0.52.0"
+date = "2026-08-03T12:28:54+09:00"
+source = "tag v0.52.0 (almide/almide)"
+
+[[release]]
+version = "0.53.0"
+date = "2026-08-03T15:42:37+09:00"
+source = "tag v0.53.0 (almide/almide)"
+
+[[release]]
+version = "0.53.5"
+date = "2026-08-05T01:28:42+09:00"
+source = "tag v0.53.5 (almide/almide)"
+
+[[release]]
+version = "0.53.6"
+date = "2026-08-05T05:34:55+09:00"
+source = "tag v0.53.6 (almide/almide)"
+
+[[release]]
+version = "0.55.0"
+date = "2026-08-06T20:01:04+09:00"
+source = "tag v0.55.0 (almide/almide)"
+
+[[release]]
+version = "0.56.0"
+date = "2026-08-06T23:40:51+09:00"
+source = "tag v0.56.0 (almide/almide)"
+
+[[release]]
+version = "0.57.1"
+date = "2026-08-17T12:11:56+09:00"
+source = "tag v0.57.1 (almide/almide)"
+
+[[release]]
+version = "0.57.2"
+date = "2026-08-18T14:57:05+09:00"
+source = "tag v0.57.2 (almide/almide)"
+
+[[release]]
+version = "0.58.0"
+date = "2026-08-19T20:31:03+09:00"
+source = "tag v0.58.0 (almide/almide)"
+
+[[contract]]
+id = "C-001"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-002"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-003"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-004"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-005"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-006"
+since = "0.29.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-007"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-008"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-009"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-010"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-011"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-012"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-013"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-014"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-015"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-016"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-017"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-018"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-019"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-020"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-021"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-022"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-023"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-024"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-025"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-026"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-027"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-028"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-029"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-030"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-031"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-032"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-033"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-034"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-035"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-036"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-037"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-038"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-039"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-040"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-041"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-066"
+since = "0.27.0"
+entry = "2026-06-10T21:56:30+09:00"
+entry_commit = "8800f05"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-042"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-043"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-044"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-045"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-046"
+since = "0.24.0"
+entry = "2026-06-06T14:21:04+09:00"
+entry_commit = "fdb6099"
+class = "retroactive"
+
+[[contract]]
+id = "C-047"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-048"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-049"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-050"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-051"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-052"
+since = "0.24.0"
+entry = "2026-06-06T18:43:16+09:00"
+entry_commit = "6ffae81"
+class = "retroactive"
+
+[[contract]]
+id = "C-053"
+since = "0.24.0"
+entry = "2026-06-06T19:27:38+09:00"
+entry_commit = "acdfe31"
+class = "retroactive"
+
+[[contract]]
+id = "C-054"
+since = "0.24.0"
+entry = "2026-06-06T22:47:48+09:00"
+entry_commit = "ced8d99"
+class = "retroactive"
+
+[[contract]]
+id = "C-055"
+since = "0.24.0"
+entry = "2026-06-06T22:47:48+09:00"
+entry_commit = "ced8d99"
+class = "retroactive"
+
+[[contract]]
+id = "C-056"
+since = "0.24.0"
+entry = "2026-06-06T22:47:48+09:00"
+entry_commit = "ced8d99"
+class = "retroactive"
+
+[[contract]]
+id = "C-057"
+since = "0.24.0"
+entry = "2026-06-07T01:55:56+09:00"
+entry_commit = "c9007fb"
+class = "retroactive"
+
+[[contract]]
+id = "C-058"
+since = "0.24.0"
+entry = "2026-06-07T01:55:56+09:00"
+entry_commit = "c9007fb"
+class = "retroactive"
+
+[[contract]]
+id = "C-059"
+since = "0.25.0"
+entry = "2026-06-07T11:02:07+09:00"
+entry_commit = "0928807"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-060"
+since = "0.26.7"
+entry = "2026-06-09T14:01:10+09:00"
+entry_commit = "89d919e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-061"
+since = "0.26.9"
+entry = "2026-06-09T17:05:50+09:00"
+entry_commit = "74edf03"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-062"
+since = "0.26.15"
+entry = "2026-06-10T02:02:04+09:00"
+entry_commit = "1fd92fc"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-063"
+since = "0.26.19"
+entry = "2026-06-10T08:08:58+09:00"
+entry_commit = "787b9a3"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-064"
+since = "0.26.20"
+entry = "2026-06-10T10:03:10+09:00"
+entry_commit = "264e6af"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-065"
+since = "0.26.20"
+entry = "2026-06-10T10:26:30+09:00"
+entry_commit = "eee414e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-067"
+since = "0.27.4"
+entry = "2026-06-11T23:39:45+09:00"
+entry_commit = "a28f0d2"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-068"
+since = "0.27.4"
+entry = "2026-06-12T01:15:02+09:00"
+entry_commit = "1a9a219"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-069"
+since = "0.27.4"
+entry = "2026-06-12T02:02:29+09:00"
+entry_commit = "52cd613"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-070"
+since = "0.27.6"
+entry = "2026-06-12T10:14:47+09:00"
+entry_commit = "5810520"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-071"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-072"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-073"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-074"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-075"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-076"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-077"
+since = "0.27.6"
+entry = "2026-06-12T04:49:24Z"
+entry_commit = "0287164"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-078"
+since = "0.27.6"
+entry = "2026-06-12T05:04:19Z"
+entry_commit = "4cd68a2"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-079"
+since = "0.27.6"
+entry = "2026-06-12T05:18:32Z"
+entry_commit = "1a98803"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-080"
+since = "0.27.6"
+entry = "2026-06-12T06:25:58Z"
+entry_commit = "067bc08"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-081"
+since = "0.27.6"
+entry = "2026-06-12T07:21:49Z"
+entry_commit = "154ec37"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-082"
+since = "0.27.6"
+entry = "2026-06-12T07:44:41Z"
+entry_commit = "5f3c539"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-083"
+since = "0.27.6"
+entry = "2026-06-12T09:34:26Z"
+entry_commit = "1439efa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-084"
+since = "0.27.6"
+entry = "2026-06-12T09:34:26Z"
+entry_commit = "1439efa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-085"
+since = "0.27.6"
+entry = "2026-06-12T09:34:26Z"
+entry_commit = "1439efa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-086"
+since = "0.27.6"
+entry = "2026-06-12T09:34:26Z"
+entry_commit = "1439efa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-087"
+since = "0.27.6"
+entry = "2026-06-12T09:34:26Z"
+entry_commit = "1439efa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-088"
+since = "0.27.6"
+entry = "2026-06-12T09:54:03Z"
+entry_commit = "2966d4e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-089"
+since = "0.27.6"
+entry = "2026-06-12T09:54:03Z"
+entry_commit = "2966d4e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-090"
+since = "0.27.6"
+entry = "2026-06-12T09:54:03Z"
+entry_commit = "2966d4e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-091"
+since = "0.27.6"
+entry = "2026-06-12T10:19:14Z"
+entry_commit = "28fb481"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-092"
+since = "0.27.6"
+entry = "2026-06-12T10:19:14Z"
+entry_commit = "28fb481"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-093"
+since = "0.27.6"
+entry = "2026-06-12T10:37:29Z"
+entry_commit = "6febc72"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-094"
+since = "0.27.6"
+entry = "2026-06-12T12:05:37Z"
+entry_commit = "a34aa45"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-095"
+since = "0.27.6"
+entry = "2026-06-12T13:56:48Z"
+entry_commit = "9f18b87"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-096"
+since = "0.27.6"
+entry = "2026-06-12T14:28:11Z"
+entry_commit = "19807ae"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-097"
+since = "0.27.6"
+entry = "2026-06-13T01:20:59+09:00"
+entry_commit = "1a97ef6"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-098"
+since = "0.27.6"
+entry = "2026-06-13T01:20:59+09:00"
+entry_commit = "1a97ef6"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-099"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-100"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-101"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-102"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-103"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-104"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-105"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-106"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-107"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-108"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-109"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-110"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-111"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-112"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-113"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-114"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-115"
+since = "0.27.6"
+entry = "2026-06-23T23:55:18+09:00"
+entry_commit = "1f35f21"
+class = "retroactive"
+
+[[contract]]
+id = "C-116"
+since = "0.27.7"
+entry = "2026-06-24T23:56:02+09:00"
+entry_commit = "91ce122"
+class = "retroactive"
+
+[[contract]]
+id = "C-117"
+since = "0.27.7"
+entry = "2026-06-25T12:33:24+09:00"
+entry_commit = "e77fb5d"
+class = "retroactive"
+
+[[contract]]
+id = "C-118"
+since = "0.27.8"
+entry = "2026-06-25T14:18:47+09:00"
+entry_commit = "b64e303"
+class = "retroactive"
+
+[[contract]]
+id = "C-119"
+since = "0.27.6"
+entry = "2026-06-30T04:27:42+09:00"
+entry_commit = "d7663da"
+class = "retroactive"
+
+[[contract]]
+id = "C-120"
+since = "0.27.6"
+entry = "2026-06-30T05:43:23+09:00"
+entry_commit = "17c71e9"
+class = "retroactive"
+
+[[contract]]
+id = "C-121"
+since = "0.27.6"
+entry = "2026-07-02T11:38:25+09:00"
+entry_commit = "5dd86f4"
+class = "retroactive"
+
+[[contract]]
+id = "C-122"
+since = "0.27.6"
+entry = "2026-07-02T11:38:25+09:00"
+entry_commit = "5dd86f4"
+class = "retroactive"
+
+[[contract]]
+id = "C-123"
+since = "0.27.6"
+entry = "2026-07-02T11:38:25+09:00"
+entry_commit = "5dd86f4"
+class = "retroactive"
+
+[[contract]]
+id = "C-124"
+since = "0.27.6"
+entry = "2026-07-02T11:49:12+09:00"
+entry_commit = "a48fbf4"
+class = "retroactive"
+
+[[contract]]
+id = "C-125"
+since = "0.27.6"
+entry = "2026-07-02T13:20:33+09:00"
+entry_commit = "8118feb"
+class = "retroactive"
+
+[[contract]]
+id = "C-126"
+since = "0.27.6"
+entry = "2026-07-02T15:37:28+09:00"
+entry_commit = "b5fe08b"
+class = "retroactive"
+
+[[contract]]
+id = "C-127"
+since = "0.27.6"
+entry = "2026-07-02T15:37:28+09:00"
+entry_commit = "b5fe08b"
+class = "retroactive"
+
+[[contract]]
+id = "C-128"
+since = "0.28.1"
+entry = "2026-07-07T14:39:05+09:00"
+entry_commit = "712f0ab"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-129"
+since = "0.28.4"
+entry = "2026-07-07T21:35:24+09:00"
+entry_commit = "a1f7ff6"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-130"
+since = "0.28.5"
+entry = "2026-07-08T00:25:46+09:00"
+entry_commit = "994465f"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-131"
+since = "0.28.6"
+entry = "2026-07-08T05:15:36+09:00"
+entry_commit = "58e8a28"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-132"
+since = "0.28.6"
+entry = "2026-07-08T07:36:26+09:00"
+entry_commit = "ab8fa6c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-133"
+since = "0.29.0"
+entry = "2026-07-15T01:49:18+09:00"
+entry_commit = "642c577"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-136"
+since = "0.30.0"
+entry = "2026-07-15T22:03:34+09:00"
+entry_commit = "802e3bc"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-135"
+since = "0.30.0"
+entry = "2026-07-15T21:03:28+09:00"
+entry_commit = "c28847e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-134"
+since = "0.30.0"
+entry = "2026-07-15T14:08:03+09:00"
+entry_commit = "91c5b2a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-137"
+since = "0.31.0"
+entry = "2026-07-16T21:35:39+09:00"
+entry_commit = "2489e40"
+class = "retroactive"
+
+[[contract]]
+id = "C-138"
+since = "0.31.0"
+entry = "2026-07-18T17:26:01+09:00"
+entry_commit = "9faa26e"
+class = "retroactive"
+
+[[contract]]
+id = "C-154"
+since = "0.31.0"
+entry = "2026-07-18T22:31:52+09:00"
+entry_commit = "9545364"
+class = "retroactive"
+
+[[contract]]
+id = "C-155"
+since = "0.31.0"
+entry = "2026-07-19T07:55:45+09:00"
+entry_commit = "2e63403"
+class = "retroactive"
+
+[[contract]]
+id = "C-153"
+since = "0.31.0"
+entry = "2026-07-18T22:31:52+09:00"
+entry_commit = "9545364"
+class = "retroactive"
+
+[[contract]]
+id = "C-147"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-148"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-149"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-150"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-151"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-152"
+since = "0.31.0"
+entry = "2026-07-18T20:46:51+09:00"
+entry_commit = "7f2da52"
+class = "retroactive"
+
+[[contract]]
+id = "C-143"
+since = "0.31.0"
+entry = "2026-07-18T19:30:43+09:00"
+entry_commit = "680c4b4"
+class = "retroactive"
+
+[[contract]]
+id = "C-144"
+since = "0.31.0"
+entry = "2026-07-18T19:30:43+09:00"
+entry_commit = "680c4b4"
+class = "retroactive"
+
+[[contract]]
+id = "C-145"
+since = "0.31.0"
+entry = "2026-07-18T19:30:43+09:00"
+entry_commit = "680c4b4"
+class = "retroactive"
+
+[[contract]]
+id = "C-146"
+since = "0.31.0"
+entry = "2026-07-18T19:30:43+09:00"
+entry_commit = "680c4b4"
+class = "retroactive"
+
+[[contract]]
+id = "C-140"
+since = "0.31.0"
+entry = "2026-07-18T17:59:51+09:00"
+entry_commit = "bd598ee"
+class = "retroactive"
+
+[[contract]]
+id = "C-141"
+since = "0.31.0"
+entry = "2026-07-18T17:59:51+09:00"
+entry_commit = "bd598ee"
+class = "retroactive"
+
+[[contract]]
+id = "C-142"
+since = "0.31.0"
+entry = "2026-07-18T17:59:51+09:00"
+entry_commit = "bd598ee"
+class = "retroactive"
+
+[[contract]]
+id = "C-139"
+since = "0.31.0"
+entry = "2026-07-18T17:26:01+09:00"
+entry_commit = "9faa26e"
+class = "retroactive"
+
+[[contract]]
+id = "C-156"
+since = "0.32.0"
+entry = "2026-07-20T06:00:31+09:00"
+entry_commit = "39e768b"
+class = "retroactive"
+
+[[contract]]
+id = "C-157"
+since = "0.32.0"
+entry = "2026-07-20T09:05:13+09:00"
+entry_commit = "b3d6b00"
+class = "retroactive"
+
+[[contract]]
+id = "C-158"
+since = "0.32.0"
+entry = "2026-07-20T12:15:12+09:00"
+entry_commit = "f55925d"
+class = "retroactive"
+
+[[contract]]
+id = "C-159"
+since = "0.32.0"
+entry = "2026-07-20T14:09:30+09:00"
+entry_commit = "c85dcb6"
+class = "retroactive"
+
+[[contract]]
+id = "C-160"
+since = "0.34.4"
+entry = "2026-07-25T12:25:33+09:00"
+entry_commit = "44e5627"
+class = "unmeasured"
+
+[[contract]]
+id = "C-161"
+since = "0.35.0"
+entry = "2026-07-25T14:37:53+09:00"
+entry_commit = "fe857d7"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-162"
+since = "0.35.0"
+entry = "2026-07-25T15:26:50+09:00"
+entry_commit = "cdfca68"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-163"
+since = "0.35.0"
+entry = "2026-07-25T15:45:54+09:00"
+entry_commit = "d66fadd"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-164"
+since = "0.35.0"
+entry = "2026-07-25T16:25:30+09:00"
+entry_commit = "98805f3"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-165"
+since = "0.36.0"
+entry = "2026-07-26T03:49:08+09:00"
+entry_commit = "2879444"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-166"
+since = "0.36.0"
+entry = "2026-07-26T04:27:05+09:00"
+entry_commit = "12fc88a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-167"
+since = "0.36.0"
+entry = "2026-07-26T05:00:17+09:00"
+entry_commit = "95aa7f5"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-168"
+since = "0.36.0"
+entry = "2026-07-26T05:30:12+09:00"
+entry_commit = "65b8104"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-169"
+since = "0.36.0"
+entry = "2026-07-26T06:02:04+09:00"
+entry_commit = "e693a8b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-170"
+since = "0.36.0"
+entry = "2026-07-26T06:36:31+09:00"
+entry_commit = "4bb602e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-171"
+since = "0.36.0"
+entry = "2026-07-26T07:14:33+09:00"
+entry_commit = "3bf9df1"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-172"
+since = "0.36.0"
+entry = "2026-07-26T08:04:53+09:00"
+entry_commit = "6e2824e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-173"
+since = "0.36.0"
+entry = "2026-07-26T10:11:30+09:00"
+entry_commit = "f14341b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-174"
+since = "0.36.0"
+entry = "2026-07-26T11:10:03+09:00"
+entry_commit = "bd5d9ab"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-175"
+since = "0.37.0"
+entry = "2026-07-26T21:12:44+09:00"
+entry_commit = "142a8ab"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-176"
+since = "0.37.0"
+entry = "2026-07-27T00:43:19+09:00"
+entry_commit = "bd852a2"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-177"
+since = "0.37.0"
+entry = "2026-07-27T01:33:53+09:00"
+entry_commit = "7a13d36"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-178"
+since = "0.37.0"
+entry = "2026-07-27T03:01:48+09:00"
+entry_commit = "152489c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-179"
+since = "0.37.0"
+entry = "2026-07-27T11:42:39+09:00"
+entry_commit = "07ef57b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-180"
+since = "0.37.0"
+entry = "2026-07-27T13:07:26+09:00"
+entry_commit = "79a8784"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-181"
+since = "0.37.0"
+entry = "2026-07-27T13:07:26+09:00"
+entry_commit = "79a8784"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-182"
+since = "0.37.0"
+entry = "2026-07-27T13:10:45+09:00"
+entry_commit = "4f2aaf2"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-183"
+since = "0.37.0"
+entry = "2026-07-27T13:30:18+09:00"
+entry_commit = "f1fea7a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-184"
+since = "0.37.0"
+entry = "2026-07-27T15:27:50+09:00"
+entry_commit = "608758e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-185"
+since = "0.37.0"
+entry = "2026-07-27T15:35:38+09:00"
+entry_commit = "ab45485"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-186"
+since = "0.37.0"
+entry = "2026-07-27T17:44:44+09:00"
+entry_commit = "1489f27"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-187"
+since = "0.37.0"
+entry = "2026-07-27T21:18:25+09:00"
+entry_commit = "822c559"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-188"
+since = "0.37.0"
+entry = "2026-07-28T05:43:39+09:00"
+entry_commit = "b150e2d"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-189"
+since = "0.37.0"
+entry = "2026-07-28T10:21:49+09:00"
+entry_commit = "9d88f00"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-190"
+since = "0.37.0"
+entry = "2026-07-28T16:35:54+09:00"
+entry_commit = "0774b5a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-191"
+since = "0.37.1"
+entry = "2026-07-28T18:24:54+09:00"
+entry_commit = "6d3d01d"
+class = "unmeasured"
+
+[[contract]]
+id = "C-192"
+since = "0.37.1"
+entry = "2026-07-28T19:25:52+09:00"
+entry_commit = "6bd6ef8"
+class = "unmeasured"
+
+[[contract]]
+id = "C-193"
+since = "0.37.1"
+entry = "2026-07-28T19:45:03+09:00"
+entry_commit = "75562d6"
+class = "unmeasured"
+
+[[contract]]
+id = "C-194"
+since = "0.38.1"
+entry = "2026-07-29T14:27:37+09:00"
+entry_commit = "56e7601"
+class = "unmeasured"
+
+[[contract]]
+id = "C-195"
+since = "0.38.1"
+entry = "2026-07-29T18:06:55+09:00"
+entry_commit = "681fe61"
+class = "unmeasured"
+
+[[contract]]
+id = "C-196"
+since = "0.41.0"
+entry = "2026-07-31T09:46:09+09:00"
+entry_commit = "bddba31"
+class = "retroactive"
+
+[[contract]]
+id = "C-197"
+since = "0.41.0"
+entry = "2026-07-31T15:39:45+09:00"
+entry_commit = "35fdf6c"
+class = "retroactive"
+
+[[contract]]
+id = "C-198"
+since = "0.42.0"
+entry = "2026-07-31T19:04:54+09:00"
+entry_commit = "4cfd674"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-199"
+since = "0.42.0"
+entry = "2026-07-31T20:01:04+09:00"
+entry_commit = "e117855"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-200"
+since = "0.42.0"
+entry = "2026-07-31T20:03:25+09:00"
+entry_commit = "43ec388"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-201"
+since = "0.44.0"
+entry = "2026-08-01T06:35:33+09:00"
+entry_commit = "5d23aca"
+class = "retroactive"
+
+[[contract]]
+id = "C-202"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-203"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-204"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-205"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-206"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-207"
+since = "0.47.0"
+entry = "2026-08-02T13:28:14+09:00"
+entry_commit = "66ec8c1"
+class = "retroactive"
+
+[[contract]]
+id = "C-208"
+since = "0.47.0"
+entry = "2026-08-02T14:50:14+09:00"
+entry_commit = "8b03caa"
+class = "retroactive"
+
+[[contract]]
+id = "C-209"
+since = "0.52.0"
+entry = "2026-08-03T09:43:51+09:00"
+entry_commit = "a5093a9"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-210"
+since = "0.53.0"
+entry = "2026-08-03T12:52:06+09:00"
+entry_commit = "4346286"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-211"
+since = "0.53.5"
+entry = "2026-08-03T18:57:26+09:00"
+entry_commit = "76cd6ed"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-212"
+since = "0.52.0"
+entry = "2026-08-04T17:39:17+09:00"
+entry_commit = "aa94881"
+class = "retroactive"
+
+[[contract]]
+id = "C-213"
+since = "0.53.5"
+entry = "2026-08-04T18:11:20+09:00"
+entry_commit = "57531a4"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-214"
+since = "0.53.6"
+entry = "2026-08-05T03:42:38+09:00"
+entry_commit = "ca6d01c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-215"
+since = "0.53.7"
+entry = "2026-08-06T02:15:45+09:00"
+entry_commit = "71ada60"
+class = "unmeasured"
+
+[[contract]]
+id = "C-216"
+since = "0.54.1"
+entry = "2026-08-06T13:05:27+09:00"
+entry_commit = "fc28020"
+class = "unmeasured"
+
+[[contract]]
+id = "C-217"
+since = "0.55.0"
+entry = "2026-08-06T13:51:35+09:00"
+entry_commit = "a8b666d"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-218"
+since = "0.56.0"
+entry = "2026-08-07T18:32:53+09:00"
+entry_commit = "d2d6bd9"
+class = "retroactive"
+
+[[contract]]
+id = "C-219"
+since = "0.56.0"
+entry = "2026-08-08T16:53:06+09:00"
+entry_commit = "ad95e73"
+class = "retroactive"
+
+[[contract]]
+id = "C-220"
+since = "0.56.1"
+entry = "2026-08-08T22:04:45+09:00"
+entry_commit = "d9b5677"
+class = "unmeasured"
+
+[[contract]]
+id = "C-221"
+since = "0.56.1"
+entry = "2026-08-09T09:32:16+09:00"
+entry_commit = "6c6e45c"
+class = "unmeasured"
+
+[[contract]]
+id = "C-222"
+since = "0.56.1"
+entry = "2026-08-10T23:05:11Z"
+entry_commit = "70c88d8"
+class = "unmeasured"
+
+[[contract]]
+id = "C-223"
+since = "0.56.1"
+entry = "2026-08-11T02:47:21Z"
+entry_commit = "f5e2005"
+class = "unmeasured"
+
+[[contract]]
+id = "C-224"
+since = "0.56.1"
+entry = "2026-08-11T05:55:10Z"
+entry_commit = "576ffed"
+class = "unmeasured"
+
+[[contract]]
+id = "C-225"
+since = "0.56.2"
+entry = "2026-08-11T17:32:37+09:00"
+entry_commit = "770a1e3"
+class = "unmeasured"
+
+[[contract]]
+id = "C-226"
+since = "0.56.2"
+entry = "2026-08-11T17:32:37+09:00"
+entry_commit = "4a759c5"
+class = "unmeasured"
+
+[[contract]]
+id = "C-227"
+since = "0.56.2"
+entry = "2026-08-11T19:46:42+09:00"
+entry_commit = "3f3110b"
+class = "unmeasured"
+
+[[contract]]
+id = "C-228"
+since = "0.56.2"
+entry = "2026-08-11T19:46:42+09:00"
+entry_commit = "4a25fe5"
+class = "unmeasured"
+
+[[contract]]
+id = "C-229"
+since = "0.57.1"
+entry = "2026-08-12T02:45:34+09:00"
+entry_commit = "db2c950"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-230"
+since = "0.57.1"
+entry = "2026-08-12T03:51:48+09:00"
+entry_commit = "f0ee10a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-231"
+since = "0.57.1"
+entry = "2026-08-12T08:38:03+09:00"
+entry_commit = "d010c83"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-232"
+since = "0.57.1"
+entry = "2026-08-12T08:38:03+09:00"
+entry_commit = "d010c83"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-233"
+since = "0.57.1"
+entry = "2026-08-12T09:18:49+09:00"
+entry_commit = "9f43a9e"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-234"
+since = "0.57.1"
+entry = "2026-08-12T09:45:21+09:00"
+entry_commit = "2a84866"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-235"
+since = "0.57.1"
+entry = "2026-08-12T09:45:21+09:00"
+entry_commit = "2a84866"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-236"
+since = "0.57.1"
+entry = "2026-08-12T10:06:02+09:00"
+entry_commit = "a87090c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-237"
+since = "0.57.1"
+entry = "2026-08-12T10:25:42+09:00"
+entry_commit = "917df33"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-238"
+since = "0.57.1"
+entry = "2026-08-12T10:41:12+09:00"
+entry_commit = "dab24cd"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-239"
+since = "0.57.1"
+entry = "2026-08-12T11:03:28+09:00"
+entry_commit = "e07f466"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-240"
+since = "0.57.1"
+entry = "2026-08-12T11:03:28+09:00"
+entry_commit = "e07f466"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-241"
+since = "0.57.1"
+entry = "2026-08-12T11:21:21+09:00"
+entry_commit = "c26a713"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-242"
+since = "0.57.1"
+entry = "2026-08-12T11:40:39+09:00"
+entry_commit = "f0fb634"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-243"
+since = "0.57.1"
+entry = "2026-08-12T11:40:39+09:00"
+entry_commit = "f0fb634"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-244"
+since = "0.57.1"
+entry = "2026-08-12T12:16:11+09:00"
+entry_commit = "445d747"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-245"
+since = "0.57.1"
+entry = "2026-08-12T12:35:14+09:00"
+entry_commit = "60262d5"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-246"
+since = "0.57.1"
+entry = "2026-08-12T12:35:14+09:00"
+entry_commit = "60262d5"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-247"
+since = "0.57.1"
+entry = "2026-08-12T12:54:32+09:00"
+entry_commit = "9cdd920"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-248"
+since = "0.57.1"
+entry = "2026-08-12T21:15:02+09:00"
+entry_commit = "5f0d328"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-249"
+since = "0.57.1"
+entry = "2026-08-12T21:15:02+09:00"
+entry_commit = "5f0d328"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-250"
+since = "0.57.1"
+entry = "2026-08-13T02:13:18+09:00"
+entry_commit = "d008e4c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-251"
+since = "0.57.1"
+entry = "2026-08-13T02:13:18+09:00"
+entry_commit = "d008e4c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-252"
+since = "0.57.1"
+entry = "2026-08-13T08:50:44+09:00"
+entry_commit = "782f29a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-253"
+since = "0.57.1"
+entry = "2026-08-13T09:10:32+09:00"
+entry_commit = "04d9bfb"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-254"
+since = "0.57.1"
+entry = "2026-08-13T09:10:32+09:00"
+entry_commit = "04d9bfb"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-255"
+since = "0.57.1"
+entry = "2026-08-13T09:28:39+09:00"
+entry_commit = "1fd4186"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-256"
+since = "0.57.1"
+entry = "2026-08-13T09:58:27+09:00"
+entry_commit = "ac36f91"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-257"
+since = "0.57.1"
+entry = "2026-08-13T10:34:34+09:00"
+entry_commit = "8bbb4d2"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-258"
+since = "0.57.1"
+entry = "2026-08-13T10:52:28+09:00"
+entry_commit = "73d735b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-259"
+since = "0.57.1"
+entry = "2026-08-13T10:52:28+09:00"
+entry_commit = "73d735b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-260"
+since = "0.57.1"
+entry = "2026-08-13T11:37:27+09:00"
+entry_commit = "aac642d"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-261"
+since = "0.57.1"
+entry = "2026-08-13T13:03:39+09:00"
+entry_commit = "936e064"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-262"
+since = "0.57.1"
+entry = "2026-08-13T13:03:39+09:00"
+entry_commit = "936e064"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-263"
+since = "0.57.1"
+entry = "2026-08-13T13:25:17+09:00"
+entry_commit = "bbc53d1"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-264"
+since = "0.57.1"
+entry = "2026-08-13T15:19:01+09:00"
+entry_commit = "a0f284f"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-265"
+since = "0.57.1"
+entry = "2026-08-13T16:21:03+09:00"
+entry_commit = "bd7b76b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-266"
+since = "0.57.1"
+entry = "2026-08-13T17:18:43+09:00"
+entry_commit = "de06a85"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-267"
+since = "0.57.1"
+entry = "2026-08-13T18:09:31+09:00"
+entry_commit = "4e2f372"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-268"
+since = "0.57.1"
+entry = "2026-08-13T19:16:45+09:00"
+entry_commit = "52935c6"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-269"
+since = "0.57.1"
+entry = "2026-08-13T20:07:55+09:00"
+entry_commit = "0ae80ef"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-270"
+since = "0.57.1"
+entry = "2026-08-13T21:24:25+09:00"
+entry_commit = "ce56b3c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-271"
+since = "0.57.1"
+entry = "2026-08-13T22:08:27+09:00"
+entry_commit = "f089233"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-272"
+since = "0.57.1"
+entry = "2026-08-14T00:23:34+09:00"
+entry_commit = "1429b86"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-273"
+since = "0.57.1"
+entry = "2026-08-14T00:48:17+09:00"
+entry_commit = "5781daa"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-274"
+since = "0.57.1"
+entry = "2026-08-14T01:40:40+09:00"
+entry_commit = "471dc0d"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-275"
+since = "0.57.1"
+entry = "2026-08-14T02:45:11+09:00"
+entry_commit = "d1448f0"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-276"
+since = "0.57.1"
+entry = "2026-08-14T03:50:23+09:00"
+entry_commit = "408f729"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-277"
+since = "0.57.1"
+entry = "2026-08-14T22:00:14+09:00"
+entry_commit = "a57c5ff"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-278"
+since = "0.57.1"
+entry = "2026-08-14T23:15:19+09:00"
+entry_commit = "d74a300"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-279"
+since = "0.57.1"
+entry = "2026-08-15T02:36:23+09:00"
+entry_commit = "73d6083"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-280"
+since = "0.57.1"
+entry = "2026-08-15T04:19:35+09:00"
+entry_commit = "05f3ed8"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-281"
+since = "0.57.1"
+entry = "2026-08-15T08:54:53+09:00"
+entry_commit = "f90891b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-282"
+since = "0.57.1"
+entry = "2026-08-15T22:33:23+09:00"
+entry_commit = "0834f14"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-283"
+since = "0.57.1"
+entry = "2026-08-16T10:07:49+09:00"
+entry_commit = "74ad42c"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-284"
+since = "0.57.1"
+entry = "2026-08-16T10:36:33+09:00"
+entry_commit = "7053ef1"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-285"
+since = "0.57.1"
+entry = "2026-08-16T11:28:16+09:00"
+entry_commit = "ce9ba65"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-286"
+since = "0.57.1"
+entry = "2026-08-16T14:38:45+09:00"
+entry_commit = "94fd6f0"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-287"
+since = "0.57.1"
+entry = "2026-08-17T12:18:43+09:00"
+entry_commit = "ae60bb3"
+class = "retroactive"
+
+[[contract]]
+id = "C-288"
+since = "0.57.1"
+entry = "2026-08-17T12:30:08+09:00"
+entry_commit = "4b95ae3"
+class = "retroactive"
+
+[[contract]]
+id = "C-289"
+since = "0.57.1"
+entry = "2026-08-17T13:17:42+09:00"
+entry_commit = "8d2198e"
+class = "retroactive"
+
+[[contract]]
+id = "C-291"
+since = "0.57.1"
+entry = "2026-08-17T16:18:22+09:00"
+entry_commit = "fbcc8e3"
+class = "retroactive"
+
+[[contract]]
+id = "C-290"
+since = "0.57.2"
+entry = "2026-08-17T15:30:45+09:00"
+entry_commit = "acd71dc"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-292"
+since = "0.57.2"
+entry = "2026-08-18T00:00:33+09:00"
+entry_commit = "c93bcfe"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-293"
+since = "0.57.2"
+entry = "2026-08-18T00:00:33+09:00"
+entry_commit = "c93bcfe"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-294"
+since = "0.57.2"
+entry = "2026-08-18T00:00:33+09:00"
+entry_commit = "c93bcfe"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-295"
+since = "0.57.2"
+entry = "2026-08-18T00:00:33+09:00"
+entry_commit = "c93bcfe"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-296"
+since = "0.57.2"
+entry = "2026-08-18T11:24:46+09:00"
+entry_commit = "e055d14"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-297"
+since = "0.57.2"
+entry = "2026-08-18T12:23:02+09:00"
+entry_commit = "f38780a"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-298"
+since = "0.57.2"
+entry = "2026-08-18T12:40:01+09:00"
+entry_commit = "643d69b"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-299"
+since = "0.58.0"
+entry = "2026-08-18T20:05:43+09:00"
+entry_commit = "b466697"
+class = "contemporaneous"
+
+[[contract]]
+id = "C-300"
+since = "0.59.0"
+entry = "2026-08-20T14:28:20+09:00"
+entry_commit = "34ab9f3"
+class = "requirements-first"
+
+[[contract]]
+id = "C-301"
+since = "0.59.0"
+entry = "2026-08-20T15:50:11+09:00"
+entry_commit = "858df32"
+class = "requirements-first"
