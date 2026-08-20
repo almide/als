@@ -1,6 +1,6 @@
 # ADR-0015: The reference evaluator is a fresh, source-level, judge-owned evaluator behind a black-box protocol — seeded by λ_almd, ratcheted by an abstain ledger
 
-- **Status**: Proposed
+- **Status**: Accepted (ratified 2026-08-21 — Python with the aviation-quality clauses below)
 - **Date**: 2026-08-20
 - **Context**: QUALIFICATION.md limitation 2 — the cross legs judge
   AGREEMENT, not truth; both targets being wrong identically is invisible.
@@ -96,6 +96,33 @@
   first cut: a cargo toolchain in `gates` and a slower write/measure loop;
   the protocol keeps it open. (e) *Judge only a hand-picked subset* —
   rejected: the abstain ledger judges everything and says what it skipped.
+- **Aviation-quality clauses** (ratified with the decision — what makes the
+  host language immaterial to the claim; each is a GATE, not a guideline):
+  1. *Determinism.* The evaluator depends on no host ordering: every
+     iteration over a Map/Set follows the ALS-specified order, never the
+     host's; the gate runs the whole corpus under two different
+     `PYTHONHASHSEED` values and requires byte-identical traces and
+     verdicts.
+  2. *Totality-or-abstain.* Dispatch totality is measured: every node kind
+     the parser can produce has a handler or a registered abstain class;
+     every stdlib signature in the specified index is implemented or in
+     `proofs/ref-abstain.toml`; an unhandled form at run time is an
+     evaluator FAILURE (exit non-zero, protocol error), never a silent
+     pass — the gate enumerates both tables and fails on any gap.
+  3. *Mutation testing of the evaluator itself.* Single-token mutants of
+     the evaluator (operator flips, wrap removal, boundary ±1, branch
+     inversion) are run over the kernel + cross corpora; the kill rate is
+     a shrink-only-in-the-wrong-direction ratchet with survivors listed
+     (the edit-locality survey ranks mutation first among the 12 laws).
+  4. *Pinned interpreter.* The Python version is fixed by `setup-python`
+     in every workflow that runs the evaluator and recorded in the
+     conformance statement beside the candidate binary and platform.
+  The host-diversity argument that tipped the choice: the native target
+  runs on Rust `std`; a Rust-hosted reference would share host semantics
+  with it for every stdlib function written over `std` (agreement would
+  then measure the shared host, not the ALS text). wasm is self-hosted
+  Almide; Python is a third, unrelated host — N-version diversity is the
+  property a reference exists to supply.
 - **Falsifiers**: (1) the evaluator's wall-clock over the corpus exceeds the
   cross leg's own — then the Rust port behind the same protocol; (2) the
   abstain ledger stops shrinking for two releases — then the stdlib-spec
