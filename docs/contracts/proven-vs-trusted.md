@@ -5,7 +5,7 @@ part is proven*. This page answers it, and points at the evidence for each
 answer.
 
 The full ledger — toolchain pins, the irreducible trust roots, the tamper drill,
-the per-bug-class regression pins — is [`proofs/TRUSTED_BASE.md`](../../proofs/TRUSTED_BASE.md).
+the per-bug-class regression pins — is [`proofs/TRUSTED_BASE.md`](https://github.com/almide/almide/blob/develop/proofs/TRUSTED_BASE.md).
 This page is the map; that page is the territory.
 
 ## The one-sentence version
@@ -53,7 +53,7 @@ CI leg that lowers — Test WASM, Cross-Target, Trust Spine — exercises it on
 every build.
 
 The per-class regression pins for all five are in
-[`proofs/TRUSTED_BASE.md`](../../proofs/TRUSTED_BASE.md#the-five-2026-07-03-trusted-zone-bug-classes-and-their-regression-pins).
+[`proofs/TRUSTED_BASE.md`](https://github.com/almide/almide/blob/develop/proofs/TRUSTED_BASE.md#the-five-2026-07-03-trusted-zone-bug-classes-and-their-regression-pins).
 
 The row stayed live after that gate shipped. #1537 (2026-08, reported from a
 real downstream project) was another instance: `desugar_guard`'s nested rewrite

@@ -1,0 +1,34 @@
+# Almide Language Specification (ALS)
+
+> What an Almide implementation is judged against: normative semantics,
+> behavior contracts, an executable conformance corpus, the traceability
+> gates binding them, and a runner that executes the corpus against any
+> `almide` binary. Almide's mission is to be the language LLMs write most
+> accurately; this repository is the language's law book, organized to be
+> read by machines first.
+
+## Normative text
+
+- [ALS section index](docs/specs/als/README.md): every `ALS-<id>` normative section with its citing contracts
+- [Language](docs/specs/language.md): types, declarations, expressions, statements, patterns, operators
+- [Type system](docs/specs/type-system.md): inference, generics, records, variants, protocols, unions
+- [Effect system](docs/specs/effect-system.md): fn vs effect fn, explicit propagation (`!` only), fan, capabilities
+- [Result/Option/effect](docs/specs/result-option-effect.md): `T?` / `T!` / `T!E`, the operator desugar table
+- [Modules](docs/specs/module-system.md) and [packages](docs/specs/package-system.md)
+- [Edit locality](docs/specs/edit-locality.md): the L1–L3 invariants
+- [Grammar (EBNF)](docs/GRAMMAR.md) and [design thesis](docs/SPEC.md)
+
+## Contracts and conformance
+
+- [Contract ledger](docs/contracts/contracts.toml): every observable cross-target promise, `C-NNN`, with executable evidence
+- [Contract index](docs/contracts/README.md) and [conformance report](docs/contracts/conformance.md) (both generated)
+- [Conformance corpus](spec/): `wasm_cross` (byte-identical fixtures), `lang`/`stdlib`/`integration` (test blocks), `wasm_fail` (failure shapes), `programs`
+- [Diagnostics corpus](tests/diagnostics/): 752 reject/accept pairs with pinned codes and hints
+- Runner: `python3 scripts/conformance.py --almide <bin> --report out.toml`
+
+## Decisions and boundaries
+
+- [ADRs](docs/adr/README.md): the why behind the language decisions, with falsifiers
+- [Design doctrine](docs/design/): equivalence, hidden operations, rejected patterns
+- [BOUNDARY.md](BOUNDARY.md): what lives here versus in an implementation, and why
+- [CONTRIBUTING.md](CONTRIBUTING.md): the requirements-first change discipline
