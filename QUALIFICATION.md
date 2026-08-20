@@ -51,10 +51,12 @@ Stated so they cannot be mistaken for claims:
 4. **No baseline tag exists yet.** The first tag is the semantics freeze
    (sequenced behind ADR-0012 D2/D3 on the implementation side). Until then
    consumers pin commit SHAs; the audit trail starts at extraction
-   (`BOUNDARY.md`, Provenance). The chapter examples are likewise mostly
-   unjudged: `scripts/doctest.py` judges 3 fenced blocks, with 21 fragments
-   and 163 untagged fences held under shrink-only ceilings
-   ([#13](https://github.com/almide/als/issues/13)).
+   (`BOUNDARY.md`, Provenance). The chapter examples, by contrast, are all
+   judged: `scripts/doctest.py` compiles AND runs every `almide` fence (167
+   at the burn-down, [#13](https://github.com/almide/als/issues/13)), with
+   the fragment and untagged ceilings ratcheted to zero — but the doctest
+   judges the examples the spec chose to write, not the spec's coverage of
+   the language; coverage is limitation 1's question, not this one's.
 5. **The runner self-test verifies judgment, not the world.** The 21
    scenarios drive the real runner over stub processes; they prove the
    verdict logic, not wasmtime's or the OS's behaviour. Those are exercised
