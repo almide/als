@@ -40,6 +40,7 @@ python3 scripts/check-contract-provenance.py # requirement-before-behaviour ledg
 bash scripts/check-als-element-coverage.sh   # element → section ledger
 bash scripts/check-links.sh                  # every relative link and anchor resolves
 bash scripts/check-als-style.sh              # requirements standard
+bash scripts/check-als-validation.sh         # per-section review records (hash-bound)
 bash scripts/check-gate-verification.sh      # the tools' own verification ledger
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md
 bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md
