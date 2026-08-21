@@ -75,6 +75,112 @@ pub enum Value {
     /// a first-class range `lo ..< hi` (half-open, Int): iterated lazily as a
     /// for-in head (C-238 / #1400), materialized only when forced
     Range(i64, i64),
+    /// the dynamic `Value` type (value/json modules) — its text IS its JSON
+    /// (ALS-D2, compact, insertion-ordered keys)
+    Dyn(Dyn),
+    /// the `Bytes` buffer — REFERENCE semantics: writes through a parameter
+    /// are visible to the caller (bytes_param_writeback)
+    Bytes(Rc<std::cell::RefCell<Vec<u8>>>),
+    /// an opaque `JsonPath` (json.root/field/index)
+    Path(Rc<Vec<PathSeg>>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PathSeg {
+    Field(Rc<str>),
+    Index(i64),
+}
+
+#[derive(Clone, Debug)]
+pub enum Dyn {
+    Null,
+    B(bool),
+    I(i64),
+    F(f64),
+    S(Rc<str>),
+    A(Rc<Vec<Dyn>>),
+    O(Rc<Vec<(Rc<str>, Dyn)>>),
+}
+
+/// ALS-D2: a Value's string form is its JSON text — compact, keys in
+/// insertion order, numbers in the canonical display form (integral floats
+/// drop the fraction: value_repr pins `fltint=3`).
+pub fn dyn_text(d: &Dyn) -> String {
+    match d {
+        Dyn::Null => "null".into(),
+        Dyn::B(b) => {
+            if *b {
+                "true".into()
+            } else {
+                "false".into()
+            }
+        }
+        Dyn::I(n) => fmt_int(*n),
+        Dyn::F(f) => crate::fmtfloat::display_form(F64(*f)),
+        Dyn::S(s) => json_quote(s),
+        Dyn::A(items) => {
+            let mut out = String::from("[");
+            for (i, x) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str(&dyn_text(x));
+            }
+            out.push(']');
+            out
+        }
+        Dyn::O(fields) => {
+            let mut out = String::from("{");
+            for (i, (k, v)) in fields.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str(&json_quote(k));
+                out.push(':');
+                out.push_str(&dyn_text(v));
+            }
+            out.push('}');
+            out
+        }
+    }
+}
+
+/// the canonical 5-escape rule (stdlib value_core __json_quote): backslash,
+/// quote, \n, \r, \t — every other byte, control chars included, is RAW
+pub fn json_quote(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+pub fn dyn_eq(a: &Dyn, b: &Dyn) -> bool {
+    match (a, b) {
+        (Dyn::Null, Dyn::Null) => true,
+        (Dyn::B(x), Dyn::B(y)) => x == y,
+        (Dyn::I(x), Dyn::I(y)) => x == y,
+        (Dyn::F(x), Dyn::F(y)) => x == y,
+        (Dyn::I(x), Dyn::F(y)) | (Dyn::F(y), Dyn::I(x)) => *x as f64 == *y,
+        (Dyn::S(x), Dyn::S(y)) => x == y,
+        (Dyn::A(x), Dyn::A(y)) => {
+            x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| dyn_eq(p, q))
+        }
+        (Dyn::O(x), Dyn::O(y)) => {
+            x.len() == y.len()
+                && x.iter()
+                    .all(|(k, v)| y.iter().any(|(k2, v2)| k == k2 && dyn_eq(v, v2)))
+        }
+        _ => false,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -105,6 +211,9 @@ impl Value {
             Value::Ok(_) | Value::Err(_) => "Result",
             Value::Fn(_) => "Fn",
             Value::Range(..) => "List",
+            Value::Dyn(_) => "Value",
+            Value::Bytes(_) => "Bytes",
+            Value::Path(_) => "JsonPath",
         }
     }
     /// number of elements a range would materialize
@@ -237,6 +346,9 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
         (Value::Some(_), Value::None) | (Value::None, Value::Some(_)) => false,
         (Value::Ok(x), Value::Ok(y)) | (Value::Err(x), Value::Err(y)) => values_eq(x, y)?,
         (Value::Ok(_), Value::Err(_)) | (Value::Err(_), Value::Ok(_)) => false,
+        (Value::Dyn(x), Value::Dyn(y)) => dyn_eq(x, y),
+        (Value::Bytes(x), Value::Bytes(y)) => *x.borrow() == *y.borrow(),
+        (Value::Path(x), Value::Path(y)) => x == y,
         (Value::Fn(_), _) | (_, Value::Fn(_)) => return None,
         (Value::Range(..), _) | (_, Value::Range(..)) => return None,
         _ => return None,
@@ -395,7 +507,8 @@ pub fn render(v: &Value) -> Option<String> {
                 out
             }
         },
-        Value::Fn(_) | Value::Range(..) => return None,
+        Value::Dyn(d) => dyn_text(d),
+        Value::Fn(_) | Value::Range(..) | Value::Bytes(_) | Value::Path(_) => return None,
     })
 }
 

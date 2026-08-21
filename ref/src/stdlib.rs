@@ -17,6 +17,8 @@ use crate::value::{fmt_int, render, value_cmp, values_eq, Callable, Value, F64};
 /// Names the evaluator implements, for the totality gate (`als-ref stdlib-index`).
 pub fn implemented() -> Vec<&'static str> {
     let mut v: Vec<&'static str> = Vec::new();
+    v.extend(crate::stdlib_ext::EXT_FNS);
+    v.extend(crate::stdlib_ext2::EXT2_FNS);
     v.extend(PRELUDE_FNS);
     v.extend(LIST_FNS);
     v.extend(STRING_FNS);
@@ -596,7 +598,9 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let xs = want_list(name, &args[0])?;
             let i = want_int(name, &args[1])?;
             if i < 0 || i as usize >= xs.len() {
-                return it.abstain_pub("semantics:list-oob-write", format!("{name} out of range — the OOB rule for functional writes is not in a chapter this evaluator has read"));
+                // OOB functional writes are NO-OPS (list_heapelem_rc update_oob,
+                // list_remove_at_oob)
+                return Ok(Value::List(xs.clone()));
             }
             let mut v = (**xs).clone();
             if name == "list.set" {
@@ -616,7 +620,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let xs = want_list(name, &args[0])?;
             let (i, j) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
             if i < 0 || j < 0 || i as usize >= xs.len() || j as usize >= xs.len() {
-                return it.abstain_pub("semantics:list-oob-write", "list.swap out of range");
+                return Ok(Value::List(xs.clone()));
             }
             let mut v = (**xs).clone();
             v.swap(i as usize, j as usize);
@@ -704,11 +708,11 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 3)?;
             let xs = want_list(name, &args[0])?;
             let i = want_int(name, &args[1])?;
-            if i < 0 || i as usize > xs.len() {
-                return it.abstain_pub("semantics:list-oob-write", "list.insert out of range");
-            }
+            // insert index is as-usize then clamped to len: -1 APPENDS
+            // (list_count_index_truncation), 10 on a 3-list appends too
+            let i = (i as u64).min(xs.len() as u64) as usize;
             let mut v = (**xs).clone();
-            v.insert(i as usize, args[2].clone());
+            v.insert(i, args[2].clone());
             Ok(Value::List(Rc::new(v)))
         }
         "list.remove_at" => {
@@ -716,7 +720,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let xs = want_list(name, &args[0])?;
             let i = want_int(name, &args[1])?;
             if i < 0 || i as usize >= xs.len() {
-                return it.abstain_pub("semantics:list-oob-write", "list.remove_at out of range");
+                return Ok(Value::List(xs.clone()));
             }
             let mut v = (**xs).clone();
             v.remove(i as usize);
@@ -841,6 +845,9 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "list.range" => {
             arity(name, &args, 2)?;
             let (a, b) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
+            if (b as i128) - (a as i128) > (1i128 << 31) {
+                return Err(Flow::Abort("out of memory".into()));
+            }
             let mut out = Vec::new();
             let mut i = a;
             while i < b {
@@ -852,6 +859,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "list.repeat" => {
             arity(name, &args, 2)?;
             let n = want_int(name, &args[1])?;
+            // C-034 family: the shared 2^31 ceiling guards the allocation
+            if n > (1i64 << 31) {
+                return Err(Flow::Abort("repeat result too large".into()));
+            }
             let n = if n < 0 { 0 } else { n as usize };
             Ok(Value::List(Rc::new(vec![args[0].clone(); n])))
         }
@@ -1278,6 +1289,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let s = want_str(name, &args[0])?;
             let n = want_int(name, &args[1])?;
+            // C-034: results past the shared 2^31-byte ceiling take the T6 abort
+            if n > 0 && (s.len() as i128) * (n as i128) > (1i128 << 31) {
+                return Err(Flow::Abort("repeat result too large".into()));
+            }
             let mut out = String::new();
             for _ in 0..n.max(0) {
                 out.push_str(s);
@@ -1352,14 +1367,14 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let cs = chars_of(want_str(name, &args[0])?);
             let n = want_int(name, &args[1])?;
             let ch = chars_of(want_str(name, &args[2])?);
-            if ch.len() != 1 {
-                return it.abstain_pub(
-                    "semantics:pad-multichar",
-                    "pad with a non-single-char fill is not in a chapter this evaluator has read",
-                );
-            }
+            // the fill is the FIRST char of the pad string, or a space when
+            // empty (string_codepoint: pad.chars().next().unwrap_or(' '))
+            let fill = ch.first().copied().unwrap_or(' ');
             let need = (n.max(0) as usize).saturating_sub(cs.len());
-            let pad: String = std::iter::repeat_n(ch[0], need).collect();
+            if need > (1usize << 31) {
+                return Err(Flow::Abort("out of memory".into()));
+            }
+            let pad: String = std::iter::repeat_n(fill, need).collect();
             Ok(Value::str(&if name == "string.pad_start" {
                 format!("{}{}", pad, s_of(&cs))
             } else {
@@ -1520,9 +1535,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "string.from_codepoint" => {
             arity(name, &args, 1)?;
             let n = want_int(name, &args[0])?;
+            // surrogates, past-max, and out-of-range all yield "" (value_domain_arith)
             match u32::try_from(n).ok().and_then(char::from_u32) {
                 Some(c) => Ok(Value::str(&c.to_string())),
-                None => it.abstain_pub("semantics:bad-codepoint", "from_codepoint out of range — the error form is not in a chapter this evaluator has read"),
+                None => Ok(Value::str("")),
             }
         }
 
@@ -1535,6 +1551,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 1)?;
             Ok(parse_i64(want_str(name, &args[0])?))
         }
+
         "int.from_hex" => {
             arity(name, &args, 1)?;
             // int_from_hex pins the real grammar (T8's from_str_radix claim
@@ -1733,28 +1750,17 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             if e < 0 {
                 return Err(Flow::Abort("negative exponent".into())); // ALS-T6
             }
+            // wraps two's-complement on overflow (int_pow_overflow_wraps)
             let mut acc: i64 = 1;
             let mut base = b;
             let mut exp = e as u64;
             while exp > 0 {
                 if exp & 1 == 1 {
-                    acc = match acc.checked_mul(base) {
-                        Some(v) => v,
-                        None => return it.abstain_pub("semantics:int-overflow", "math.pow overflowed i64 — the overflow rule is not in a chapter this evaluator has read"),
-                    };
+                    acc = acc.wrapping_mul(base);
                 }
                 exp >>= 1;
                 if exp > 0 {
-                    base = match base.checked_mul(base) {
-                        Some(v) => v,
-                        None => {
-                            if exp == 0 {
-                                break;
-                            }
-                            return it
-                                .abstain_pub("semantics:int-overflow", "math.pow overflowed i64");
-                        }
-                    };
+                    base = base.wrapping_mul(base);
                 }
             }
             Ok(Value::Int(acc))
@@ -2529,12 +2535,17 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(hof_out(fal, bail, acc))
         }
 
-        other => Err(Flow::Abstain {
-            class: format!("stdlib:{other}"),
-            reason: format!(
-                "stdlib function `{other}` is not implemented by the reference evaluator yet"
-            ),
-        }),
+        other => match crate::stdlib_ext::call_ext(it, other, args.clone())
+            .or_else(|| crate::stdlib_ext2::call_ext2(it, other, args))
+        {
+            Some(r) => r,
+            None => Err(Flow::Abstain {
+                class: format!("stdlib:{other}"),
+                reason: format!(
+                    "stdlib function `{other}` is not implemented by the reference evaluator yet"
+                ),
+            }),
+        },
     }
 }
 
@@ -2624,6 +2635,10 @@ fn parse_i64(s: &str) -> Value {
 /// ALS-T2 grammar + error strings; exact rounding on the fast path, abstain
 /// beyond it (the full big-rational correctly rounded path is future work).
 fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
+    Ok(parse_f64_pure(s))
+}
+
+fn parse_f64_pure(s: &str) -> Value {
     // ws* sign? (number | inf | infinity | nan) ws* — ws per ALS-T1's set
     let cs_all: Vec<char> = s.chars().collect();
     let mut lo = 0;
@@ -2635,9 +2650,7 @@ fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
         hi -= 1;
     }
     if lo >= hi {
-        return Ok(Value::Err(Rc::new(Value::str(
-            "cannot parse float from empty string",
-        ))));
+        return Value::Err(Rc::new(Value::str("cannot parse float from empty string")));
     }
     let body: Vec<char> = cs_all[lo..hi].to_vec();
     let (neg, body) = match body[0] {
@@ -2647,14 +2660,14 @@ fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
     };
     let lower: String = body.iter().flat_map(|c| c.to_lowercase()).collect();
     if lower == "inf" || lower == "infinity" {
-        return Ok(Value::Ok(Rc::new(Value::Float(F64(if neg {
+        return Value::Ok(Rc::new(Value::Float(F64(if neg {
             f64::NEG_INFINITY
         } else {
             f64::INFINITY
-        })))));
+        }))));
     }
     if lower == "nan" {
-        return Ok(Value::Ok(Rc::new(Value::Float(F64(f64::NAN)))));
+        return Value::Ok(Rc::new(Value::Float(F64(f64::NAN))));
     }
     let mut mant = String::new();
     let mut frac_len: i64 = 0;
@@ -2676,7 +2689,7 @@ fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
         }
     }
     if int_digits == 0 && frac_len == 0 {
-        return Ok(Value::Err(Rc::new(Value::str("invalid float literal"))));
+        return Value::Err(Rc::new(Value::str("invalid float literal")));
     }
     if i < cs.len() && (cs[i] == 'e' || cs[i] == 'E') {
         i += 1;
@@ -2695,18 +2708,45 @@ fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
             i += 1;
         }
         if !any {
-            return Ok(Value::Err(Rc::new(Value::str("invalid float literal"))));
+            return Value::Err(Rc::new(Value::str("invalid float literal")));
         }
         exp = if eneg { -ed } else { ed };
     }
     if i != cs.len() {
-        return Ok(Value::Err(Rc::new(Value::str("invalid float literal"))));
+        return Value::Err(Rc::new(Value::str("invalid float literal")));
     }
     let scale = exp - frac_len;
     let v = crate::fmtfloat::parse_decimal(&mant, scale);
-    Ok(Value::Ok(Rc::new(Value::Float(F64(if neg {
-        -v
-    } else {
-        v
-    })))))
+    Value::Ok(Rc::new(Value::Float(F64(if neg { -v } else { v }))))
+}
+
+/// int.parse (ALS-T8) as a plain Result — for the normative json parser,
+/// which passes the oracle's error text through
+pub fn int_parse_t8(s: &str) -> Result<i64, String> {
+    match parse_i64(s) {
+        Value::Ok(v) => match &*v {
+            Value::Int(n) => Ok(*n),
+            _ => Err("int.parse: non-int payload".into()),
+        },
+        Value::Err(e) => match &*e {
+            Value::Str(m) => Err(m.to_string()),
+            _ => Err("int.parse failed".into()),
+        },
+        _ => Err("int.parse failed".into()),
+    }
+}
+
+/// float.parse (ALS-T2) as a plain Result — same passthrough discipline
+pub fn float_parse_t2(s: &str) -> Result<f64, String> {
+    match parse_f64_pure(s) {
+        Value::Ok(v) => match &*v {
+            Value::Float(f) => Ok(f.0),
+            _ => Err("float.parse: non-float payload".into()),
+        },
+        Value::Err(e) => match &*e {
+            Value::Str(m) => Err(m.to_string()),
+            _ => Err("float.parse failed".into()),
+        },
+        _ => Err("float.parse failed".into()),
+    }
 }

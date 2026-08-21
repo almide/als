@@ -1,4 +1,7 @@
 // @contract: C-049, C-306
+// @ref-allow: ALS-T23 (ADR-0016, ratified 2026-08-21) orders ±0 as -0 < +0 in
+// min/max; 0.58.0 still ships the retired tie rule. Remove when the
+// implementation catches up (same lag as float_signed_zero_minmax).
 // `float.sign` == Rust `f64::signum`: copysign(1.0, x) for every non-NaN x
 // (sign(0.0)=1, sign(-0.0)=-1, sign(±inf)=±1), NaN for NaN — NOT the old
 // three-way (0 for ±0.0/NaN). `float.max`/`min` and `math.fmax`/`fmin` IGNORE a

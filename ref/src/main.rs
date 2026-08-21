@@ -26,8 +26,11 @@ mod ast;
 mod eval;
 mod fmtfloat;
 mod lexer;
+mod libm;
 mod parser;
 mod stdlib;
+mod stdlib_ext;
+mod stdlib_ext2;
 mod value;
 
 use std::io::Write;
