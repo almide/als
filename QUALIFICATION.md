@@ -40,9 +40,13 @@ Stated so they cannot be mistaken for claims:
    (`ref/`, ADR-0015 — fresh from the ALS text, pinned stable Rust, zero
    dependencies; λ_almd kernel corpus reproduced 49/49; 173/602 programs
    of the cross corpora evaluated, the rest ledgered by class, shrink-only,
-   `proofs/ref-abstain.toml`); what is NOT yet in place is the runner's
-   `ref` leg whose verdict is *legs == ref* — until it runs, this
-   limitation stands as declared ([#10](https://github.com/almide/als/issues/10)).
+   `proofs/ref-abstain.toml`); the runner's `ref` leg (verdict
+   *legs == ref* wherever the reference evaluates — TOR-8's adjudication,
+   with the co-drift class pinned red in `selftest-conformance.py`) runs
+   since 2026-08-21. The limitation therefore narrows rather than lifts:
+   on the ABSTAINED subset (the ledger) the runner still judges agreement,
+   and the ledger is the shrink-only bound of that remainder
+   ([#10](https://github.com/almide/als/issues/10)).
    Its first pass already produced the class this limitation describes:
    two programs on which both targets agree and the text-reading evaluator
    does not (`docs/ref/PARSER-NOTES.md` F1, F2).

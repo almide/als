@@ -61,12 +61,12 @@ evidence = "Bootstrap run (PR #5, 2026-08-20): before first green, a mis-pathed 
 [[gate]]
 path = "scripts/conformance.py"
 class = "NEGATIVE_TESTED"
-evidence = "scripts/selftest-conformance.py: 21 scenarios drive the real runner over a scripted stub implementation through every verdict class per leg — cross (stdout/stderr/exit divergence, build refusal, @xt-allow tracked, healed-allow STALE), fail (success-is-failure, wrong message, split legs, missing header is red never skipped, @xf-allow, stale), diag (accepted-broken, missing code, missing hint, unfixable fix), suite (failed-count red even at exit 0) — asserting both the process exit AND the statement's per-leg counters. A dropped scenario fails the declared-count guard (which fired on its own landing run: 21 written, 20 declared). Runs in the gates workflow on every push."
+evidence = "scripts/selftest-conformance.py: 21 scenarios drive the real runner over a scripted stub implementation through every verdict class per leg — cross (stdout/stderr/exit divergence, build refusal, @xt-allow tracked, healed-allow STALE), fail (success-is-failure, wrong message, split legs, missing header is red never skipped, @xf-allow, stale), diag (accepted-broken, missing code, missing hint, unfixable fix), suite (failed-count red even at exit 0) — asserting both the process exit AND the statement's per-leg counters. A dropped scenario fails the declared-count guard (which fired on its own landing run: 21 written, 20 declared). Runs in the gates workflow on every push. 2026-08-21: the ref leg (verdict legs == REFERENCE, TOR-8) added with nine selftest scenarios — including the co-drift class (targets agree with each other, both differ from the reference → red), abstain-is-not-a-verdict, malformed-protocol-is-red, and @ref-allow in both directions."
 
 [[gate]]
 path = "scripts/selftest-conformance.py"
 class = "EXERCISED"
-evidence = "Its declared-count guard fired on the landing run (21 scenarios vs a declared 20) and went green only after the declaration was corrected — the harness's own red direction observed before first green. Each scenario asserts a red and its reason, so a runner regression flips at least one scenario."
+evidence = "Its declared-count guard fired on the landing run (21 scenarios vs a declared 20) and went green only after the declaration was corrected — the harness's own red direction observed before first green. Each scenario asserts a red and its reason, so a runner regression flips at least one scenario. 2026-08-21: grown from 21 to 30 scenarios with the ref leg (stub als-ref scripted per file; the count guard moved 21→30 so a dropped scenario stays loud)."
 
 [[gate]]
 path = "scripts/doctest.py"

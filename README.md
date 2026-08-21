@@ -125,8 +125,12 @@ paths that were renamed into place lives in the implementation repository.
   evaluates 173 of 602 programs (171 of the 172 comparable ones agree with
   the native target; the one disagreement and the two findings are in
   `docs/ref/PARSER-NOTES.md`) and abstains on 429 in 152 ledgered classes —
-  the long tail is stdlib. The `ref` leg of the runner (verdict *legs == ref*)
-  is the next step; until it runs, limitation 2 of QUALIFICATION.md stands.
+  the long tail is stdlib. The runner's `ref` leg exists (verdict
+  *legs == ref* wherever the reference evaluates; abstains counted, never
+  verdicts; `// @ref-allow:` tracks adjudicated findings) — so limitation 2
+  of QUALIFICATION.md is now bounded by the abstain ledger instead of by the
+  absence of an instrument: on the evaluated subset the runner judges truth,
+  on the abstained subset it still judges agreement.
 - The `greenfield` rebuild pins this repository as a submodule since
   2026-08-20 (BOUNDARY.md, "Stage B"); `almide/almide` `develop` still carries
   copies, and its cutover is a separately decided step.

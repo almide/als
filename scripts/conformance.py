@@ -32,6 +32,17 @@ verdict here and a verdict in the compiler's own CI mean the same thing):
             diagnostic carrying meta.toml's expects_code / expects_error /
             hint_substring; `almide check fixed.almd` must pass clean.
             (tests/diagnostic_harness_test.rs)
+  ref       spec/wasm_cross + spec/programs against the REFERENCE EVALUATOR
+            (ref/, ADR-0015; TOR-8's adjudication): where the reference
+            evaluates a program, BOTH targets must equal ITS observables —
+            agreement between the two targets is no longer sufficient. A
+            reference abstain (a ledgered class, proofs/ref-abstain.toml) is
+            counted and skipped, never a pass or a fail; a malformed protocol
+            reply or an evaluator fault is red. `// @ref-allow: <reason>`
+            tracks a known reference disagreement (a FINDING under
+            adjudication, e.g. docs/ref/PARSER-NOTES.md F1) without passing
+            it, and goes STALE the moment the legs match the reference again.
+            Needs --ref (default: ref/target/release/als-ref).
 
 Exit status: 0 = every leg PASS (no failure, no stale allow); 1 = a failure;
 2 = usage / environment error. `--limit N` runs the first N items of each
@@ -68,6 +79,7 @@ if os.environ.get("ALS_RUNNER_TRACE_DIR"):
     _atexit.register(_flush)
 
 import argparse
+import json
 import concurrent.futures as cf
 import datetime as dt
 import platform
@@ -83,7 +95,7 @@ PROGRAMS_DIR = "spec/programs"
 FAIL_DIR = "spec/wasm_fail"
 DIAG_DIR = "tests/diagnostics"
 SUITE_DIRS = ["spec/lang", "spec/stdlib", "spec/integration"]
-ALL_LEGS = ["suite", "cross", "pkg", "programs", "fail", "diag"]
+ALL_LEGS = ["suite", "cross", "pkg", "programs", "fail", "diag", "ref"]
 
 
 class Leg:
@@ -321,6 +333,59 @@ def leg_fail(args, root):
     return leg
 
 
+def ref_item(args, root, rel):
+    """One program against the reference evaluator: legs == ref (TOR-8)."""
+    path = os.path.join(root, rel)
+    code, out, err = run([args.ref, "run", path, "--json"], timeout=300)
+    if code != 0:
+        return ("failed", rel, f"reference protocol fault: exit {code}\n  {err[:300]}")
+    try:
+        doc = json.loads(out)
+    except json.JSONDecodeError:
+        return ("failed", rel, f"reference protocol fault: malformed reply {out[:200]!r}")
+    if "error" in doc:
+        return ("failed", rel, f"reference evaluator fault: {str(doc['error'])[:300]}")
+    if "abstain" in doc:
+        a = doc["abstain"]
+        return ("abstain", rel, f"{a.get('class', '?')}: {str(a.get('reason', ''))[:160]}")
+    ref3 = (doc.get("exit"), str(doc.get("stdout", "")).strip(), str(doc.get("stderr", "")).strip())
+    allow = header_directive(path, "ref-allow")
+    native = build_and_run(args, path, "rust")
+    wasm = build_and_run(args, path, "wasm")
+    mismatches = [tag for tag, leg3 in (("native", native), ("wasm", wasm)) if leg3 != ref3]
+    if not mismatches and allow is None:
+        return ("passed", rel, "")
+    if not mismatches and allow is not None:
+        return ("stale", rel, f"@ref-allow now MATCHES (was: {allow}) — remove the directive")
+    if mismatches and allow is not None:
+        return ("allowed", rel, allow)
+    return ("failed", rel,
+            f"reference disagreement ({', '.join(mismatches)})\n  " + fmt_leg("ref", ref3)
+            + "\n  " + fmt_leg("native", native) + "\n  " + fmt_leg("wasm", wasm))
+
+
+def leg_ref(args, root):
+    leg = Leg("ref")
+    items = [f"{CROSS_DIR}/{f}" for f in sorted(os.listdir(os.path.join(root, CROSS_DIR))) if f.endswith(".almd")]
+    items += [f"{PROGRAMS_DIR}/{f}" for f in sorted(os.listdir(os.path.join(root, PROGRAMS_DIR))) if f.endswith(".almd")]
+    items = items[: args.limit] if args.limit else items
+    results = pmap(lambda rel: ref_item(args, root, rel), items, args.jobs)
+    classes = {}
+    plain = []
+    for status, item, detail in results:
+        if status == "abstain":
+            leg.total += 1
+            leg.skipped.append((item, f"reference abstain — {detail}"))
+            classes[detail.split(":")[0]] = classes.get(detail.split(":")[0], 0) + 1
+        else:
+            plain.append((status, item, detail))
+    collect(leg, plain)
+    judged = leg.passed + len(leg.failed) + len(leg.allowed) + len(leg.stale)
+    leg.notes.append(f"reference judged {judged}, abstained {len(leg.skipped)} "
+                     f"(top classes: {', '.join(f'{k} {v}' for k, v in sorted(classes.items(), key=lambda kv: -kv[1])[:6])})")
+    return leg
+
+
 def leg_diag(args, root):
     leg = Leg("diag")
     cases = sorted(c for c in os.listdir(os.path.join(root, DIAG_DIR))
@@ -331,7 +396,7 @@ def leg_diag(args, root):
 
 
 LEG_FNS = {"suite": leg_suite, "cross": leg_cross, "pkg": leg_pkg,
-           "programs": leg_programs, "fail": leg_fail, "diag": leg_diag}
+           "programs": leg_programs, "fail": leg_fail, "diag": leg_diag, "ref": leg_ref}
 
 
 # ── statement ───────────────────────────────────────────────────────────────
@@ -353,6 +418,7 @@ def statement(args, root, legs, verdict):
         f"almide = {toml_str(almide_ver)}",
         f"almide_path = {toml_str(os.path.abspath(args.almide))}",
         f"wasmtime = {toml_str(wt[1] if wt[0] == 0 else 'absent')}",
+        f"ref = {toml_str(run([args.ref, '--version'])[1] or 'absent')}",
         f"platform = {toml_str(platform.platform())}",
         f"date = {toml_str(dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))}",
         f"legs = [{', '.join(toml_str(l.name) for l in legs)}]",
@@ -395,6 +461,8 @@ def main():
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) // 2))
     ap.add_argument("--legs", default=",".join(ALL_LEGS), help=f"comma list of {ALL_LEGS}")
     ap.add_argument("--limit", type=int, default=0, help="first N items per leg (smoke run; recorded)")
+    ap.add_argument("--ref", default=None,
+                    help="path to the reference evaluator (als-ref); default ref/target/release/als-ref under --root")
     ap.add_argument("--report", help="write the conformance statement (TOML) here")
     ap.add_argument("--root", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
     args = ap.parse_args()
@@ -409,8 +477,13 @@ def main():
     if run([args.almide, "--version"])[0] != 0:
         print(f"cannot execute {args.almide} --version", file=sys.stderr)
         return 2
-    if any(l in legs_wanted for l in ("suite", "cross", "pkg", "programs", "fail")) and run(["wasmtime", "--version"])[0] != 0:
+    if any(l in legs_wanted for l in ("suite", "cross", "pkg", "programs", "fail", "ref")) and run(["wasmtime", "--version"])[0] != 0:
         print("wasmtime not on PATH — the wasm leg cannot run (install it, or restrict --legs to diag)", file=sys.stderr)
+        return 2
+    if args.ref is None:
+        args.ref = os.path.join(root, "ref", "target", "release", "als-ref")
+    if "ref" in legs_wanted and run([args.ref, "--version"])[0] != 0:
+        print(f"cannot execute {args.ref} --version — build the reference evaluator (cd ref && cargo build --release) or pass --ref", file=sys.stderr)
         return 2
 
     legs = []
