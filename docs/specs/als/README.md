@@ -162,7 +162,7 @@
 | [ALS-T5](./text-and-numbers.md#als-t5-stringto_upper--stringto_lower) | `string.to_upper` / `string.to_lower` | C-020, C-162 |
 | [ALS-T6](./text-and-numbers.md#als-t6-整数演算の終了規約（termination-convention）) | 整数演算の終了規約（termination convention） | C-001, C-002, C-047, C-067, C-154, C-155, C-161, C-169, C-184, C-196, C-197, C-198, C-200, C-219, C-223 |
 | [ALS-T7](./text-and-numbers.md#als-t7-トップレベル-let-の評価時機) | トップレベル let の評価時機 | C-007, C-077, C-111 |
-| [ALS-T8](./text-and-numbers.md#als-t8-整数パースのエラー規範) | 整数パースのエラー規範 | C-028, C-029 |
+| [ALS-T8](./text-and-numbers.md#als-t8-整数パースの文法とエラー規範) | 整数パースの文法とエラー規範 | C-028, C-029 |
 | [ALS-T9](./text-and-numbers.md#als-t9-固定小数表示) | 固定小数表示 | C-025 |
 | [ALS-T10](./text-and-numbers.md#als-t10-数学関数の決定性) | 数学関数の決定性 | C-026, C-051, C-134 |
 | [ALS-T11](./text-and-numbers.md#als-t11-バイナリテキスト符号化) | バイナリテキスト符号化 | C-027, C-030 |
@@ -170,7 +170,7 @@
 | [ALS-T13](./text-and-numbers.md#als-t13-浮動小数の文字列化) | 浮動小数の文字列化 | C-023 |
 | [ALS-T14](./text-and-numbers.md#als-t14-wrap--rotate-のマスク飽和) | wrap / rotate のマスク飽和 | C-048 |
 | [ALS-T15](./text-and-numbers.md#als-t15-符号と-minmax-の-nan-規則) | 符号と min/max の NaN 規則 | C-049, C-140 |
-| [ALS-T16](./text-and-numbers.md#als-t16-長さ・添字の-i64-クランプ) | 長さ・添字の i64 クランプ | C-054, C-056 |
+| [ALS-T16](./text-and-numbers.md#als-t16-個数・添字の-i64-クランプ) | 個数・添字の i64 クランプ | C-054, C-056 |
 | [ALS-T17](./text-and-numbers.md#als-t17-datetimeformat-の指定子置換) | datetime.format の指定子置換 | C-128 |
 | [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153 |
 | [ALS-T19](./text-and-numbers.md#als-t19-数値決定性ファミリー) | 数値決定性ファミリー | C-302 |

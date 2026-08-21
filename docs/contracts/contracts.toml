@@ -419,7 +419,7 @@ evidence  = [
 [[contract]]
 id        = "C-028"
 spec      = "ALS-T8"
-title     = "int.from_hex mirrors i64::from_str_radix incl. native quirks"
+title     = "int.from_hex: trim, strip lowercase 0x repeatedly, sign after the prefix, then radix-16 — incl. native quirks"
 statement = "`int.from_hex` mirrors native `i64::from_str_radix(s.trim().trim_start_matches(\"0x\"), 16)` exactly, INCLUDING the quirks: `0X10` -> Err (the `0x` strip is lowercase-only), `0x0xff` -> Ok(255) (`trim_start_matches` strips `0x` repeatedly), `f_f` -> Err (no underscore skipping), `0x-ff` -> -255 (sign accepted after strip). The four std ParseIntError strings reproduce exactly, byte-identical native == wasm."
 since     = "0.24.0"
 status    = "active"
@@ -1316,7 +1316,7 @@ evidence  = [
 id        = "C-100"
 spec      = "ALS-M12"
 title     = "Self-hosted String classification/transform ops byte-match native on wasm"
-statement = "The self-hosted String classification predicate `string.is_alphanumeric` and the ASCII-fold transform `string.to_upper` MUST produce stdout byte-identical to native on the v1 wasm path. `is_alphanumeric` returns true only when every codepoint is ASCII alphanumeric and false for the empty string, matching native (`abc123`/`Z9` -> true; `ab-c`/`` -> false). `to_upper` maps `a-z` to `A-Z`, leaves all other bytes (digits, symbols, spaces) and the empty string unchanged, matching native `to_uppercase` over ASCII. Both ops were previously unlinked on v1 and are now certified equivalent across native Rust and wasm32."
+statement = "The self-hosted String classification predicate `string.is_alphanumeric` and the ASCII-fold transform `string.to_upper` MUST produce stdout byte-identical to native on the v1 wasm path. `is_alphanumeric` returns true only when every codepoint is Unicode alphanumeric (C-018 / ALS-S3 — this fixture probes the ASCII rows) and false for the empty string, matching native (`abc123`/`Z9` -> true; `ab-c`/`` -> false). `to_upper` maps `a-z` to `A-Z`, leaves all other bytes (digits, symbols, spaces) and the empty string unchanged, matching native `to_uppercase` over ASCII. Both ops were previously unlinked on v1 and are now certified equivalent across native Rust and wasm32."
 since     = "0.27.6"
 status    = "active"
 evidence  = [

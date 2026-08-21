@@ -24,4 +24,29 @@
 # requirements-first and unreviewed; no reviewer other than the author exists
 # (QUALIFICATION.md limitation 1, #14). Rows are added when someone signs.
 # 2026-08-21: +11 — ALS-B1..B11 (the bounded profile, ADR-0017), same standing.
-# unvalidated_ceiling = "127"
+# 2026-08-21: -3 — ALS-T8, T16, S3 rewritten to their fixtures (F7–F9, #43–#45) and reviewed by the author (not independent).
+# unvalidated_ceiling = "124"
+[[section]]
+id = "ALS-T8"
+hash = "sha256:b2ac579f159a"
+reviewed = "2026-08-21"
+by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a probe run on both 0.58.0 targets)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T16"
+hash = "sha256:452570a4287f"
+reviewed = "2026-08-21"
+by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a probe run on both 0.58.0 targets)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S3"
+hash = "sha256:0665e37743f3"
+reviewed = "2026-08-21"
+by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a probe run on both 0.58.0 targets)"
+independent = "no"
+verdict = "accurate"
+

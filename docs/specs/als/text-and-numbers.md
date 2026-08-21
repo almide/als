@@ -104,13 +104,43 @@ Fixtures: `spec/wasm_cross/int_div_by_zero*.almd`, `int_mod_*`, `int8_div_overfl
 参照できる（宣言順の依存）。
 Fixtures: `spec/wasm_cross/top_let_div_eager.almd`, `top_let_div_used.almd`。
 
-## ALS-T8 整数パースのエラー規範
+## ALS-T8 整数パースの文法とエラー規範
 
-`int.parse` のエラーメッセージは Rust `ParseIntError` の Display と byte 一致する:
-空入力は `cannot parse integer from empty string`、不正文字は
+`int.parse(s)` は、まず ALS-T1 の **Unicode White_Space 集合**を先頭・末尾から除去し
+（`"\u{00A0}99\u{3000}"` → 99）、残りを `sign? digit+`（10 進、下線なし）として
+読む。エラーメッセージは Rust `ParseIntError` の Display と byte 一致する:
+空入力（除去後に空）は `cannot parse integer from empty string`、不正文字は
 `invalid digit found in string`、範囲外は `number too large to fit in target type` /
-`number too small to fit in target type`。`int.from_hex` は `i64::from_str_radix(s, 16)`
-と観測等価（`+`/`-` 接頭辞・大文字小文字・オーバーフローの native 特性を含む）。
+`number too small to fit in target type`。
+
+`int.from_hex(s)` は `i64::from_str_radix(…, 16)` **そのもの**ではなく、次の文法である
+（fixture `spec/wasm_cross/int_from_hex.almd` が全辺を固定する）:
+
+```ebnf
+hex     := ws* ("0x")* sign? hexdigit+ ws*      (* "0x" は小文字のみ、何回でも剥がす *)
+sign    := "+" | "-"
+hexdigit:= [0-9a-fA-F]                          (* 下線は不可 *)
+```
+
+- 接頭辞 `0x` は**小文字のみ**認識し、**繰り返し**剥がす（`0x0x0x10` = 16）。
+  `0X10` は `invalid digit found in string`。
+- 符号は接頭辞の**後**に置く（`0x-ff` = -255）。接頭辞の前の符号（`-0xff`）は
+  `invalid digit found in string`。
+- 接頭辞だけ（`0x`、`0x0x`）は除去後に空なので `cannot parse integer from empty string`。
+- 桁の大文字小文字は不問、`f_f` のような下線は不正文字。オーバーフローは
+  `int.parse` と同じ 2 文言。
+
+```almide
+test "int.parse trims Unicode whitespace; int.from_hex strips lowercase 0x repeatedly, sign after the prefix" {
+  assert_eq(int.parse("\u{00A0}99\u{3000}") ?? -1, 99)
+  assert_eq(int.from_hex("0x0x0x10") ?? -1, 16)
+  assert_eq(int.from_hex("0x-ff") ?? 0, -255)
+  assert_eq(int.from_hex("0X10") ?? -1, -1)
+  assert_eq(int.from_hex("-0xff") ?? -1, -1)
+}
+```
+
+Fixture: `spec/wasm_cross/int_from_hex.almd`、`spec/wasm_cross/string_whitespace.almd`。
 Contracts: C-028, C-029。
 
 ## ALS-T9 固定小数表示
@@ -162,12 +192,34 @@ minNum/maxNum 系）。`float.round` はゼロ結果の
 min/max の順序は ALS-T23（IEEE-754-2019 minimum/maximum）。
 Contracts: C-049, C-140。
 
-## ALS-T16 長さ・添字の i64 クランプ
+## ALS-T16 個数・添字の i64 クランプ
 
-List / String の長さ・添字を受け取る API は、i64 値を内部幅へ**先に clamp**
-してから使う（負→0、上限超→len）。ラップや符号化けによる誤アクセスは不適合。
+List / String の **個数（count）や添字（index）** を受け取る API は、i64 値を内部幅へ
+**狭める前に**、i64 全体の上でクランプする。ラップや符号化けによる誤アクセスは
+不適合。クランプの向きは API の種類で決まり、**負の個数は 0 に丸められない**
+（fixture `spec/wasm_cross/string_count_truncation.almd`、
+`list_count_index_truncation.almd` が固定する）:
+
+| 種類 | 規則 | 負値・巨大値の結果 |
+|------|------|--------------------|
+| 個数（`list.take/drop/take_end/drop_end/chunk/windows`、`list.slice` の start/end、`string.take/drop/take_end/drop_end`、`pad_start/pad_end` の幅） | **符号なし**として `min(n as usize, len)` | 負値は巨大な符号なし値として `len` に飽和: `take(-1)` = 全体、`drop(-1)` = 空、`chunk(-1)` = 1 チャンク、`windows(-1)` = 空。`2^32` 以上も `len` に飽和（小さい値へラップしない） |
+| 反復回数（`string.repeat` / `list.repeat` / `bytes.repeat`） | **符号あり**、負は 0 | `repeat(s, -1)` = 空（両ターゲット; panic / trap は不適合） |
+| `string.slice` の start/end | **符号あり** `max(0).min(len)` | 負の start は 0 |
+| 添字（`list.get/get_or/set/insert/remove_at/swap/update`） | **符号なし** `i as usize` | 負や `2^32` 以上の添字は範囲外として no-op / default / append の経路 |
+
 `list.product` は `list.sum` と同じく i64 wrap（オーバーフローは 2^64 mod）。
-Contracts: C-054, C-056。
+
+```almide
+test "negative counts saturate, negative repeat is empty, negative slice start is 0" {
+  assert_eq(string.take("abcde", -1), "abcde")
+  assert_eq(string.drop("abcde", -1), "")
+  assert_eq(string.repeat("xy", -1), "")
+  assert_eq(list.take([1, 2, 3], -1), [1, 2, 3])
+}
+```
+
+Fixture: `spec/wasm_cross/string_count_truncation.almd`、
+`spec/wasm_cross/list_count_index_truncation.almd`。Contracts: C-054, C-056。
 
 ## ALS-T17 datetime.format の指定子置換
 
