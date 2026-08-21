@@ -135,7 +135,7 @@
 | [ALS-S5](./strings.md#als-s5-split-の区切り規範) | split の区切り規範 | C-050 |
 | [ALS-S6](./strings.md#als-s6-規模不変性) | 規模不変性 | C-074 |
 
-## text-and-numbers.md — 18 section(s)
+## text-and-numbers.md — 24 section(s)
 
 | ID | Section | Contracts |
 |----|---------|-----------|
@@ -157,5 +157,11 @@
 | [ALS-T16](./text-and-numbers.md#als-t16-長さ・添字の-i64-クランプ) | 長さ・添字の i64 クランプ | C-054, C-056 |
 | [ALS-T17](./text-and-numbers.md#als-t17-datetimeformat-の指定子置換) | datetime.format の指定子置換 | C-128 |
 | [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153 |
+| [ALS-T19](./text-and-numbers.md#als-t19-数値決定性ファミリー) | 数値決定性ファミリー | C-302 |
+| [ALS-T20](./text-and-numbers.md#als-t20-丸めと縮約の禁止) | 丸めと縮約の禁止 | C-303 |
+| [ALS-T21](./text-and-numbers.md#als-t21-非正規数の保存) | 非正規数の保存 | C-304 |
+| [ALS-T22](./text-and-numbers.md#als-t22-超越関数の誤差上限) | 超越関数の誤差上限 | C-305 |
+| [ALS-T23](./text-and-numbers.md#als-t23-符号付きゼロ) | 符号付きゼロ | C-306 |
+| [ALS-T24](./text-and-numbers.md#als-t24-float-→-int-変換) | Float → Int 変換 | C-307 |
 
-110 sections across 10 chapters.
+116 sections across 10 chapters.

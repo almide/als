@@ -11,7 +11,7 @@
 > (spec-coverage + evidence-class >= fixture for every active contract), so this
 > page cannot legitimately contain an empty Fixtures cell.
 
-110 normative sections; 618 distinct executable fixtures.
+116 normative sections; 627 distinct executable fixtures.
 
 | Section | Contracts | Fixtures (how CI runs each) |
 |---------|-----------|------------------------------|
@@ -125,3 +125,9 @@
 | ALS-T16 | C-054, C-056 | `spec/wasm_cross/list_count_index_truncation.almd` (byte-compare)<br>`spec/wasm_cross/string_count_truncation.almd` (byte-compare)<br>`spec/wasm_cross/map_wide_int_key.almd` (byte-compare)<br>`spec/wasm_cross/chunk_str.almd` (byte-compare)<br>`spec/wasm_cross/value_domain_arith.almd` (byte-compare)<br>`spec/wasm_cross/bytes_array_count_domain.almd` (byte-compare)<br>`spec/wasm_cross/bytes_string_window_domain.almd` (byte-compare)<br>`spec/wasm_cross/list_product_overflow.almd` (byte-compare) |
 | ALS-T17 | C-128 | `spec/wasm_cross/datetime_format.almd` (byte-compare) |
 | ALS-T18 | C-153 | `spec/wasm_cross/assert_abort_eq.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_ne.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_msg.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_multiline.almd` (byte-compare) |
+| ALS-T19 | C-302 | `spec/wasm_cross/float_no_contraction.almd` (byte-compare)<br>`spec/wasm_cross/float_subnormal_preserved.almd` (byte-compare)<br>`spec/wasm_cross/math_transcendental_bits.almd` (byte-compare)<br>`spec/wasm_cross/float_signed_zero_minmax.almd` (byte-compare)<br>`spec/wasm_cross/float_to_int_edges.almd` (byte-compare) |
+| ALS-T20 | C-303 | `spec/wasm_cross/float_no_contraction.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test) |
+| ALS-T21 | C-304 | `spec/wasm_cross/float_subnormal_preserved.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test) |
+| ALS-T22 | C-305 | `spec/wasm_cross/math_transcendental_bits.almd` (byte-compare)<br>`spec/stdlib/math_accuracy_test.almd` (both-target test) |
+| ALS-T23 | C-306 | `spec/wasm_cross/float_signed_zero_minmax.almd` (byte-compare)<br>`spec/wasm_cross/float_sign_minmax_ieee.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test)<br>`spec/stdlib/float_minmax_zero_order_test.almd` (both-target test)<br>`spec/stdlib/float_signed_zero_sum_test.almd` (both-target test) |
+| ALS-T24 | C-307 | `spec/wasm_cross/float_to_int_edges.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test) |
