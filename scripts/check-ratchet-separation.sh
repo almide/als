@@ -32,10 +32,10 @@ RATCHETS = [  # (path, regex with one group, loosen-direction, hand-edited?)
     # hand-edited ledgers: a loosening must add a dated justification comment.
     ("proofs/gate-verification.toml",   r'^#\s*unverified_ceiling\s*=\s*"(\d+)"',  "up",   True),
     ("proofs/als-validation.toml",      r'^#\s*unvalidated_ceiling\s*=\s*"(\d+)"', "up",   True),
-    ("proofs/contract-provenance.toml", r'^#\s*retroactive_ceiling\s*=\s*"(\d+)"', "up",   True),
     ("proofs/als-element-coverage.toml",r'^#\s*unwritten_ceiling\s*=\s*"(\d+)"',   "up",   True),
     # regenerated ledgers (`--write`, never edited): separation is the whole rule;
     # the why lives in the commit message of that solo commit.
+    ("proofs/contract-provenance.toml", r'^#\s*retroactive_ceiling\s*=\s*"(\d+)"', "up",   False),
     ("proofs/runner-coverage.toml",     r'^#\s*line_floor\s*=\s*"([\d.]+)"',       "down", False),
     ("proofs/ref-abstain.toml",         r'^ceiling\s*=\s*(\d+)',                    "up",   False),
 ]
