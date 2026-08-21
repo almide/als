@@ -24,6 +24,7 @@
 
 mod ast;
 mod eval;
+mod fmtfloat;
 mod lexer;
 mod parser;
 mod stdlib;
@@ -72,7 +73,7 @@ fn main() {
             );
         }
         "stdlib-index" => {
-            for n in stdlib::IMPLEMENTED {
+            for n in stdlib::implemented() {
                 println!("{n}");
             }
         }
