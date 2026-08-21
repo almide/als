@@ -97,3 +97,8 @@ evidence = "Landing run (2026-08-21): the first evaluator build was run against 
 path = "scripts/check-ref-totality.py"
 class = "NEGATIVE_TESTED"
 evidence = "Landing run (2026-08-21): measured 602 programs, 173 evaluated, 429 abstains in 152 classes, 0 faults, and wrote proofs/ref-abstain.toml; red directions demonstrated before landing: the evaluator's early `Fatal` on type mismatches surfaced as FAULTS here (red) until re-classified as the `semantics:type-mismatch` abstain (a finding, not a fault); a hand-edited ceiling fires BELOW/EXCEEDS; a missing ledger names `--write`."
+
+[[gate]]
+path = "scripts/check-ratchet-separation.sh"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-21), staged mode: a ceiling raised together with another file → red on both counts (separation, and no dated line); raised alone without a dated line → red (date); raised alone with `# 2026-08-21: …` → green; lowered together with other files → green (tightening rides along); a regenerated floor lowered alone → green, the same plus another file → red. Range mode over the day's own history flagged exactly the two commits that had raised unvalidated_ceiling alongside new sections (75c4bc84f 110→116, fbec1e712 116→127) — the instrument bit its author first; the two ref-abstain ratchets (solo commits, regenerated ledger) passed. A first landing bug (the index was queried as `::path`, so staged loosenings were invisible and every scenario passed) was caught by the scenarios themselves before the gate was wired."

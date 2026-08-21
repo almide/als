@@ -24,6 +24,27 @@ retroactive count is shrink-only. After adding a contract, regenerate the
 ledger on a full clone — `python3 scripts/check-contract-provenance.py --write`
 — and commit it.
 
+## Independence — the mechanisms, and the person they wait for
+
+QUALIFICATION.md limitation 1 is honest: one person plus agents, no
+independent verifier. What can exist before the person does, exists:
+
+- `.github/CODEOWNERS` maps the normative and ratchet paths to the verifier
+  role. Today that resolves to the author's account and branch protection keeps
+  required reviews at 0 (a required review with one account blocks every merge;
+  a second account of the same person is not independence). The day a
+  verifier who is not the author exists (#14), the handle changes and
+  `required_approving_review_count = 1` with author ≠ approver is switched on.
+- **A ratchet loosening is its own commit.** Raising a ceiling or lowering a
+  floor (`proofs/*.toml`) may not share a commit with the change that needed
+  it, and a hand-edited ledger must gain a dated justification line
+  (`# YYYY-MM-DD: why`). Tightening rides along freely. Gated by
+  `scripts/check-ratchet-separation.sh` (lefthook on the staged diff, CI over
+  the PR's commits) — the shape of the implementation's F5 finding.
+- The pull-request template carries an **author / verifier record** — who
+  wrote, who checked, human or agent, independent or not. A record, not a
+  substitute: it lets the history answer the question when someone asks.
+
 ## Identifiers are permanent
 
 - Contract ids are contiguous `C-001..C-NNN`: take the next number, never
@@ -42,6 +63,7 @@ bash scripts/check-links.sh                  # every relative link and anchor re
 bash scripts/check-als-style.sh              # requirements standard
 bash scripts/check-als-validation.sh         # per-section review records (hash-bound)
 bash scripts/check-gate-verification.sh      # the tools' own verification ledger
+bash scripts/check-ratchet-separation.sh --staged   # a loosening is its own dated commit
 python3 scripts/selftest-conformance.py      # the runner can fail correctly
 python3 scripts/check-runner-coverage.py     # how much of the runner the self-test reaches (exact line floor)
 (cd ref && cargo build --release)            # the reference evaluator (ADR-0015; pinned stable Rust, zero deps)

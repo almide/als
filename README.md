@@ -45,6 +45,7 @@ second judge: correctness.
 | `scripts/check-contract-provenance.py` | Provenance gate: every contract classified, classes derived from the recorded instants (a hand-edited class fails), retroactive count pinned to a shrink-only ceiling. `--write` regenerates from history. |
 | `scripts/check-als-validation.sh` | Validation-record gate: a review outlives only the exact text it covered (hash-bound, STALE otherwise); `--stamp ALS-<id>` prints a row skeleton. |
 | `scripts/check-runner-coverage.py` | Runs the self-test with the runner's stdlib trace hook on and compares the measured line coverage with the recorded floor (below = regression, above = ratchet up). |
+| `scripts/check-ratchet-separation.sh` | A ratchet loosening (ceiling up, floor down in `proofs/*.toml`) must be its own commit with a dated justification — the change that needed it cannot move the baseline silently (lefthook on the staged diff, CI over the PR's commits). |
 | `scripts/conformance.py` | **The runner.** Executes the corpus against a binary and writes a conformance statement. |
 | `ref/` | **The reference evaluator** (ADR-0015): a fresh, source-level evaluator of Almide programs in pinned stable Rust (Ferrocene-tracking), zero dependencies, no `almide-*` crate — the judge's own reading of the ALS text, behind the protocol `als-ref run <file> --json`. |
 | `proofs/kernel-conformance/` | The λ_almd kernel corpus (48 generated programs + the nine-line `kAll` trace, evaluator-pinned by the Lean belt; PROVENANCE.toml) — the reference evaluator's seed oracle, held at agreement 1.0. |

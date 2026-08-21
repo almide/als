@@ -17,7 +17,7 @@ claimed.
 | Requirements review — accurate, consistent, complete (A-3 obj 1–3) | `proofs/als-validation.toml` — per `ALS-<id>` section: reviewer, date, independence, verdict, bound to a hash of the reviewed text (a text change makes the record STALE); unvalidated sections are a shrink-only ceiling. Today every recorded review is by the author — the `independent` column says so | `scripts/check-als-validation.sh` (`--stamp` prints a row for a reviewer to sign) |
 | Surface coverage of requirements | `proofs/als-element-coverage.toml` — every surface-syntax element → its normative section; 72/72, UNWRITTEN = 0 (a freeze precondition) | `scripts/check-als-element-coverage.sh` |
 | Requirements precede code (the two-PR order, [CONTRIBUTING.md](CONTRIBUTING.md)) | `proofs/contract-provenance.toml` — per contract, the instant its id entered the ledger against the instant its `since` release was tagged: `requirements-first` (two-repo regime) / `contemporaneous` / `retroactive` / `unmeasured`; classes are derived from the recorded instants, the retroactive count is a shrink-only ceiling | `scripts/check-contract-provenance.py` (`--write` regenerates from full history; the gate itself needs none) |
-| Configuration management (§7) | Separate repository; protected `main` (PR-only, required gate, admins included, linear history); baselines = tags; consumers pin commits | GitHub branch protection + the two-PR requirements-first order ([CONTRIBUTING.md](CONTRIBUTING.md)) |
+| Configuration management (§7) | Separate repository; protected `main` (PR-only, required gate, admins included, linear history); baselines = tags; consumers pin commits; a ratchet loosening is its own dated commit | GitHub branch protection + the two-PR requirements-first order ([CONTRIBUTING.md](CONTRIBUTING.md)); `scripts/check-ratchet-separation.sh` |
 | Verification results records | Conformance statements (TOML): corpus commit, binary, platform, legs, limit, per-leg counts, every failure verbatim | `scripts/conformance.py --report`; the `conformance` workflow uploads them as artifacts |
 | Tool qualification (DO-330) | [proofs/gate-verification.toml](proofs/gate-verification.toml) — every verdict-bearing tool carries evidence it can FAIL correctly; UNVERIFIED ceiling **0** | `scripts/check-gate-verification.sh`; the runner's evidence is `scripts/selftest-conformance.py` (21 verdict-class scenarios against a scripted stub implementation, run in CI), and how much of the runner those scenarios exercise is measured — `proofs/runner-coverage.toml`, line coverage under an exact floor with the uncovered lines listed (`scripts/check-runner-coverage.py`; line, not branch) |
 | Problem reporting | [docs/ISSUE-TAXONOMY.md](docs/ISSUE-TAXONOMY.md) — closed severity set; `S-unsound` / `S-ambiguous` block an edition tag | Issue templates + labels; the edition-readiness instrument (planned with the first tag) re-checks |
@@ -31,7 +31,12 @@ Stated so they cannot be mistaken for claims:
    agents. Independence here is STRUCTURAL: two repositories, two gate sets,
    requirements reviewed and merged before implementation, and a runner any
    third party can point at any binary. It is not organizational
-   independence, and this repository does not claim otherwise.
+   independence, and this repository does not claim otherwise. The
+   mechanisms are in place and OFF — `.github/CODEOWNERS` names the
+   verifier role (resolving to the author today), required reviews stay at
+   0, the pull-request template carries an author/verifier record, and
+   `scripts/check-ratchet-separation.sh` keeps every ratchet loosening in
+   its own dated commit; what is missing is the person (#14, #32).
 2. **The cross legs judge agreement, not truth.** A divergence between
    targets is caught; both targets being wrong IDENTICALLY is invisible to
    this runner. The implementations' third leg (the reference interpreter in
