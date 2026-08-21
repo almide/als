@@ -44,6 +44,10 @@ bash scripts/check-als-validation.sh         # per-section review records (hash-
 bash scripts/check-gate-verification.sh      # the tools' own verification ledger
 python3 scripts/selftest-conformance.py      # the runner can fail correctly
 python3 scripts/check-runner-coverage.py     # how much of the runner the self-test reaches (exact line floor)
+(cd ref && cargo build --release)            # the reference evaluator (ADR-0015; pinned stable Rust, zero deps)
+bash scripts/check-ref-independence.sh       # no almide-* dependency, clippy clauses, F64 has no Display, fmt
+python3 scripts/check-ref-kernel.py          # λ_almd kernel corpus reproduced byte-for-byte, twice
+python3 scripts/check-ref-totality.py        # every corpus call implemented or ledgered; abstain total shrink-only (--write to ratchet)
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md
 bash docs/contracts/generate-conformance.sh > docs/contracts/conformance.md
 bash docs/specs/als/generate-readme.sh      > docs/specs/als/README.md

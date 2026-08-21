@@ -35,9 +35,17 @@ Stated so they cannot be mistaken for claims:
 2. **The cross legs judge agreement, not truth.** A divergence between
    targets is caught; both targets being wrong IDENTICALLY is invisible to
    this runner. The implementations' third leg (the reference interpreter in
-   their 3-way oracle) carries that burden today; a reference evaluator
-   owned by this repository would close the gap and is the natural next
-   instrument after the freeze ([#10](https://github.com/almide/als/issues/10)).
+   their 3-way oracle) carries that burden today. The judge-owned
+   reference evaluator that closes the gap exists since 2026-08-21
+   (`ref/`, ADR-0015 — fresh from the ALS text, pinned stable Rust, zero
+   dependencies; λ_almd kernel corpus reproduced 49/49; 173/602 programs
+   of the cross corpora evaluated, the rest ledgered by class, shrink-only,
+   `proofs/ref-abstain.toml`); what is NOT yet in place is the runner's
+   `ref` leg whose verdict is *legs == ref* — until it runs, this
+   limitation stands as declared ([#10](https://github.com/almide/als/issues/10)).
+   Its first pass already produced the class this limitation describes:
+   two programs on which both targets agree and the text-reading evaluator
+   does not (`docs/ref/PARSER-NOTES.md` F1, F2).
    **That third leg shares the front half.** `almide-interp` is an IR
    interpreter built on the compiler's own parser, checker and lowering; the
    three-way vote is N-version from IR downward only. A defect in the shared

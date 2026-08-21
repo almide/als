@@ -1,5 +1,8 @@
-# The judge's self-consistency gates. Pure bash/python — no compiler, no
-# network. Required for merge into main.
+# The judge's self-consistency gates. Bash/python plus the reference
+# evaluator's own crate (ref/, ADR-0015: stable Rust pinned by
+# ref/rust-toolchain.toml, ZERO external crates — the only network use is the
+# toolchain download, cached). No compiler of the language under judgment.
+# Required for merge into main.
 name: gates
 on:
   push:
@@ -39,3 +42,23 @@ jobs:
         run: python3 scripts/selftest-conformance.py
       - name: Runner structural coverage under the self-test (line, exact floor)
         run: python3 scripts/check-runner-coverage.py
+      - name: Reference evaluator — pinned stable toolchain (ref/rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95.0
+          components: clippy, rustfmt
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ref/target
+          key: ref-${{ runner.os }}-1.95.0-${{ hashFiles('ref/Cargo.lock', 'ref/src/**') }}
+      - name: Reference evaluator builds (zero dependencies, stable only)
+        run: cargo build --release --quiet
+        working-directory: ref
+      - name: Reference evaluator is independent (ADR-0015 clauses 1/4/5/6)
+        run: bash scripts/check-ref-independence.sh
+      - name: Reference evaluator reproduces the λ_almd kernel corpus (agreement 1.0, twice)
+        run: python3 scripts/check-ref-kernel.py --ref ref/target/release/als-ref
+      - name: Reference evaluator totality-or-abstain and the abstain ledger (shrink-only)
+        run: python3 scripts/check-ref-totality.py --ref ref/target/release/als-ref
