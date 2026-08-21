@@ -67,12 +67,19 @@ already disagreed BEFORE any implementation was judged.
 ## Measured at this commit
 
 `scripts/check-ref-kernel.py`: 49/49 λ_almd programs byte-identical, twice.
-Over `spec/wasm_cross` + `spec/programs` (610 programs): **412 evaluated, 409
-agree with the native target, 0 evaluator faults** — the 3 disagreements are
-all adjudicated (F1 named-arg order, F10 ±0 min/max ×2, each under
-`@ref-allow`). 198 abstain in 73 classes (`proofs/ref-abstain.toml`; the head
-of the tail is now bytes/value/json/fan.bounded/fs). 217 stdlib functions
-implemented from the chapters. The float text path is the evaluator's own
+Over `spec/wasm_cross` + `spec/programs` (610 programs): **522 evaluated, 518
+agree with the native target, 0 evaluator faults** — the 4 disagreements are
+all adjudicated (F1 named-arg order, F10 ±0 min/max ×3, each under
+`@ref-allow`). 88 abstain in 35 classes (`proofs/ref-abstain.toml`; the head
+of the tail is now Codec statics / the fan charge model / matrix / sized
+ints). 451 stdlib functions implemented from the chapters — round 2 added
+the dynamic `Value` + the NORMATIVE json parser (transcribed from
+`stdlib/json_parse.almd`, deliberately lenient), `bytes` with reference
+semantics (let/var snapshots, aliasing through parameters) and total zero reads,
+fs/env/io/process effects, the vendored musl libm (`ref/src/libm.rs`, the
+SAME upstream the runtime vendors — bit-agreement confirmed over
+math_transcendental_bits / trig_libm / math_log_gamma), the civil calendar,
+hashes, base64/hex, http builders, and the C-034/C-197 allocation aborts. The float text path is the evaluator's own
 exact big-integer Dragon4 + correctly rounded decimal→binary64
 (`ref/src/fmtfloat.rs`), held against the host formatter/parser by two
 oracle tests over ~6,000 samples (`ref/tests/fmt_oracle.rs` — the host

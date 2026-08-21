@@ -137,6 +137,11 @@ pub struct Interp {
     ctors: BTreeMap<String, (String, CaseShape)>,
     globals: Rc<Env>,
     pub stdout: String,
+    /// env.set overlay (read before the host env; never written back to the host)
+    pub env_overlay: Vec<(String, String)>,
+    /// fixed-seed splitmix64 for the entropy floor (value nondeterminism is
+    /// sanctioned; the ALS asserts only range properties)
+    rand_state: u64,
     pub stderr: String,
     fuel: u64,
     in_test: bool,
@@ -155,6 +160,29 @@ const STD_MODULES: &[&str] = &[
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
 /// (list.md: "Append an element in place. Requires var binding.")
+/// Bytes bind by VALUE on let/var (`let snap = arena` snapshots —
+/// mutable_global_repeat_writes) while call arguments alias the same buffer
+/// (bytes_param_writeback)
+fn snapshot_bytes(v: Value) -> Value {
+    match v {
+        Value::Bytes(b) => {
+            let copy = b.borrow().clone();
+            Value::Bytes(Rc::new(std::cell::RefCell::new(copy)))
+        }
+        other => other,
+    }
+}
+
+/// canonicalize NaN results: every float operation that produces a NaN
+/// observes as the single canonical quiet NaN (nan_canonical_observation)
+pub fn fnan(x: f64) -> f64 {
+    if x.is_nan() {
+        f64::from_bits(0x7FF8000000000000)
+    } else {
+        x
+    }
+}
+
 const IN_PLACE: &[&str] = &[
     "list.push",
     "list.pop",
@@ -162,6 +190,7 @@ const IN_PLACE: &[&str] = &[
     "map.insert",
     "map.delete",
     "map.clear",
+    "string.push",
 ];
 
 const PRELUDE: &[&str] = &[
@@ -222,9 +251,23 @@ impl Interp {
             fns: BTreeMap::new(),
             methods: BTreeMap::new(),
             types: BTreeMap::new(),
-            ctors: BTreeMap::new(),
+            ctors: {
+                // prelude enum Endian (bytes cursor API): bare nullary ctors
+                let mut m = BTreeMap::new();
+                m.insert(
+                    "LittleEndian".to_string(),
+                    ("Endian".to_string(), CaseShape::Unit),
+                );
+                m.insert(
+                    "BigEndian".to_string(),
+                    ("Endian".to_string(), CaseShape::Unit),
+                );
+                m
+            },
             globals: Env::new(None),
             stdout: String::new(),
+            env_overlay: Vec::new(),
+            rand_state: 0x243F6A8885A308D3,
             stderr: String::new(),
             fuel: 200_000_000,
             in_test: false,
@@ -351,6 +394,14 @@ impl Interp {
 
     /// ADR-0006: is a value in callback position fallible? Closures carry the
     /// syntactic bit; named fns and methods read their declared channel.
+    pub fn next_rand(&mut self) -> u64 {
+        self.rand_state = self.rand_state.wrapping_add(0x9E3779B97F4A7C15);
+        let mut z = self.rand_state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+        z ^ (z >> 31)
+    }
+
     pub fn cb_fallible(&self, c: &Callable) -> bool {
         match c {
             Callable::Closure(cl) => cl.fallible && !self.in_test,
@@ -768,6 +819,9 @@ impl Interp {
             Value::Some(_) | Value::None => "option",
             Value::Ok(_) | Value::Err(_) => "result",
             Value::Range(..) => "list",
+            Value::Dyn(_) => "value",
+            Value::Bytes(_) => "bytes",
+            Value::Path(_) => "json",
             Value::Unit | Value::Record { .. } | Value::Variant { .. } | Value::Fn(_) => {
                 return None
             }
@@ -1379,12 +1433,21 @@ impl Interp {
                         // tuple of unwrapped values. The err path's observable order is
                         // pinned by C-199 and not yet read into this evaluator.
                         let mut vals = Vec::new();
+                        let mut first_err: Option<Value> = None;
                         for a in arms {
                             match self.eval(env, a)? {
                                 Value::Ok(v) => vals.push((*v).clone()),
-                                Value::Err(_) => return self.abstain("semantics:fan-err-order", "a fan arm returned err — the err observable order (C-199) is not implemented yet"),
+                                Value::Err(e) => {
+                                    if first_err.is_none() {
+                                        first_err = Some((*e).clone());
+                                    }
+                                }
                                 other => vals.push(other),
                             }
+                        }
+                        if let Some(e) = first_err {
+                            // C-199: the first err in arm order escalates like `!`
+                            return Err(Flow::Propagate(crate::eval::Prop::Err(e)));
                         }
                         if vals.len() == 1 {
                             Ok(vals.pop().unwrap())
@@ -1556,11 +1619,8 @@ impl Interp {
             Expr::Unary { op, expr } => {
                 let v = self.eval(env, expr)?;
                 match (op, v) {
-                    (UnOp::Neg, Value::Int(n)) => match n.checked_neg() {
-                        Some(m) => Ok(Value::Int(m)),
-                        None => self.abstain("semantics:int-overflow", "negation of i64::MIN"),
-                    },
-                    (UnOp::Neg, Value::Float(f)) => Ok(Value::Float(F64(-f.0))),
+                    (UnOp::Neg, Value::Int(n)) => Ok(Value::Int(n.wrapping_neg())),
+                    (UnOp::Neg, Value::Float(f)) => Ok(Value::Float(F64(fnan(-f.0)))),
                     (UnOp::Not, Value::Bool(b)) => Ok(Value::Bool(!b)),
                     (op, v) => Err(Flow::Fatal(format!("unary {op:?} on a {}", v.type_name()))),
                 }
@@ -1776,13 +1836,12 @@ impl Interp {
     fn binop(&mut self, op: BinOp, l: Value, r: Value) -> R {
         use BinOp::*;
         match (op, &l, &r) {
-            (Add, Value::Int(a), Value::Int(b)) => self.int_checked(a.checked_add(*b), "addition"),
-            (Sub, Value::Int(a), Value::Int(b)) => {
-                self.int_checked(a.checked_sub(*b), "subtraction")
-            }
-            (Mul, Value::Int(a), Value::Int(b)) => {
-                self.int_checked(a.checked_mul(*b), "multiplication")
-            }
+            // Int + - * WRAP two's-complement (int_pow_overflow_wraps,
+            // toplevel_const_wrapping, math.choose at i64::MAX); only / and %
+            // abort (T6)
+            (Add, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a.wrapping_add(*b))),
+            (Sub, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a.wrapping_sub(*b))),
+            (Mul, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a.wrapping_mul(*b))),
             (Div, Value::Int(a), Value::Int(b)) => {
                 // ALS-T6: `/` and `%` are total — zero divisor and MIN÷-1
                 // abort in the T6 form, never trap and never wrap silently
@@ -1807,15 +1866,16 @@ impl Interp {
                 // ALS-E29: `**` on Int desugars to math.pow
                 stdlib::call(self, "math.pow", vec![Value::Int(*a), Value::Int(*b)])
             }
-            (Add, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 + b.0))),
-            (Sub, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 - b.0))),
-            (Mul, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 * b.0))),
-            (Div, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 / b.0))),
-            (Rem, Value::Float(_), Value::Float(_)) | (Pow, Value::Float(_), Value::Float(_)) => {
-                self.abstain(
-                    "semantics:float-op",
-                    "Float `%` / `**` are not implemented yet",
-                )
+            (Add, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 + b.0)))),
+            (Sub, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 - b.0)))),
+            (Mul, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 * b.0)))),
+            (Div, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 / b.0)))),
+            (Rem, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 % b.0)))),
+            (Pow, Value::Float(a), Value::Float(b)) => {
+                // `**` on Float routes through the vendored libm pow (math.fpow)
+                Ok(Value::Float(F64(fnan(crate::libm::almide_rt_libm_pow(
+                    a.0, b.0,
+                )))))
             }
             (Add, Value::Str(a), Value::Str(b)) => {
                 let mut s = a.to_string();
@@ -1874,13 +1934,6 @@ impl Interp {
         }
     }
 
-    fn int_checked(&mut self, r: Option<i64>, what: &str) -> R {
-        match r {
-            Some(n) => Ok(Value::Int(n)),
-            None => self.abstain("semantics:int-overflow", format!("Int {what} overflowed i64 — the overflow rule is not read into this evaluator yet")),
-        }
-    }
-
     // ── statements ───────────────────────────────────────────────────────
 
     fn exec_block(&mut self, env: &Rc<Env>, stmts: &[Stmt]) -> R {
@@ -1890,12 +1943,12 @@ impl Interp {
             last = Value::Unit;
             match s {
                 Stmt::Let { pat, ty, expr, .. } => {
-                    let v = self.eval(env, expr)?;
+                    let v = snapshot_bytes(self.eval(env, expr)?);
                     let v = self.retag(v, ty.as_ref());
                     self.bind_let(env, pat, v)?;
                 }
                 Stmt::Var { name, ty, expr, .. } => {
-                    let v = self.eval(env, expr)?;
+                    let v = snapshot_bytes(self.eval(env, expr)?);
                     let v = self.retag(v, ty.as_ref());
                     env.define(name, v);
                 }
