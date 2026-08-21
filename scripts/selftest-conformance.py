@@ -60,6 +60,21 @@ if cmd == "test":
 sys.exit(2)
 '''
 
+STUB_REF = r'''#!/usr/bin/env python3
+import json, os, sys
+if sys.argv[1:2] == ["--version"]:
+    print("als-ref 0.0-stub"); sys.exit(0)
+S = json.load(open(os.environ["ALS_STUB_SCENARIO"]))
+# argv: run <path> --json
+name = os.path.basename(sys.argv[2])
+doc = S.get("refs", {}).get(name)
+if doc is None:
+    print(json.dumps({"abstain": {"class": "stub:unscripted", "reason": "no scripted reply"}})); sys.exit(0)
+if doc == "MALFORMED":
+    print("this is not json"); sys.exit(0)
+print(json.dumps(doc)); sys.exit(0)
+'''
+
 STUB_WASMTIME = r'''#!/usr/bin/env python3
 import json, sys
 if sys.argv[1:2] == ["--version"]:
@@ -89,19 +104,20 @@ def write(root, rel, text):
 def run_case(td, name, legs, build, expect_exit, expect):
     """build(root, scenario) populates the tree + stub behaviour."""
     root = make_root(td)
-    scenario = {"programs": {}, "checks": {}, "suites": {}}
+    scenario = {"programs": {}, "checks": {}, "suites": {}, "refs": {}}
     build(root, scenario)
     sdir = os.path.join(td, "stub")
     os.makedirs(sdir, exist_ok=True)
     spath = os.path.join(sdir, "scenario.json")
     json.dump(scenario, open(spath, "w"))
-    for fname, body in [("almide", STUB_ALMIDE), ("wasmtime", STUB_WASMTIME)]:
+    for fname, body in [("almide", STUB_ALMIDE), ("wasmtime", STUB_WASMTIME), ("als-ref", STUB_REF)]:
         p = os.path.join(sdir, fname)
         open(p, "w").write(body)
         os.chmod(p, 0o755)
     report = os.path.join(td, "report.toml")
     env = dict(os.environ, ALS_STUB_SCENARIO=spath, PATH=sdir + os.pathsep + os.environ["PATH"])
     r = subprocess.run([sys.executable, RUNNER, "--almide", os.path.join(sdir, "almide"),
+                        "--ref", os.path.join(sdir, "als-ref"),
                         "--legs", legs, "--jobs", "1", "--report", report, "--root", root],
                        env=env, capture_output=True, text=True, timeout=300)
     problems = []
@@ -223,6 +239,42 @@ def _(root, s):
     s["suites"]["spec/lang/wasm"] = {"exit": 0, "stdout": "0 passed, 2 failed (of 2 files)"}
 
 
+# ── the ref leg: the verdict is legs == REFERENCE, not legs agree ─────────
+
+REF_OK = {"exit": 0, "stdout": "x\n", "stderr": ""}
+
+def ref_fixture(root, s, name, native, wasm, ref, header=""):
+    cross_fixture(root, s, name, native, wasm, header=header)
+    s["refs"][f"{name}.almd"] = ref
+
+@case("ref: both legs equal the reference is the only green", "ref", 0, {"ref": {"total": 1, "passed": 1, "failed": 0, "skipped": 0}})
+def _(root, s): ref_fixture(root, s, "r_ok", OK, OK, REF_OK)
+
+@case("ref: native differing from the reference is red", "ref", 1, {"ref": {"failed": 1}})
+def _(root, s): ref_fixture(root, s, "r_nat", dict(OK, stdout="y\n"), OK, REF_OK)
+
+@case("ref: wasm differing from the reference is red", "ref", 1, {"ref": {"failed": 1}})
+def _(root, s): ref_fixture(root, s, "r_wasm", OK, dict(OK, stdout="y\n"), REF_OK)
+
+@case("ref: CO-DRIFT — the targets agree with each other and both differ from the reference — is red", "ref", 1, {"ref": {"failed": 1, "passed": 0}})
+def _(root, s): ref_fixture(root, s, "r_codrift", dict(OK, stdout="y\n"), dict(OK, stdout="y\n"), REF_OK)
+
+@case("ref: a reference abstain is counted and skipped, never a verdict", "ref", 0, {"ref": {"total": 1, "passed": 0, "failed": 0, "skipped": 1}})
+def _(root, s): ref_fixture(root, s, "r_abst", OK, OK, {"abstain": {"class": "stdlib:x.y", "reason": "scripted"}})
+
+@case("ref: a malformed protocol reply is red, never a verdict", "ref", 1, {"ref": {"failed": 1}})
+def _(root, s): ref_fixture(root, s, "r_bad", OK, OK, "MALFORMED")
+
+@case("ref: an evaluator fault is red", "ref", 1, {"ref": {"failed": 1}})
+def _(root, s): ref_fixture(root, s, "r_fault", OK, OK, {"error": "scripted fault"})
+
+@case("ref: @ref-allow tracks an adjudicated disagreement without passing it", "ref", 0, {"ref": {"allowed": 1, "passed": 0, "failed": 0}})
+def _(root, s): ref_fixture(root, s, "r_track", dict(OK, stdout="y\n"), dict(OK, stdout="y\n"), REF_OK, header="// @ref-allow: F-numbered finding under adjudication\n")
+
+@case("ref: a healed @ref-allow is STALE and red", "ref", 1, {"ref": {"stale": 1, "failed": 0}})
+def _(root, s): ref_fixture(root, s, "r_stale", OK, OK, REF_OK, header="// @ref-allow: was disagreeing\n")
+
+
 def main():
     failures = []
     for name, legs, build, expect_exit, expect in CASES:
@@ -235,14 +287,14 @@ def main():
         if problems:
             failures.append(name)
     n = len(CASES)
-    expected_n = 21
+    expected_n = 30
     if n != expected_n:
         failures.append(f"scenario count {n} != declared {expected_n} — a dropped scenario is a silent hole")
         print(f"  FAIL scenario count {n} != {expected_n}")
     if failures:
         print(f"selftest-conformance: {len(failures)} FAILURE(S) — the runner's verdicts cannot be trusted until this is green")
         return 1
-    print(f"selftest-conformance OK: {n} scenarios — every verdict class turns red for its reason and green only for agreement")
+    print(f"selftest-conformance OK: {n} scenarios — every verdict class turns red for its reason and green only for agreement (and, on the ref leg, only for agreement WITH THE REFERENCE)")
     return 0
 
 
