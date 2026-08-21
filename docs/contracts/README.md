@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 318 contracts: **requirements-first 19** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 126** (shrink-only ceiling 126), unmeasured 17.
 
-318 contracts
+319 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -353,4 +353,5 @@ contemporaneous 156, **retroactive 126** (shrink-only ceiling 126), unmeasured 1
 | C-316 | A @bounded effect fn may only use standard output; other effect modules, host-reaching modules and fan are rejected (E076) | 0.59.0 | active | fixture | 0 |
 | C-317 | Float operations are provisionally rejected in a @bounded function (E077) | 0.59.0 | active | fixture | 0 |
 | C-318 | Early exit inside a counted loop body is rejected in a @bounded function (E078) | 0.59.0 | active | fixture | 0 |
+| C-319 | A captured-and-mutated var List is shared storage through a closure | 0.59.0 | active | fixture | 1 |
 
