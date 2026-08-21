@@ -23,4 +23,5 @@
 # 2026-08-21: +6 — ALS-T19..T24 (numeric determinism family, ADR-0016) landed
 # requirements-first and unreviewed; no reviewer other than the author exists
 # (QUALIFICATION.md limitation 1, #14). Rows are added when someone signs.
-# unvalidated_ceiling = "116"
+# 2026-08-21: +11 — ALS-B1..B11 (the bounded profile, ADR-0017), same standing.
+# unvalidated_ceiling = "127"

@@ -1,6 +1,6 @@
 # ALS Requirements Standard
 
-> Last updated: 2026-08-20
+> Last updated: 2026-08-21
 
 How a normative section is written, identified, and retired. This is the
 DO-178C Table A-1 artifact for the ALS: the standard the requirements are
@@ -20,6 +20,7 @@ a machine can check; the rest is review discipline.
 
 | Prefix | Chapter | Subject |
 |--------|---------|---------|
+| B  | bounded.md | the bounded profile — `@bounded` functions (ADR-0017) |
 | C  | collections.md | list / map / set semantics |
 | D  | data-formats.md | JSON, Value, regex, binary decode |
 | DT | deterministic-time.md | time algebra, fan budgets, deterministic race |
