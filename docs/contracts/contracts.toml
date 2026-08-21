@@ -724,7 +724,7 @@ evidence  = [
 id        = "C-049"
 spec      = "ALS-T15"
 title     = "float.sign is f64::signum; float/math min/max ignore NaN"
-statement = "`float.sign` == Rust `f64::signum` — `copysign(1.0, x)` for every non-NaN x (so `sign(0.0)=1`, `sign(-0.0)=-1`, `sign(±inf)=±1`) and NaN for NaN — NOT the old three-way sign (0 for ±0.0/NaN). `float.max`/`float.min`/`math.fmax`/`math.fmin` IGNORE a NaN operand and return the other, and on ±0 ties ALL FOUR return the FIRST operand (`max(0,-0)=0`, `max(-0,0)=-0`). Both targets implement the same explicit NaN/tie decision tree — never the NaN-propagating raw `f64.max`/`f64.min` wasm instructions, and never the llvm.minnum/maxnum intrinsics, whose unspecified ±0-tie order let x86 `maxsd` return the SECOND operand when inlined. All byte-identical native == wasm == interp."
+statement = "`float.sign` == Rust `f64::signum` — `copysign(1.0, x)` for every non-NaN x (so `sign(0.0)=1`, `sign(-0.0)=-1`, `sign(±inf)=±1`) and NaN for NaN — NOT the old three-way sign (0 for ±0.0/NaN). `float.max`/`float.min`/`math.fmax`/`math.fmin` IGNORE a NaN operand and return the other. On ±0 ties the order is IEEE 754-2019 minimum/maximum (`-0 < +0`, commutative) — normative in ALS-T23 / C-306 since 2026-08-21, which RETIRED the earlier first-operand tie rule. Both targets implement the same explicit NaN/zero decision tree — never the NaN-propagating raw `f64.max`/`f64.min` wasm instructions, and never the llvm.minnum/maxnum intrinsics, whose unspecified ±0-tie order let x86 `maxsd` return the SECOND operand when inlined. All byte-identical native == wasm == interp."
 since     = "0.24.0"
 status    = "active"
 evidence  = [
@@ -3859,4 +3859,82 @@ since     = "0.59.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/map_upsert_str.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-302"
+spec      = "ALS-T19"
+title     = "Numeric determinism family head: a Float result is a function of the program alone"
+statement = "The observable result of any Float computation (stdout, stderr, exit code, `float.to_bits`) is a function of the program and its inputs — not of the target, host CPU, OS, build flags or the process's floating-point mode. ALS-T19 names every member section (T2/T9/T10/T13/T15/T20–T24, C9, E3, M10, R4, C-210) and the NaN observation boundaries; every fixture of the family carries this id alongside its own. Written requirements-first (ADR-0016): the family landed here before any implementation pinned it."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float_no_contraction.almd", class = "fixture" },
+  { path = "spec/wasm_cross/float_subnormal_preserved.almd", class = "fixture" },
+  { path = "spec/wasm_cross/math_transcendental_bits.almd", class = "fixture" },
+  { path = "spec/wasm_cross/float_signed_zero_minmax.almd", class = "fixture" },
+  { path = "spec/wasm_cross/float_to_int_edges.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-303"
+spec      = "ALS-T20"
+title     = "Float operations round to nearest-even once each — no contraction, no FMA"
+statement = "Every Float operation rounds to nearest, ties to even, once; `a * b + c` is two roundings on every target. With `a = 1 + 2^-52` and `b = 1 - 2^-53` (parsed at run time), `a * b` rounds to exactly 1.0, so `a * b - 1.0` and `a * b + (-1.0)` are 0.0 on both targets; a fused multiply-add would leave `2^-53 - 2^-105`. No other rounding mode is observable, and no backend may contract."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float_no_contraction.almd", class = "fixture" },
+  { path = "spec/stdlib/float_determinism_test.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-304"
+spec      = "ALS-T21"
+title     = "Subnormal floats are preserved — no flush-to-zero on any target"
+statement = "binary64 subnormals survive parse, arithmetic, display and `float.to_bits` on every target: `2.2250738585072014e-308 / 2.0` is `2^-1023` with bits `2251799813685248`, `float.parse(\"5e-324\")` has bits `1`, and neither is zero. Flush-to-zero and denormals-are-zero, inherited from a process or set by a backend, are non-conforming."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float_subnormal_preserved.almd", class = "fixture" },
+  { path = "spec/stdlib/float_determinism_test.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-305"
+spec      = "ALS-T22"
+title     = "Transcendental accuracy bounds: sqrt correctly rounded, exp/log/log2/log10/sin/cos/tan/fpow within 1 ulp"
+statement = "Beyond byte-identity across targets (C-026), the family declares distance from the true value: `math.sqrt`/`float.sqrt` are correctly rounded; `math.exp/log/log2/log10/sin/cos/tan` and `math.fpow` / Float `**` are within 1 ulp of the correctly rounded result; `math.log_gamma` carries no accuracy claim. Checked at sample points against references computed to 70 decimal digits and rounded to binary64 (the bit patterns in the tests); the cross-target fixture pins the bits on both legs."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/math_transcendental_bits.almd", class = "fixture" },
+  { path = "spec/stdlib/math_accuracy_test.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-306"
+spec      = "ALS-T23"
+title     = "Signed zero: IEEE propagation, equality ignores the sign, min/max order -0 below +0 (IEEE 754-2019)"
+statement = "`-0.0 * 1.0 = -0.0`, `-0.0 + 0.0 = 0.0` (also with a literal `0.0` operand — `x + 0.0 -> x` is not a valid identity for `x = -0.0`), `1.0 / -inf = -0.0`; `0.0 == -0.0` is true; `-0.0` displays with its sign. `float.min/max` and `math.fmin/fmax` follow IEEE 754-2019 minimum/maximum zero ordering: `min(-0.0, 0.0) = min(0.0, -0.0) = -0.0` and `max(-0.0, 0.0) = max(0.0, -0.0) = +0.0` — commutative, consistent with totalOrder (C9); NaN is ignored as in C-049. This RETIRES the first-operand tie rule C-049 used to state (adjudicated 2026-08-21, #28). Until the reference leg lands (ADR-0015), the cross fixtures assert agreement; `float_determinism_test.almd` asserts propagation and equality, and `float_minmax_zero_order_test.almd` asserts the zero ORDER — red against 0.58.0 by design (the release predates the rule)."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float_signed_zero_minmax.almd", class = "fixture" },
+  { path = "spec/wasm_cross/float_sign_minmax_ieee.almd", class = "fixture" },
+  { path = "spec/stdlib/float_determinism_test.almd", class = "fixture" },
+  { path = "spec/stdlib/float_minmax_zero_order_test.almd", class = "fixture" },
+  { path = "spec/stdlib/float_signed_zero_sum_test.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-307"
+spec      = "ALS-T24"
+title     = "float.to_int truncates toward zero and saturates, NaN to 0; the checked family is exact-or-none"
+statement = "`float.to_int` truncates toward zero, saturates at the i64 bounds for out-of-range and ±inf, and maps NaN to 0 (`to_int(2.7)=2`, `to_int(-2.7)=-2`, `to_int(9.3e18)=9223372036854775807`, `to_int(-inf)=-9223372036854775808`, `to_int(NaN)=0`, `to_int(-0.0)=0`). `float.to_{int8..int64,uint8..uint64}_checked` and `float.to_float32_checked` return `some` only when the value is exactly representable in the target type: fractional values, out-of-range, NaN and ±inf are `none` (`to_int64_checked(2.7)=none`, `to_int64_checked(-0.0)=some(0)`, `to_float32_checked(0.1)=none`). Identical on both targets."
+since     = "0.59.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float_to_int_edges.almd", class = "fixture" },
+  { path = "spec/stdlib/float_determinism_test.almd", class = "fixture" },
 ]

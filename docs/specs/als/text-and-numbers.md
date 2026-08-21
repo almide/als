@@ -1,6 +1,6 @@
 # ALS §T — Text and Number Semantics (normative)
 
-> Last updated: 2026-08-20
+> Last updated: 2026-08-21
 
 > **Status**: normative. これらの節は実装から独立した**規範**であり、v0（native）と
 > v1（MIR/wasm）の両実装がこの節に適合する義務を負う。適合の証拠は
@@ -124,6 +124,7 @@ Contracts: C-025。
 
 `math.sin/cos/tan/exp/log/pow` 等の超越関数は**全ターゲットで byte 一致**する
 （実装は vendored libm を両ターゲットで共有 — ホスト libm 依存は不適合）。
+真値からの距離（誤差上限）は ALS-T22 が定める。
 Contracts: C-026。
 
 ## ALS-T11 バイナリテキスト符号化
@@ -156,8 +157,9 @@ Contracts: C-048。
 
 `float.sign` は `f64::signum`（NaN → NaN、±0 → ±1）。`float.min/max`・
 `math.min/max` は **NaN を無視**する（片方が NaN なら他方を返す — IEEE-754
-minNum/maxNum 系、Rust `f64::min/max` と一致）。`float.round` はゼロ結果の
-符号を保つ（round(-0.0) = -0.0、half away from zero は不変）。
+minNum/maxNum 系）。`float.round` はゼロ結果の
+符号を保つ（round(-0.0) = -0.0、half away from zero は不変）。±0 同士の
+min/max の順序は ALS-T23（IEEE-754-2019 minimum/maximum）。
 Contracts: C-049, C-140。
 
 ## ALS-T16 長さ・添字の i64 クランプ
@@ -200,3 +202,180 @@ v0-wasm / 自己ホストの 3 バックエンドが同一の逐次 `string.repl
 v1-wasm / interp の全系統が同じ IR を継ぐ。
 Fixtures: `spec/wasm_cross/assert_abort_eq.almd`, `assert_abort_ne.almd`,
 `assert_abort_msg.almd`, `assert_abort_multiline.almd`。Contracts: C-153。
+
+## ALS-T19 数値決定性ファミリー
+
+Float 計算の観測可能な結果（stdout・stderr・exit code、および `float.to_bits` の
+値）は**プログラムと入力のみの関数**であり、ターゲット・ホスト CPU・OS・ビルド
+フラグ・実行環境の浮動小数モードに依存しない。この一文が数値決定性の規範であり、
+次の節群がその構成要素である — 既存: T2（`float.parse` 正確丸め）・T9（`to_fixed`）・
+T10（超越関数の単一実装）・T13（最短往復表示）・T15（符号と NaN 無視）・
+ALS-C9（totalOrder）・ALS-E3（`-0.0` 表示）・ALS-M10（等値）・ALS-R4（非有限
+定数表示）・C-210（NaN の正準観測）; 本ファミリーで新設: T20（丸めと縮約禁止）・
+T21（非正規数の保存）・T22（超越関数の誤差上限）・T23（符号付きゼロ）・
+T24（Float → Int 変換）。
+
+**NaN の観測境界**は `float.to_bits`・`float.to_string`・文字列補間・JSON / Value
+符号化・Map / Set のキー比較であり、どの境界でも NaN は単一の正準値として観測
+される（C-210: `to_bits` は `0x7FF8000000000000`）。
+
+```almide
+test "a Float result is a function of the program alone" {
+  let x = float.parse("0.1") ?? 0.0
+  assert_eq(float.to_bits(x + 0.2), 4599075939470750516)
+  assert_eq(float.to_string(x + 0.2), "0.30000000000000004")
+}
+```
+
+Fixture: 本ファミリーの fixture（`spec/wasm_cross/float_no_contraction.almd`、
+`float_subnormal_preserved.almd`、`math_transcendental_bits.almd`、
+`float_signed_zero_minmax.almd`、`float_to_int_edges.almd`）はすべて C-302 を
+併記する。Contracts: C-302。
+
+## ALS-T20 丸めと縮約の禁止
+
+Float の各演算（`+` `-` `*` `/`、`math.sqrt`、型変換）は IEEE-754 binary64 の
+**最近接偶数丸め**（round-to-nearest, ties-to-even）で **1 演算ごとに**丸める。
+他の丸めモードは観測できない。**縮約（contraction）は不適合**: `a * b + c` は
+乗算の丸めと加算の丸めの 2 回であり、融合積和（FMA）の 1 回丸めに置き換えては
+ならない — wasm に融合命令は無く、native バックエンドも生成してはならない。
+融合演算はこの言語に存在しない（必要になれば名前付き関数として別節で規範化する
+ものであり、暗黙のモードにはならない）。
+
+例: `a = 1 + 2^-52`、`b = 1 - 2^-53` のとき `a * b` の正確値は `1 + 2^-53 - 2^-105`
+で、binary64 では `1.0` に丸まる。ゆえに `a * b - 1.0 = 0.0`。縮約されていれば
+`2^-53 - 2^-105 ≈ 1.1e-16` が残り、両ターゲットの一致も壊れる。
+
+```almide
+test "a*b+c rounds twice — no fused multiply-add" {
+  let a = float.parse("1.0000000000000002") ?? 0.0
+  let b = float.parse("0.9999999999999999") ?? 0.0
+  assert_eq(a * b - 1.0, 0.0)
+  assert_eq(a * b + (0.0 - 1.0), 0.0)
+}
+```
+
+Fixture: `spec/wasm_cross/float_no_contraction.almd`、
+`spec/stdlib/float_determinism_test.almd`。Contracts: C-303。
+
+## ALS-T21 非正規数の保存
+
+binary64 の非正規数（`|x| < 2^-1022`、最小 `2^-1074 ≈ 4.9e-324`）は、どの
+ターゲット・ホストでも**値として保存**される。flush-to-zero・denormals-are-zero
+（入力側・出力側のいずれも）は不適合: `2.2250738585072014e-308 / 2.0` は 0 ではなく
+`2^-1023` であり、`float.to_bits` は `2251799813685248`（= `2^51`）を返す。
+parse（T2）・表示（T13）・算術・`to_bits` のどの境界でも非正規数は消えない。
+
+```almide
+test "subnormals survive arithmetic and observation" {
+  let tiny = float.parse("2.2250738585072014e-308") ?? 0.0
+  assert_eq(float.to_bits(tiny / 2.0), 2251799813685248)
+  assert(tiny / 2.0 != 0.0)
+  assert_eq(float.to_bits(float.parse("5e-324") ?? 0.0), 1)
+}
+```
+
+Fixture: `spec/wasm_cross/float_subnormal_preserved.almd`、
+`spec/stdlib/float_determinism_test.almd`。Contracts: C-304。
+
+## ALS-T22 超越関数の誤差上限
+
+T10 が全ターゲットでの byte 一致（単一の vendored 実装、ホスト libm 不使用）を
+定めるのに対し、本節は**真値からの距離**を宣言する。距離は「正確丸め結果との
+ulp 差」（同符号の binary64 同士では `float.to_bits` の差の絶対値）で測る。
+
+| 関数 | 上限 |
+|------|------|
+| `math.sqrt` / `float.sqrt` | 正確丸め（0 ulp） — IEEE-754 が要求する |
+| `math.exp` `math.log` `math.log2` `math.log10` | ≤ 1 ulp |
+| `math.sin` `math.cos` `math.tan` | ≤ 1 ulp |
+| `math.fpow` / Float `**` | ≤ 1 ulp |
+| `math.log_gamma` | 宣言なし — byte 一致（T10）のみが規範で、精度は主張しない |
+
+表にない関数の精度は主張されない。上限は標本点で実行検証される（下の test と
+`spec/stdlib/math_accuracy_test.almd`: 参照値は 70 桁十進で計算し正確丸めした
+binary64）。
+
+```almide
+fn ulp_from(x: Float, reference_bits: Int) -> Int = math.abs(float.to_bits(x) - reference_bits)
+
+test "sqrt is correctly rounded; exp/log/sin stay within 1 ulp at sample points" {
+  assert_eq(ulp_from(math.sqrt(2.0), 4609047870845172685), 0)
+  assert(ulp_from(math.exp(1.0), 4613303445314885481) <= 1)
+  assert(ulp_from(math.log(2.0), 4604418534313441775) <= 1)
+  assert(ulp_from(math.sin(1.0), 4605754516372524270) <= 1)
+}
+```
+
+Fixture: `spec/wasm_cross/math_transcendental_bits.almd`、
+`spec/stdlib/math_accuracy_test.almd`。Contracts: C-305。
+
+## ALS-T23 符号付きゼロ
+
+ゼロの符号は IEEE-754 の規則で伝播する: `-0.0 * 1.0 = -0.0`、`-0.0 + 0.0 = 0.0`
+（最近接偶数丸めでは異符号ゼロの和は `+0` — `+0.0` がリテラルでも同じで、
+`x + 0.0 → x` は `x = -0.0` に対して成り立たない恒等式なので、実装は畳み込んでは
+ならない。`x - 0.0 → x` と `x * 1.0 → x` は成り立つ）、`1.0 / -inf = -0.0`。等値は符号を
+無視する（`0.0 == -0.0` は真、ALS-M10）。表示は符号を保つ（`-0.0` → `-0.0`、
+ALS-E3）。`float.min/max`・`math.fmin/fmax` は **IEEE-754-2019 `minimum`/`maximum`
+のゼロ順序**に従う: `-0.0 < +0.0` として扱い、`min(-0.0, 0.0) = min(0.0, -0.0) = -0.0`、
+`max(-0.0, 0.0) = max(0.0, -0.0) = +0.0` — 引数順に依存せず（可換）、ALS-C9 の
+totalOrder と整合する。NaN は T15 のとおり無視される（片方が NaN なら他方、両方
+NaN なら NaN）。
+
+**裁定（2026-08-21, ADR-0016）**: 従来の「±0 の同値では第 1 引数を返す」規則
+（C-049 の旧文）は撤回し、本節が置き換える。
+
+```almide
+fn neg_zero() -> Float = (0.0 - float.abs(-1.0)) * 0.0
+
+test "signed zero propagates, compares equal, and orders -0 < +0 in min/max" {
+  let mz = neg_zero()
+  assert_eq(float.to_string(mz), "-0.0")
+  assert(mz == 0.0)
+  assert_eq(float.to_string(mz + 0.0), "0.0")
+  assert_eq(float.sign(float.min(mz, 0.0)), -1.0)
+  assert_eq(float.sign(float.min(0.0, mz)), -1.0)
+  assert_eq(float.sign(float.max(mz, 0.0)), 1.0)
+  assert_eq(float.sign(float.max(0.0, mz)), 1.0)
+  assert_eq(float.sign(math.fmin(0.0, mz)), -1.0)
+  assert_eq(float.sign(math.fmax(mz, 0.0)), 1.0)
+}
+```
+
+Fixture: `spec/wasm_cross/float_signed_zero_minmax.almd`、
+`spec/wasm_cross/float_sign_minmax_ieee.almd`、
+`spec/stdlib/float_determinism_test.almd`（伝播・等値）、
+`spec/stdlib/float_minmax_zero_order_test.almd`（±0 の順序 — 0.58.0 リリースは
+旧規則のままなので、ピン前進までこのファイルが赤）、
+`spec/stdlib/float_signed_zero_sum_test.almd`（リテラル `0.0` との和 — 0.58.0 の
+native は `x + 0.0` を `x` に畳み込んでおり、このファイルの赤がその発見）。
+Contracts: C-306。
+
+## ALS-T24 Float → Int 変換
+
+`float.to_int(x)` は**ゼロ方向切り捨て**（truncation）で、範囲外は **i64 の両端に
+飽和**し、NaN は `0`: `to_int(2.7) = 2`、`to_int(-2.7) = -2`、`to_int(+inf)` は
+`9223372036854775807`、`to_int(-inf)` は `-9223372036854775808`、`to_int(9.3e18)`
+は `9223372036854775807`（飽和）、`to_int(NaN) = 0`、`to_int(-0.0) = 0`。
+checked 族（`float.to_{int8,int16,int32,int64,uint8,uint16,uint32,uint64}_checked`、
+`float.to_float32_checked`）は**値が目標型で正確に表現できるときだけ `some`**:
+小数部を持つ値・範囲外・NaN・±inf は `none`（`to_int64_checked(2.7) = none`、
+`to_int64_checked(-0.0) = some(0)`、`to_float32_checked(0.1) = none`）。
+`float.floor/ceil/round` は Float → Float であり本節の対象外（round の ±0 は T15）。
+
+```almide
+test "float.to_int truncates toward zero, saturates, and maps NaN to 0" {
+  let inf = 1.0 / 0.0
+  assert_eq(float.to_int(2.7), 2)
+  assert_eq(float.to_int(-2.7), -2)
+  assert_eq(float.to_int(inf), 9223372036854775807)
+  assert_eq(float.to_int(0.0 - inf), -9223372036854775808)
+  assert_eq(float.to_int(0.0 / 0.0), 0)
+  assert_eq(float.to_int64_checked(2.7), none)
+  assert_eq(float.to_int64_checked(-0.0), some(0))
+}
+```
+
+Fixture: `spec/wasm_cross/float_to_int_edges.almd`、
+`spec/stdlib/float_determinism_test.almd`。Contracts: C-307。

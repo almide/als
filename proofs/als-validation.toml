@@ -20,4 +20,7 @@
 # a new section lands with its review, or raises the ceiling by exactly one
 # with a justification in the PR. Enforced by scripts/check-als-validation.sh.
 #
-# unvalidated_ceiling = "110"
+# 2026-08-21: +6 — ALS-T19..T24 (numeric determinism family, ADR-0016) landed
+# requirements-first and unreviewed; no reviewer other than the author exists
+# (QUALIFICATION.md limitation 1, #14). Rows are added when someone signs.
+# unvalidated_ceiling = "116"
