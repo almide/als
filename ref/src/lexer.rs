@@ -25,7 +25,9 @@ pub enum Tok {
     EscIdent(String),
     /// uppercase-initial name
     TypeName(String),
-    Int(i64),
+    /// magnitude up to u64::MAX (the UInt64 upper half is a legal literal,
+    /// C-179); the parser folds a preceding unary minus and range-checks
+    Int(u64),
     /// the literal's digits, kept textual: the evaluator parses floats itself
     /// (ADR-0015 clause 5 — `str::parse` is forbidden here)
     Float(String),
@@ -53,9 +55,9 @@ pub struct LexError {
 }
 
 const SYMS: &[&str] = &[
-    "..<", "...", "?.", "??", "|>", ">>", "=>", "->", "==", "!=", "<=", ">=", "**", "..",
-    "+", "-", "*", "/", "%", "^", "<", ">", "=", "!", "?", ".", ",", ":", ";", "(", ")", "[", "]",
-    "{", "}", "|", "@",
+    "..<", "...", "?.", "??", "|>", ">>", "=>", "->", "==", "!=", "<=", ">=", "**", "..", "+", "-",
+    "*", "/", "%", "^", "<", ">", "=", "!", "?", ".", ",", ":", ";", "(", ")", "[", "]", "{", "}",
+    "|", "@",
 ];
 
 pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
@@ -76,7 +78,12 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         }
         if c == '\n' {
             if !matches!(out.last().map(|t| &t.tok), Some(Tok::Newline) | None) {
-                out.push(Token { tok: Tok::Newline, line, col: i - line_start + 1, spaced: true });
+                out.push(Token {
+                    tok: Tok::Newline,
+                    line,
+                    col: i - line_start + 1,
+                    spaced: true,
+                });
             }
             i += 1;
             line += 1;
@@ -113,7 +120,10 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 }
             }
             if depth != 0 {
-                return Err(LexError { line: start_line, msg: "unterminated block comment".into() });
+                return Err(LexError {
+                    line: start_line,
+                    msg: "unterminated block comment".into(),
+                });
             }
             spaced = true;
             continue;
@@ -122,7 +132,12 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         // raw strings: r"..." / r"""..."""
         if c == 'r' && i + 1 < n && chars[i + 1] == '"' {
             let (text, ni, nl) = lex_raw(&chars, i + 1, line)?;
-            out.push(Token { tok: Tok::PlainStr(text), line, col, spaced });
+            out.push(Token {
+                tok: Tok::PlainStr(text),
+                line,
+                col,
+                spaced,
+            });
             line += nl;
             if nl > 0 {
                 line_start = rewind_line_start(&chars, ni);
@@ -133,7 +148,12 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         }
         if c == '"' {
             let (parts, ni, nl) = lex_dq(&chars, i, line)?;
-            out.push(Token { tok: Tok::Str(parts), line, col, spaced });
+            out.push(Token {
+                tok: Tok::Str(parts),
+                line,
+                col,
+                spaced,
+            });
             line += nl;
             if nl > 0 {
                 line_start = rewind_line_start(&chars, ni);
@@ -144,7 +164,12 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         }
         if c == '\'' {
             let (text, ni) = lex_sq(&chars, i, line)?;
-            out.push(Token { tok: Tok::PlainStr(text), line, col, spaced });
+            out.push(Token {
+                tok: Tok::PlainStr(text),
+                line,
+                col,
+                spaced,
+            });
             i = ni;
             spaced = false;
             continue;
@@ -157,16 +182,29 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 j += 1;
             }
             if j >= n {
-                return Err(LexError { line, msg: "unterminated backtick identifier".into() });
+                return Err(LexError {
+                    line,
+                    msg: "unterminated backtick identifier".into(),
+                });
             }
-            out.push(Token { tok: Tok::EscIdent(name), line, col, spaced });
+            out.push(Token {
+                tok: Tok::EscIdent(name),
+                line,
+                col,
+                spaced,
+            });
             i = j + 1;
             spaced = false;
             continue;
         }
         if c.is_ascii_digit() {
             let (tok, ni) = lex_number(&chars, i, line)?;
-            out.push(Token { tok, line, col, spaced });
+            out.push(Token {
+                tok,
+                line,
+                col,
+                spaced,
+            });
             i = ni;
             spaced = false;
             continue;
@@ -177,8 +215,17 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
                 j += 1;
             }
             let name: String = chars[i..j].iter().collect();
-            let tok = if c.is_uppercase() { Tok::TypeName(name) } else { Tok::Ident(name) };
-            out.push(Token { tok, line, col, spaced });
+            let tok = if c.is_uppercase() {
+                Tok::TypeName(name)
+            } else {
+                Tok::Ident(name)
+            };
+            out.push(Token {
+                tok,
+                line,
+                col,
+                spaced,
+            });
             i = j;
             spaced = false;
             continue;
@@ -194,17 +241,35 @@ pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
         }
         match matched {
             Some(s) => {
-                out.push(Token { tok: Tok::Sym(s), line, col, spaced });
+                out.push(Token {
+                    tok: Tok::Sym(s),
+                    line,
+                    col,
+                    spaced,
+                });
                 i += s.chars().count();
                 spaced = false;
             }
             None => {
-                return Err(LexError { line, msg: format!("unexpected character {c:?}") });
+                return Err(LexError {
+                    line,
+                    msg: format!("unexpected character {c:?}"),
+                });
             }
         }
     }
-    out.push(Token { tok: Tok::Newline, line, col: 1, spaced: true });
-    out.push(Token { tok: Tok::Eof, line, col: 1, spaced: true });
+    out.push(Token {
+        tok: Tok::Newline,
+        line,
+        col: 1,
+        spaced: true,
+    });
+    out.push(Token {
+        tok: Tok::Eof,
+        line,
+        col: 1,
+        spaced: true,
+    });
     Ok(out)
 }
 
@@ -234,23 +299,27 @@ fn lex_number(chars: &[char], start: usize, line: usize) -> Result<(Tok, usize),
                 i += 1;
                 continue;
             }
-            let d = chars[i].to_digit(radix).ok_or_else(|| LexError { line, msg: format!("bad digit {:?} in radix literal", chars[i]) })?;
+            let d = chars[i].to_digit(radix).ok_or_else(|| LexError {
+                line,
+                msg: format!("bad digit {:?} in radix literal", chars[i]),
+            })?;
             v = v * radix as i128 + d as i128;
             any = true;
             if v > u64::MAX as i128 {
-                return Err(LexError { line, msg: "integer literal out of range".into() });
+                return Err(LexError {
+                    line,
+                    msg: "integer literal out of range".into(),
+                });
             }
             i += 1;
         }
         if !any {
-            return Err(LexError { line, msg: "radix literal without digits".into() });
+            return Err(LexError {
+                line,
+                msg: "radix literal without digits".into(),
+            });
         }
-        // hex literals above i64::MAX are accepted by the lexer as wrapped u64
-        // patterns only if representable — keep the ALS-E1 range rule: error.
-        if v > i64::MAX as i128 {
-            return Err(LexError { line, msg: "integer literal out of range".into() });
-        }
-        return Ok((Tok::Int(v as i64), i));
+        return Ok((Tok::Int(v as u64), i));
     }
     let mut text = String::new();
     while i < n && (chars[i].is_ascii_digit() || chars[i] == '_') {
@@ -294,29 +363,30 @@ fn lex_number(chars: &[char], start: usize, line: usize) -> Result<(Tok, usize),
     if is_float {
         return Ok((Tok::Float(text), i));
     }
-    // decimal integer, ALS-E1: i64 range; the parser folds a preceding unary
-    // minus so that i64::MIN is writable — the lexer therefore accepts up to
-    // 9223372036854775808 and hands the magnitude over as Int(i64::MIN)
-    // marker only when exactly that; anything larger is out of range.
-    let mut v: i128 = 0;
+    // decimal integer: the magnitude up to u64::MAX (UInt64 upper half); the
+    // parser folds a preceding unary minus (ALS-E1: i64::MIN is writable) and
+    // decides the carrier.
+    let mut v: u128 = 0;
     for ch in text.chars() {
-        v = v * 10 + (ch as i128 - '0' as i128);
-        if v > (i64::MAX as i128) + 1 {
-            return Err(LexError { line, msg: "integer literal out of range".into() });
+        v = v * 10 + (ch as u128 - '0' as u128);
+        if v > u64::MAX as u128 {
+            return Err(LexError {
+                line,
+                msg: "integer literal out of range".into(),
+            });
         }
     }
-    if v == (i64::MAX as i128) + 1 {
-        // only legal under a unary minus; the parser checks
-        return Ok((Tok::Int(i64::MIN), i));
-    }
-    Ok((Tok::Int(v as i64), i))
+    Ok((Tok::Int(v as u64), i))
 }
 
 fn lex_escape(chars: &[char], i: usize, line: usize) -> Result<(char, usize), LexError> {
     // chars[i] == '\\'
     let n = chars.len();
     if i + 1 >= n {
-        return Err(LexError { line, msg: "dangling escape".into() });
+        return Err(LexError {
+            line,
+            msg: "dangling escape".into(),
+        });
     }
     let e = chars[i + 1];
     match e {
@@ -330,10 +400,16 @@ fn lex_escape(chars: &[char], i: usize, line: usize) -> Result<(char, usize), Le
         '$' => Ok(('$', i + 2)),
         'x' => {
             if i + 3 >= n {
-                return Err(LexError { line, msg: "bad \\x escape".into() });
+                return Err(LexError {
+                    line,
+                    msg: "bad \\x escape".into(),
+                });
             }
             let h: String = chars[i + 2..i + 4].iter().collect();
-            let v = u32::from_str_radix(&h, 16).map_err(|_| LexError { line, msg: "bad \\x escape".into() })?;
+            let v = u32::from_str_radix(&h, 16).map_err(|_| LexError {
+                line,
+                msg: "bad \\x escape".into(),
+            })?;
             Ok((char::from_u32(v).unwrap_or('\u{FFFD}'), i + 4))
         }
         'u' => {
@@ -344,10 +420,16 @@ fn lex_escape(chars: &[char], i: usize, line: usize) -> Result<(char, usize), Le
                     h.push(chars[j]);
                     j += 1;
                 }
-                let v = u32::from_str_radix(&h, 16).map_err(|_| LexError { line, msg: "bad \\u escape".into() })?;
+                let v = u32::from_str_radix(&h, 16).map_err(|_| LexError {
+                    line,
+                    msg: "bad \\u escape".into(),
+                })?;
                 Ok((char::from_u32(v).unwrap_or('\u{FFFD}'), j + 1))
             } else {
-                Err(LexError { line, msg: "bad \\u escape".into() })
+                Err(LexError {
+                    line,
+                    msg: "bad \\u escape".into(),
+                })
             }
         }
         // ALS-E5: unknown escapes are OPEN (#1264); the accepted corpus is
@@ -358,7 +440,11 @@ fn lex_escape(chars: &[char], i: usize, line: usize) -> Result<(char, usize), Le
 
 /// Double-quoted string (with `${}` interpolation) or heredoc `"""…"""`.
 /// Returns (parts, next index, newlines consumed).
-fn lex_dq(chars: &[char], start: usize, line: usize) -> Result<(Vec<StrPart>, usize, usize), LexError> {
+fn lex_dq(
+    chars: &[char],
+    start: usize,
+    line: usize,
+) -> Result<(Vec<StrPart>, usize, usize), LexError> {
     let n = chars.len();
     let heredoc = start + 2 < n && chars[start + 1] == '"' && chars[start + 2] == '"';
     let mut i = if heredoc { start + 3 } else { start + 1 };
@@ -367,7 +453,10 @@ fn lex_dq(chars: &[char], start: usize, line: usize) -> Result<(Vec<StrPart>, us
     let mut newlines = 0usize;
     loop {
         if i >= n {
-            return Err(LexError { line, msg: "unterminated string".into() });
+            return Err(LexError {
+                line,
+                msg: "unterminated string".into(),
+            });
         }
         let c = chars[i];
         if heredoc {
@@ -378,8 +467,6 @@ fn lex_dq(chars: &[char], start: usize, line: usize) -> Result<(Vec<StrPart>, us
         } else if c == '"' {
             i += 1;
             break;
-        } else if c == '\n' {
-            return Err(LexError { line, msg: "newline in string literal".into() });
         }
         if c == '\n' {
             newlines += 1;
@@ -404,6 +491,18 @@ fn lex_dq(chars: &[char], start: usize, line: usize) -> Result<(Vec<StrPart>, us
                     j = nj;
                     continue;
                 }
+                if d == '\'' {
+                    let (_, nj) = lex_sq(chars, j, line)?;
+                    src.extend(chars[j..nj].iter());
+                    j = nj;
+                    continue;
+                }
+                if d == '\\' && j + 1 < n {
+                    src.push(d);
+                    src.push(chars[j + 1]);
+                    j += 2;
+                    continue;
+                }
                 if d == '{' {
                     depth += 1;
                 } else if d == '}' {
@@ -416,7 +515,10 @@ fn lex_dq(chars: &[char], start: usize, line: usize) -> Result<(Vec<StrPart>, us
                 j += 1;
             }
             if j >= n {
-                return Err(LexError { line, msg: "unterminated ${ in string".into() });
+                return Err(LexError {
+                    line,
+                    msg: "unterminated ${ in string".into(),
+                });
             }
             if !text.is_empty() {
                 parts.push(StrPart::Text(std::mem::take(&mut text)));
@@ -521,7 +623,10 @@ fn lex_sq(chars: &[char], start: usize, line: usize) -> Result<(String, usize), 
     let mut text = String::new();
     loop {
         if i >= n {
-            return Err(LexError { line, msg: "unterminated string".into() });
+            return Err(LexError {
+                line,
+                msg: "unterminated string".into(),
+            });
         }
         let c = chars[i];
         if c == '\'' {
@@ -547,7 +652,10 @@ fn lex_raw(chars: &[char], start: usize, line: usize) -> Result<(String, usize, 
     let mut newlines = 0usize;
     loop {
         if i >= n {
-            return Err(LexError { line, msg: "unterminated raw string".into() });
+            return Err(LexError {
+                line,
+                msg: "unterminated raw string".into(),
+            });
         }
         let c = chars[i];
         if heredoc {
