@@ -9,7 +9,7 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 429
+ceiling = 434
 evaluated = 173
 
 [[abstain]]
@@ -101,6 +101,10 @@ class = "stdlib:fan.map"
 count = 4
 
 [[abstain]]
+class = "stdlib:float.parse"
+count = 4
+
+[[abstain]]
 class = "stdlib:float.to_fixed"
 count = 4
 
@@ -157,6 +161,10 @@ class = "stdlib:map.len"
 count = 3
 
 [[abstain]]
+class = "stdlib:math.sqrt"
+count = 3
+
+[[abstain]]
 class = "stdlib:option.unwrap_or"
 count = 3
 
@@ -174,10 +182,6 @@ count = 2
 
 [[abstain]]
 class = "stdlib:float.clamp"
-count = 2
-
-[[abstain]]
-class = "stdlib:float.parse"
 count = 2
 
 [[abstain]]
@@ -234,10 +238,6 @@ count = 2
 
 [[abstain]]
 class = "stdlib:math.pow"
-count = 2
-
-[[abstain]]
-class = "stdlib:math.sqrt"
 count = 2
 
 [[abstain]]
@@ -353,6 +353,10 @@ class = "stdlib:fan.race"
 count = 1
 
 [[abstain]]
+class = "stdlib:float.abs"
+count = 1
+
+[[abstain]]
 class = "stdlib:float.round"
 count = 1
 
@@ -362,6 +366,10 @@ count = 1
 
 [[abstain]]
 class = "stdlib:float.to_bits"
+count = 1
+
+[[abstain]]
+class = "stdlib:float.to_int"
 count = 1
 
 [[abstain]]
