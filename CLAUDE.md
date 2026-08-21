@@ -33,6 +33,7 @@ bash scripts/check-als-style.sh              # requirements standard (STANDARD.m
 bash scripts/check-als-validation.sh         # per-section review records, hash-bound (unvalidated shrink-only)
 bash scripts/check-links.sh                  # links and anchors resolve
 bash scripts/check-gate-verification.sh      # the tools' own DO-330 ledger
+bash scripts/check-ratchet-separation.sh --staged   # a ratchet loosening is its own dated commit
 python3 scripts/selftest-conformance.py      # the runner can fail correctly
 python3 scripts/check-runner-coverage.py     # and how much of it the self-test reaches (exact line floor)
 bash docs/contracts/generate-readme.sh      > docs/contracts/README.md

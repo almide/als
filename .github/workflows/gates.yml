@@ -13,6 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the ratchet-separation gate judges every commit in the range
+      - name: Ratchet loosenings are separated — own commit, own dated justification
+        run: |
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch -q origin "$GITHUB_BASE_REF"
+            RANGE="origin/$GITHUB_BASE_REF..HEAD"
+          else
+            RANGE="${{ github.event.before }}..HEAD"
+          fi
+          bash scripts/check-ratchet-separation.sh --range "$RANGE"
       - name: Contract ledger traceability (two-repo mode)
         run: bash scripts/check-contracts.sh
       - name: Contract provenance — requirements precede behaviour, measured

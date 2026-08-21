@@ -1,0 +1,16 @@
+# Independence-of-verification map (QUALIFICATION.md limitation 1; als #32, #14).
+#
+# Today every path resolves to the author's own account: the mechanism exists
+# and is OFF — branch protection keeps required_approving_review_count = 0,
+# because with one account a required review blocks every merge, and a second
+# account of the same person is not independence. The day a verifier who is
+# not the author exists (#14): replace the handle below with theirs, set
+# required_approving_review_count = 1 with "require review from code owners",
+# and author ≠ approver becomes enforced for every normative or ratchet change.
+docs/specs/**                  @O6lvl4
+docs/contracts/contracts.toml  @O6lvl4
+docs/adr/**                    @O6lvl4
+proofs/**                      @O6lvl4
+scripts/**                     @O6lvl4
+.github/**                     @O6lvl4
+QUALIFICATION.md               @O6lvl4
