@@ -18,8 +18,10 @@ use crate::value::*;
 pub enum Flow {
     /// ALS-R1 abort: `Error: <msg>` on stderr, exit 1
     Abort(String),
-    /// `!` met an err/none: the err value travels to the enclosing fn boundary
-    Propagate(Value),
+    /// `!` met an err/none: the failure travels to the enclosing fn boundary
+    /// with its polarity (a Result channel reifies none as err("none"),
+    /// ADR-0003 D3; an Option channel propagates none as none, C-211)
+    Propagate(Prop),
     Break,
     Continue,
     Exit(i32),
@@ -28,6 +30,21 @@ pub enum Flow {
         reason: String,
     },
     Fatal(String),
+}
+
+#[derive(Debug)]
+pub enum Prop {
+    Err(Value),
+    None,
+}
+
+impl Prop {
+    fn as_err(&self) -> Value {
+        match self {
+            Prop::Err(e) => e.clone(),
+            Prop::None => Value::str("none"),
+        }
+    }
 }
 
 pub type R = Result<Value, Flow>;
@@ -47,9 +64,15 @@ pub enum Outcome {
     Fault(String),
 }
 
+/// A binding is a shared SLOT: a closure captures the slots visible at its
+/// creation (so a `var` write flows both ways — closure_captured_list_mutation,
+/// sort_by_call_count), while a later shadowing `let` makes a NEW slot the
+/// closure never sees (ref_gleam_capture_shadow).
+type Slot = Rc<RefCell<Value>>;
+
 #[derive(Debug)]
 pub struct Env {
-    vars: RefCell<Vec<(Rc<str>, Value)>>,
+    vars: RefCell<Vec<(Rc<str>, Slot)>>,
     parent: Option<Rc<Env>>,
 }
 
@@ -60,27 +83,29 @@ impl Env {
             parent,
         })
     }
-    pub fn lookup(&self, name: &str) -> Option<Value> {
-        for (n, v) in self.vars.borrow().iter().rev() {
+    fn slot(&self, name: &str) -> Option<Slot> {
+        for (n, s) in self.vars.borrow().iter().rev() {
             if &**n == name {
-                return Some(v.clone());
+                return Some(s.clone());
             }
         }
-        self.parent.as_ref().and_then(|p| p.lookup(name))
+        self.parent.as_ref().and_then(|p| p.slot(name))
+    }
+    pub fn lookup(&self, name: &str) -> Option<Value> {
+        self.slot(name).map(|s| s.borrow().clone())
     }
     pub fn define(&self, name: &str, v: Value) {
-        self.vars.borrow_mut().push((Rc::from(name), v));
+        self.vars
+            .borrow_mut()
+            .push((Rc::from(name), Rc::new(RefCell::new(v))));
     }
-    /// assign to the nearest existing binding; false if unbound
+    /// assign through the nearest binding's slot; false if unbound
     pub fn assign(&self, name: &str, v: Value) -> bool {
-        for (n, slot) in self.vars.borrow_mut().iter_mut().rev() {
-            if &**n == name {
-                *slot = v;
-                return true;
+        match self.slot(name) {
+            Some(s) => {
+                *s.borrow_mut() = v;
+                true
             }
-        }
-        match &self.parent {
-            Some(p) => p.assign(name, v),
             None => false,
         }
     }
@@ -130,7 +155,14 @@ const STD_MODULES: &[&str] = &[
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
 /// (list.md: "Append an element in place. Requires var binding.")
-const IN_PLACE: &[&str] = &["list.push", "list.pop", "list.clear"];
+const IN_PLACE: &[&str] = &[
+    "list.push",
+    "list.pop",
+    "list.clear",
+    "map.insert",
+    "map.delete",
+    "map.clear",
+];
 
 const PRELUDE: &[&str] = &[
     "println",
@@ -272,8 +304,8 @@ impl Interp {
                 stdout,
                 stderr,
             },
-            Err(Flow::Propagate(e)) => {
-                let msg = render(&e).unwrap_or_default();
+            Err(Flow::Propagate(p)) => {
+                let msg = render(&p.as_err()).unwrap_or_default();
                 stderr.push_str(&format!("Error: {msg}\n"));
                 Outcome::Ran {
                     exit: 1,
@@ -312,6 +344,39 @@ impl Interp {
         })
     }
 
+    /// stdlib-facing abstain
+    pub fn abstain_pub<T>(&self, class: &str, reason: impl Into<String>) -> Result<T, Flow> {
+        self.abstain(class, reason)
+    }
+
+    /// ADR-0006: is a value in callback position fallible? Closures carry the
+    /// syntactic bit; named fns and methods read their declared channel.
+    pub fn cb_fallible(&self, c: &Callable) -> bool {
+        match c {
+            Callable::Closure(cl) => cl.fallible && !self.in_test,
+            Callable::Named(n) => self
+                .fns
+                .get(n)
+                .map(|f| {
+                    f.sig.effect
+                        || Self::ret_is_result(&f.sig.ret)
+                        || matches!(f.sig.ret, TypeExpr::Fallible(..))
+                })
+                .unwrap_or(false),
+            Callable::Method(t, n) => self
+                .methods
+                .get(&(t.clone(), n.clone()))
+                .map(|f| {
+                    f.sig.effect
+                        || Self::ret_is_result(&f.sig.ret)
+                        || matches!(f.sig.ret, TypeExpr::Fallible(..))
+                })
+                .unwrap_or(false),
+            Callable::Std(_) | Callable::Ctor(..) => false,
+            Callable::Composed(_, g) => self.cb_fallible(g),
+        }
+    }
+
     fn tick(&mut self) -> Result<(), Flow> {
         if self.fuel == 0 {
             return self.abstain("resource:fuel", "evaluation fuel exhausted — the program runs longer than the reference evaluator's budget");
@@ -324,6 +389,11 @@ impl Interp {
 
     fn ret_is_result(ret: &TypeExpr) -> bool {
         matches!(ret, TypeExpr::Named { name, .. } if name == "Result")
+    }
+
+    fn ret_is_option(ret: &TypeExpr) -> bool {
+        matches!(ret, TypeExpr::Option(_))
+            || matches!(ret, TypeExpr::Named { name, .. } if name == "Option")
     }
 
     fn bind_params(
@@ -359,6 +429,12 @@ impl Interp {
                     },
                 },
             };
+            if p.mutable {
+                return self.abstain(
+                    "semantics:mut-param",
+                    format!("`{}` takes `mut {}` — ALS-M13 in-place write-back through the caller's slot is not modeled yet", f.sig.name, p.name),
+                );
+            }
             let v = self.retag(v, p.ty.as_ref());
             env.define(&p.name, v);
         }
@@ -427,9 +503,19 @@ impl Interp {
                     Ok(v)
                 }
             }
-            Err(Flow::Propagate(e)) => {
+            Err(Flow::Propagate(p)) => {
                 if fallible {
-                    Ok(Value::Err(Rc::new(e)))
+                    Ok(Value::Err(Rc::new(p.as_err())))
+                } else if Self::ret_is_option(&f.sig.ret) {
+                    // C-211: a pure fn whose return resolves to Option — `!`
+                    // on none propagates none through the Option channel
+                    match p {
+                        Prop::None => Ok(Value::None),
+                        Prop::Err(e) => Err(Flow::Fatal(format!(
+                            "an err propagated into the Option channel of `{}`: {e:?}",
+                            f.sig.name
+                        ))),
+                    }
                 } else {
                     Err(Flow::Fatal(format!(
                         "`!` propagated out of the total pure fn `{}`",
@@ -623,9 +709,10 @@ impl Interp {
                     Ok(v)
                 }
             }
-            Err(Flow::Propagate(e)) => {
+            Err(Flow::Propagate(p)) => {
                 if c.fallible && !self.in_test {
-                    Ok(Value::Err(Rc::new(e)))
+                    // L4: an Option operand's none reifies as err("none")
+                    Ok(Value::Err(Rc::new(p.as_err())))
                 } else {
                     Err(Flow::Fatal(
                         "`!` propagated out of a non-fallible lambda".into(),
@@ -1125,6 +1212,33 @@ impl Interp {
                         Ok(Value::Record { type_name: Some(Rc::from(t.as_str())), fields: Rc::new(out) })
                     }
                     None => {
+                        // the checker infers a nominal type for an anonymous literal
+                        // whose field set matches exactly one declared record type
+                        // (r5_wasm_inferred_record_repr); mirror that when unambiguous
+                        let names: Vec<&str> = out.iter().map(|(k, _)| &**k).collect();
+                        let mut hits: Vec<String> = Vec::new();
+                        for (tname, decl) in self.types.iter() {
+                            if let TypeBody::Record(fds) = &decl.body {
+                                if fds.len() == names.len() && fds.iter().all(|fd| names.contains(&fd.name.as_str())) {
+                                    hits.push(tname.clone());
+                                }
+                            }
+                        }
+                        if hits.len() == 1 {
+                            let t = hits.pop().unwrap();
+                            let decl = self.types.get(&t).cloned().unwrap();
+                            if let TypeBody::Record(fds) = &decl.body {
+                                let mut ordered: Vec<(Rc<str>, Value)> = Vec::with_capacity(fds.len());
+                                for fd in fds {
+                                    let (k, v) = out.iter().find(|(k, _)| &**k == fd.name.as_str()).cloned().unwrap();
+                                    ordered.push((k, v));
+                                }
+                                return Ok(Value::Record {
+                                    type_name: Some(Rc::from(t.as_str())),
+                                    fields: Rc::new(ordered),
+                                });
+                            }
+                        }
                         // anonymous: field-name order (ALS-R2) — a stable insertion sort
                         let mut sorted: Vec<(Rc<str>, Value)> = Vec::with_capacity(out.len());
                         for item in out {
@@ -1278,6 +1392,34 @@ impl Interp {
                             Ok(Value::Tuple(Rc::new(vals)))
                         }
                     }
+                    Some(h) if h == "any" => {
+                        // ALS-R3: list order, first Ok wins; plain thunk values
+                        // auto-wrap (effect-system.md §5 Thunk typing)
+                        for a in arms {
+                            match self.eval(env, a)? {
+                                Value::Ok(v) => return Ok(Value::Ok(v)),
+                                Value::Err(_) => continue,
+                                other => return Ok(Value::Ok(Rc::new(other))),
+                            }
+                        }
+                        Ok(Value::Err(Rc::new(Value::str("fan.any: all candidates failed"))))
+                    }
+                    Some(h) if h == "settle" => {
+                        // ALS-R3: a TUPLE of per-arm Results, list order
+                        let mut out = Vec::with_capacity(arms.len());
+                        for a in arms {
+                            let v = self.eval(env, a)?;
+                            out.push(match v {
+                                v @ (Value::Ok(_) | Value::Err(_)) => v,
+                                other => Value::Ok(Rc::new(other)),
+                            });
+                        }
+                        if out.len() == 1 {
+                            Ok(out.pop().unwrap())
+                        } else {
+                            Ok(Value::Tuple(Rc::new(out)))
+                        }
+                    }
                     Some(h) => self.abstain(&format!("syntax:fan.{h}"), format!("`fan.{h}` block head is not implemented yet")),
                 }
             }
@@ -1347,24 +1489,29 @@ impl Interp {
                     if self.in_test {
                         Err(Flow::Abort(format!("unwrap on err: {}", render(&e).unwrap_or_default())))
                     } else {
-                        Err(Flow::Propagate((*e).clone()))
+                        Err(Flow::Propagate(Prop::Err((*e).clone())))
                     }
                 }
                 Value::None => {
                     if self.in_test {
                         Err(Flow::Abort("unwrap on none".into()))
                     } else {
-                        // ADR-0003 D3: none embeds as err("none")
-                        Err(Flow::Propagate(Value::str("none")))
+                        Err(Flow::Propagate(Prop::None))
                     }
                 }
-                other => Err(Flow::Fatal(format!("`!` on a {}", other.type_name()))),
+                other => self.abstain(
+                    "semantics:carrier-shape",
+                    format!("`!` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                ),
             },
             Expr::ToOption(inner) => match self.eval(env, inner)? {
                 Value::Ok(v) => Ok(Value::Some(v)),
                 Value::Err(_) => Ok(Value::None),
                 v @ (Value::Some(_) | Value::None) => Ok(v),
-                other => Err(Flow::Fatal(format!("`?` on a {}", other.type_name()))),
+                other => self.abstain(
+                    "semantics:carrier-shape",
+                    format!("`?` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                ),
             },
             Expr::OptChain { obj, name } => match self.eval(env, obj)? {
                 Value::Some(v) => match &*v {
@@ -1380,7 +1527,10 @@ impl Interp {
             Expr::UnwrapOr { expr, fallback } => match self.eval(env, expr)? {
                 Value::Ok(v) | Value::Some(v) => Ok((*v).clone()),
                 Value::Err(_) | Value::None => self.eval(env, fallback),
-                other => Err(Flow::Fatal(format!("`??` on a {}", other.type_name()))),
+                other => self.abstain(
+                    "semantics:carrier-shape",
+                    format!("`??` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                ),
             },
             Expr::Binary { op, lhs, rhs } => {
                 if *op == BinOp::And {
@@ -1634,21 +1784,29 @@ impl Interp {
                 self.int_checked(a.checked_mul(*b), "multiplication")
             }
             (Div, Value::Int(a), Value::Int(b)) => {
+                // ALS-T6: `/` and `%` are total — zero divisor and MIN÷-1
+                // abort in the T6 form, never trap and never wrap silently
                 if *b == 0 {
-                    return self.abstain("semantics:div-by-zero", "Int division by zero — the abort message (C-053) is not read into this evaluator yet");
+                    return Err(Flow::Abort("division by zero".into()));
                 }
-                self.int_checked(a.checked_div(*b), "division")
+                match a.checked_div(*b) {
+                    Some(v) => Ok(Value::Int(v)),
+                    None => Err(Flow::Abort("integer overflow".into())),
+                }
             }
             (Rem, Value::Int(a), Value::Int(b)) => {
                 if *b == 0 {
-                    return self.abstain("semantics:div-by-zero", "Int remainder by zero — the abort message (C-053) is not read into this evaluator yet");
+                    return Err(Flow::Abort("division by zero".into()));
                 }
-                self.int_checked(a.checked_rem(*b), "remainder")
+                match a.checked_rem(*b) {
+                    Some(v) => Ok(Value::Int(v)),
+                    None => Err(Flow::Abort("integer overflow".into())),
+                }
             }
-            (Pow, Value::Int(_), Value::Int(_)) => self.abstain(
-                "semantics:int-pow",
-                "`**` on Int (math.pow) is not implemented yet",
-            ),
+            (Pow, Value::Int(a), Value::Int(b)) => {
+                // ALS-E29: `**` on Int desugars to math.pow
+                stdlib::call(self, "math.pow", vec![Value::Int(*a), Value::Int(*b)])
+            }
             (Add, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 + b.0))),
             (Sub, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 - b.0))),
             (Mul, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(a.0 * b.0))),
@@ -1751,7 +1909,7 @@ impl Interp {
                         // ALS-ST5: the else is a raise — `err(e)` / `err(e)!` — or a Never
                         let v = self.eval(env, els)?;
                         return match v {
-                            Value::Err(e) => Err(Flow::Propagate((*e).clone())),
+                            Value::Err(e) => Err(Flow::Propagate(Prop::Err((*e).clone()))),
                             other => self.abstain("semantics:guard-else-value", format!("guard else evaluated to a {} (only err(e) / err(e)! / Never are read into this evaluator)", other.type_name())),
                         };
                     }
@@ -1769,7 +1927,7 @@ impl Interp {
                     Value::Err(_) | Value::None => {
                         let v = self.eval(env, els)?;
                         return match v {
-                            Value::Err(e) => Err(Flow::Propagate((*e).clone())),
+                            Value::Err(e) => Err(Flow::Propagate(Prop::Err((*e).clone()))),
                             other => self.abstain(
                                 "semantics:guard-else-value",
                                 format!("guard let else evaluated to a {}", other.type_name()),
@@ -1919,8 +2077,9 @@ impl Interp {
     }
 }
 
-/// Copy every binding visible from `env` (up to, not including, `globals`)
-/// into `into`, innermost shadowing outermost — the closure's by-value capture.
+/// Copy every binding SLOT visible from `env` (up to, not including,
+/// `globals`) into `into`, innermost shadowing outermost — the closure's
+/// capture: shared slots, frozen shadowing.
 fn snapshot_into(env: &Rc<Env>, into: &Rc<Env>, globals: &Rc<Env>) {
     let mut chain: Vec<Rc<Env>> = Vec::new();
     let mut cur = Some(env.clone());
@@ -1932,8 +2091,8 @@ fn snapshot_into(env: &Rc<Env>, into: &Rc<Env>, globals: &Rc<Env>) {
         cur = e.parent.clone();
     }
     for e in chain.iter().rev() {
-        for (n, v) in e.vars.borrow().iter() {
-            into.define(n, v.clone());
+        for (n, s) in e.vars.borrow().iter() {
+            into.vars.borrow_mut().push((n.clone(), s.clone()));
         }
     }
 }

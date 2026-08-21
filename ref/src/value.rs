@@ -128,9 +128,26 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
         (Value::Bool(x), Value::Bool(y)) => x == y,
         (Value::Unit, Value::Unit) => true,
         (Value::Str(x), Value::Str(y)) => x == y,
-        (Value::List(x), Value::List(y))
-        | (Value::Tuple(x), Value::Tuple(y))
-        | (Value::Set(x), Value::Set(y)) => {
+        // ALS-C3: sets compare as SETS — same members, any insertion order
+        (Value::Set(x), Value::Set(y)) => {
+            if x.len() != y.len() {
+                return Some(false);
+            }
+            for v in x.iter() {
+                let mut hit = false;
+                for w in y.iter() {
+                    if values_eq(v, w)? {
+                        hit = true;
+                        break;
+                    }
+                }
+                if !hit {
+                    return Some(false);
+                }
+            }
+            true
+        }
+        (Value::List(x), Value::List(y)) | (Value::Tuple(x), Value::Tuple(y)) => {
             if x.len() != y.len() {
                 return Some(false);
             }
@@ -226,6 +243,18 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
     })
 }
 
+/// ALS-C9: type-directed total order — Int and String total, Float by
+/// IEEE-754 totalOrder (NaN to the max side, -0 < +0). Other types have no
+/// specified order yet → None (the caller abstains).
+pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
+    match (a, b) {
+        (Value::Int(x), Value::Int(y)) => Some(x.cmp(y)),
+        (Value::Float(x), Value::Float(y)) => Some(x.0.total_cmp(&y.0)),
+        (Value::Str(x), Value::Str(y)) => Some(crate::eval::char_cmp(x, y)),
+        _ => None,
+    }
+}
+
 /// ALS-E1: decimal, including i64::MIN.
 pub fn fmt_int(n: i64) -> String {
     if n == 0 {
@@ -250,55 +279,12 @@ pub fn fmt_int(n: i64) -> String {
     String::from_utf8(digits).expect("ascii digits")
 }
 
-/// Display form of a bare Float (ALS-R2: "裸の Float: Display は整数値の .0
-/// を落とす"; ALS-R4: inf / -inf / NaN as names). The shortest round-trip
-/// digit generation is NOT implemented yet — non-integral floats abstain at
-/// the rendering site so that no host `{}` formatting leaks in.
-pub fn fmt_float_display(f: F64) -> Option<String> {
-    let x = f.0;
-    if x.is_nan() {
-        return Some("NaN".to_string());
-    }
-    if x.is_infinite() {
-        return Some(if x > 0.0 {
-            "inf".to_string()
-        } else {
-            "-inf".to_string()
-        });
-    }
-    if x == x.trunc() && x.abs() < 9.0e15 {
-        let n = x as i64;
-        if n == 0 && x.is_sign_negative() {
-            return Some("-0".to_string());
-        }
-        return Some(fmt_int(n));
-    }
-    None
-}
-
-/// `float.to_string` form (ALS-R2: keeps the `.0`; ALS-E3: `-0.0` keeps its
-/// sign). Same limitation as above for non-integral values.
-pub fn fmt_float_to_string(f: F64) -> Option<String> {
-    let x = f.0;
-    if x.is_nan() || x.is_infinite() {
-        return fmt_float_display(f);
-    }
-    if x == x.trunc() && x.abs() < 9.0e15 {
-        let n = x as i64;
-        if n == 0 && x.is_sign_negative() {
-            return Some("-0.0".to_string());
-        }
-        return Some(format!("{}.0", fmt_int(n)));
-    }
-    None
-}
-
 /// ALS-R2 interpolation display form. `None` = a rendering this evaluator
 /// does not implement yet (the caller abstains with class `render:<what>`).
 pub fn render(v: &Value) -> Option<String> {
     Some(match v {
         Value::Int(n) => fmt_int(*n),
-        Value::Float(f) => fmt_float_display(*f)?,
+        Value::Float(f) => crate::fmtfloat::display_form(*f),
         Value::Bool(b) => {
             if *b {
                 "true".to_string()
@@ -337,12 +323,79 @@ pub fn render(v: &Value) -> Option<String> {
         Value::None => "none".to_string(),
         Value::Ok(x) => format!("ok({})", render_literal(x)?),
         Value::Err(x) => format!("err({})", render_literal(x)?),
-        Value::Map(_)
-        | Value::Set(_)
-        | Value::Record { .. }
-        | Value::Variant { .. }
-        | Value::Fn(_)
-        | Value::Range(..) => return None,
+        // the pinned repr forms (ALS-R2; compound_repr_interp / records fixtures)
+        Value::Map(kvs) => {
+            if kvs.is_empty() {
+                "[:]".to_string()
+            } else {
+                let mut out = String::from("[");
+                for (i, (k, v2)) in kvs.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&render_literal(k)?);
+                    out.push_str(": ");
+                    out.push_str(&render_literal(v2)?);
+                }
+                out.push(']');
+                out
+            }
+        }
+        Value::Set(xs) => {
+            let mut out = String::from("set.from_list([");
+            for (i, x) in xs.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&render_literal(x)?);
+            }
+            out.push_str("])");
+            out
+        }
+        Value::Record { type_name, fields } => {
+            let mut out = match type_name {
+                Some(t) => format!("{t} {{ "),
+                None => "{ ".to_string(),
+            };
+            for (i, (n, v2)) in fields.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(n);
+                out.push_str(": ");
+                out.push_str(&render_literal(v2)?);
+            }
+            out.push_str(" }");
+            out
+        }
+        Value::Variant { case, payload, .. } => match payload {
+            Payload::Unit => case.to_string(),
+            Payload::Tuple(items) => {
+                let mut out = format!("{case}(");
+                for (i, x) in items.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&render_literal(x)?);
+                }
+                out.push(')');
+                out
+            }
+            Payload::Record(fields) => {
+                let mut out = format!("{case} {{ ");
+                for (i, (n, v2)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(n);
+                    out.push_str(": ");
+                    out.push_str(&render_literal(v2)?);
+                }
+                out.push_str(" }");
+                out
+            }
+        },
+        Value::Fn(_) | Value::Range(..) => return None,
     })
 }
 

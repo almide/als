@@ -2246,12 +2246,10 @@ fn tok_text(t: &Tok) -> String {
     }
 }
 
-/// Float literal text → binary64. Decimal → binary conversion is itself
-/// ALS-specified (ALS-T*); this is the evaluator's own digit-by-digit reader
-/// (exact for the literals the corpus uses: up to 17 significant digits with
-/// small exponents are rounded once from an exact rational).
+/// Float literal text → binary64: the evaluator's own correctly rounded
+/// conversion (ALS-T2 semantics; fmtfloat::parse_decimal, exact big-integer
+/// rounding for any digit count).
 pub fn parse_float_text(text: &str) -> f64 {
-    // split mantissa / exponent
     let (mant, exp) = match text.find('e') {
         Some(i) => (&text[..i], text[i + 1..].parse_i64_manual()),
         None => (text, 0i64),
@@ -2260,46 +2258,9 @@ pub fn parse_float_text(text: &str) -> f64 {
         Some(i) => (&mant[..i], &mant[i + 1..]),
         None => (mant, ""),
     };
-    // exact rational: digits * 10^(exp - frac_len)
-    let mut digits: u128 = 0;
-    let mut overflow_scale: i64 = 0;
-    for c in int_part.chars().chain(frac_part.chars()) {
-        let d = (c as u8 - b'0') as u128;
-        if digits > (u128::MAX - 9) / 10 {
-            overflow_scale += 1;
-            continue;
-        }
-        digits = digits * 10 + d;
-    }
-    let scale = exp - frac_part.len() as i64 + overflow_scale;
-    // Clinger's exact path: when the digit string fits in 53 bits and the
-    // power of ten is exactly representable (|scale| <= 22), one IEEE
-    // multiplication/division is a single correctly-rounded step — exactly
-    // the conversion ALS-T* specify. Outside that range the result may be
-    // off by an ulp; the evaluator abstains at the first float OPERATION on
-    // such a literal (see eval: `Expr::Float` carries `exact`).
-    const POW10: [f64; 23] = [
-        1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
-        1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
-    ];
-    let d = digits as f64;
-    if digits <= (1u128 << 53) && scale.unsigned_abs() <= 22 {
-        if scale >= 0 {
-            return d * POW10[scale as usize];
-        }
-        return d / POW10[(-scale) as usize];
-    }
-    let mut v = d;
-    if scale > 0 {
-        for _ in 0..scale {
-            v *= 10.0;
-        }
-    } else {
-        for _ in 0..(-scale) {
-            v /= 10.0;
-        }
-    }
-    v
+    let digits: String = int_part.chars().chain(frac_part.chars()).collect();
+    let scale = exp - frac_part.len() as i64;
+    crate::fmtfloat::parse_decimal(&digits, scale)
 }
 
 trait ParseI64Manual {
