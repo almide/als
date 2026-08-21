@@ -9,8 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 434
-evaluated = 173
+ceiling = 435
+evaluated = 175
 
 [[abstain]]
 class = "stdlib:list.map"
@@ -109,6 +109,10 @@ class = "stdlib:float.to_fixed"
 count = 4
 
 [[abstain]]
+class = "stdlib:list.get_or"
+count = 4
+
+[[abstain]]
 class = "stdlib:list.repeat"
 count = 4
 
@@ -146,10 +150,6 @@ count = 3
 
 [[abstain]]
 class = "stdlib:list.first"
-count = 3
-
-[[abstain]]
-class = "stdlib:list.get_or"
 count = 3
 
 [[abstain]]
