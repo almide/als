@@ -103,7 +103,7 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-I1](./implementation.md#als-i1-参照カウント規律（perceus）) | 参照カウント規律（Perceus） | C-041, C-066, C-071, C-086, C-121, C-122, C-130, C-149, C-146, C-159 |
+| [ALS-I1](./implementation.md#als-i1-参照カウント規律（perceus）) | 参照カウント規律（Perceus） | C-041, C-066, C-071, C-086, C-121, C-122, C-130, C-149, C-146, C-159, C-319 |
 | [ALS-I2](./implementation.md#als-i2-コンパイラの決定性と資源) | コンパイラの決定性と資源 | C-040, C-059 |
 | [ALS-I3](./implementation.md#als-i3-v1-lowering-エッジの等価証拠) | v1 lowering エッジの等価証拠 | C-075, C-107, C-109, C-116, C-120, C-138, C-152, C-143, C-144, C-139, C-156, C-157, C-158, C-212 |
 
