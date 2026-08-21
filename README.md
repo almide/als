@@ -46,6 +46,10 @@ second judge: correctness.
 | `scripts/check-als-validation.sh` | Validation-record gate: a review outlives only the exact text it covered (hash-bound, STALE otherwise); `--stamp ALS-<id>` prints a row skeleton. |
 | `scripts/check-runner-coverage.py` | Runs the self-test with the runner's stdlib trace hook on and compares the measured line coverage with the recorded floor (below = regression, above = ratchet up). |
 | `scripts/conformance.py` | **The runner.** Executes the corpus against a binary and writes a conformance statement. |
+| `ref/` | **The reference evaluator** (ADR-0015): a fresh, source-level evaluator of Almide programs in pinned stable Rust (Ferrocene-tracking), zero dependencies, no `almide-*` crate — the judge's own reading of the ALS text, behind the protocol `als-ref run <file> --json`. |
+| `proofs/kernel-conformance/` | The λ_almd kernel corpus (48 generated programs + the nine-line `kAll` trace, evaluator-pinned by the Lean belt; PROVENANCE.toml) — the reference evaluator's seed oracle, held at agreement 1.0. |
+| `proofs/ref-abstain.toml` | What the reference evaluator does not evaluate yet, by class, over `spec/wasm_cross` + `spec/programs` — shrink-only. |
+| `scripts/check-ref-kernel.py`, `scripts/check-ref-independence.sh`, `scripts/check-ref-totality.py` | The evaluator's gates: kernel agreement 1.0 twice (determinism); no `almide-*` dependency, pinned stable channel, clippy clauses (forbidden host types/methods), `F64` without `Display`, rustfmt; totality-or-abstain and the shrink-only abstain ledger. |
 | `BOUNDARY.md` | The classification of every path that was and was not moved here, with rationale, and the provenance of the extraction. |
 
 Paths are kept **verbatim** from the implementation's layout on purpose: the
@@ -115,7 +119,14 @@ paths that were renamed into place lives in the implementation repository.
   section; there is **no mechanized evaluation relation for Almide source here
   yet**. `proofs/ALS.v` in almide/almide is the *implementation's* ownership
   checker model (it imports `OwnershipChecker`) and stays there; a
-  language-level mechanized semantics, when written, belongs here.
+  language-level mechanized semantics, when written, belongs here. The
+  executable reading exists since 2026-08-21: `ref/` reproduces the λ_almd
+  kernel corpus 49/49 and, over `spec/wasm_cross` + `spec/programs`,
+  evaluates 173 of 602 programs (171 of the 172 comparable ones agree with
+  the native target; the one disagreement and the two findings are in
+  `docs/ref/PARSER-NOTES.md`) and abstains on 429 in 152 ledgered classes —
+  the long tail is stdlib. The `ref` leg of the runner (verdict *legs == ref*)
+  is the next step; until it runs, limitation 2 of QUALIFICATION.md stands.
 - The `greenfield` rebuild pins this repository as a submodule since
   2026-08-20 (BOUNDARY.md, "Stage B"); `almide/almide` `develop` still carries
   copies, and its cutover is a separately decided step.

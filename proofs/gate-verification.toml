@@ -82,3 +82,18 @@ evidence = "Landing run (2026-08-20): six fail directions demonstrated against t
 path = "scripts/edition-readiness.py"
 class = "NEGATIVE_TESTED"
 evidence = "Landing run (PR #6, 2026-08-20): --almide /nonexistent produced [FAIL] spec doctest and verdict NOT READY (exit 1); the full run with the real binary produced READY with 13 checks and the two honest WARNs (feature branch, dirty tree). FATAL direction covered by the tag-shape/tag-exists checks."
+
+[[gate]]
+path = "scripts/check-ref-independence.sh"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-21): fired on its first real run — rustfmt drift in the freshly written crate (red, green after `cargo fmt`) — and its dependency check fired falsely on the [[bin]] `path =` line (repaired to read only [dependencies]; both directions seen). clippy.toml's disallowed-methods caught `str::lines` in main.rs before the gate existed (clause 5 is structural: the lint failed the build)."
+
+[[gate]]
+path = "scripts/check-ref-kernel.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-21): the first evaluator build was run against the 49 λ_almd programs through this gate (49/49 byte-identical, twice — the floor of 1.0 held on the first pass); red directions demonstrated on a scratch copy before landing: a corrupted .expected (trace differs, expected/got printed), a program made to abstain (ABSTAIN named as a failure — the kernel fragment admits no abstain), an empty corpus directory (\"kernel corpus missing\" — a broken instrument is not a pass)."
+
+[[gate]]
+path = "scripts/check-ref-totality.py"
+class = "NEGATIVE_TESTED"
+evidence = "Landing run (2026-08-21): measured 602 programs, 173 evaluated, 429 abstains in 152 classes, 0 faults, and wrote proofs/ref-abstain.toml; red directions demonstrated before landing: the evaluator's early `Fatal` on type mismatches surfaced as FAULTS here (red) until re-classified as the `semantics:type-mismatch` abstain (a finding, not a fault); a hand-edited ceiling fires BELOW/EXCEEDS; a missing ledger names `--write`."
