@@ -9,36 +9,20 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 435
-evaluated = 175
+ceiling = 198
+evaluated = 412
 
 [[abstain]]
-class = "stdlib:list.map"
-count = 38
-
-[[abstain]]
-class = "stdlib:list.fold"
-count = 17
+class = "stdlib:bytes.from_list"
+count = 13
 
 [[abstain]]
 class = "stdlib:bytes.new"
-count = 14
-
-[[abstain]]
-class = "stdlib:int.parse"
-count = 14
+count = 13
 
 [[abstain]]
 class = "stdlib:value.int"
 count = 13
-
-[[abstain]]
-class = "stdlib:bytes.from_list"
-count = 12
-
-[[abstain]]
-class = "stdlib:float.to_string"
-count = 12
 
 [[abstain]]
 class = "stdlib:json.parse"
@@ -49,10 +33,6 @@ class = "semantics:type-name-value"
 count = 11
 
 [[abstain]]
-class = "stdlib:map.from_list"
-count = 10
-
-[[abstain]]
 class = "syntax:fan.bounded"
 count = 10
 
@@ -61,39 +41,27 @@ class = "stdlib:fs.create_temp_dir"
 count = 9
 
 [[abstain]]
-class = "stdlib:map.new"
-count = 8
-
-[[abstain]]
-class = "stdlib:string.slice"
-count = 8
-
-[[abstain]]
-class = "semantics:div-by-zero"
-count = 6
-
-[[abstain]]
-class = "stdlib:list.slice"
-count = 6
+class = "stdlib:value.str"
+count = 7
 
 [[abstain]]
 class = "stdlib:matrix.ones"
 count = 6
 
 [[abstain]]
-class = "stdlib:string.repeat"
-count = 6
+class = "semantics:carrier-shape"
+count = 4
 
 [[abstain]]
-class = "render:Variant"
-count = 5
+class = "semantics:list-oob-write"
+count = 4
 
 [[abstain]]
-class = "stdlib:value.str"
-count = 5
+class = "semantics:to-fixed-domain"
+count = 4
 
 [[abstain]]
-class = "semantics:int-overflow"
+class = "stdlib:env.args"
 count = 4
 
 [[abstain]]
@@ -101,35 +69,7 @@ class = "stdlib:fan.map"
 count = 4
 
 [[abstain]]
-class = "stdlib:float.parse"
-count = 4
-
-[[abstain]]
-class = "stdlib:float.to_fixed"
-count = 4
-
-[[abstain]]
-class = "stdlib:list.get_or"
-count = 4
-
-[[abstain]]
-class = "stdlib:list.repeat"
-count = 4
-
-[[abstain]]
 class = "stdlib:matrix.from_lists"
-count = 4
-
-[[abstain]]
-class = "stdlib:string.split"
-count = 4
-
-[[abstain]]
-class = "stdlib:string.to_upper"
-count = 4
-
-[[abstain]]
-class = "syntax:fan.any"
 count = 4
 
 [[abstain]]
@@ -137,51 +77,35 @@ class = "syntax:fan.race"
 count = 4
 
 [[abstain]]
-class = "render:Record"
+class = "semantics:mut-param"
 count = 3
 
 [[abstain]]
-class = "stdlib:env.args"
+class = "stdlib:list.with_capacity"
 count = 3
 
 [[abstain]]
-class = "stdlib:list.chunk"
+class = "stdlib:result.flatten"
 count = 3
 
 [[abstain]]
-class = "stdlib:list.first"
+class = "stdlib:string.push"
 count = 3
 
 [[abstain]]
-class = "stdlib:list.sort"
-count = 3
-
-[[abstain]]
-class = "stdlib:map.len"
-count = 3
-
-[[abstain]]
-class = "stdlib:math.sqrt"
-count = 3
-
-[[abstain]]
-class = "stdlib:option.unwrap_or"
-count = 3
-
-[[abstain]]
-class = "render:Float"
+class = "semantics:compare"
 count = 2
 
 [[abstain]]
-class = "render:Map"
+class = "semantics:guard-else-value"
+count = 2
+
+[[abstain]]
+class = "semantics:int-overflow"
 count = 2
 
 [[abstain]]
 class = "semantics:uint64-upper-half"
-count = 2
-
-[[abstain]]
-class = "stdlib:float.clamp"
 count = 2
 
 [[abstain]]
@@ -193,55 +117,15 @@ class = "stdlib:fs.mkdir_p"
 count = 2
 
 [[abstain]]
-class = "stdlib:int.clamp"
-count = 2
-
-[[abstain]]
 class = "stdlib:int.from_int8"
 count = 2
 
 [[abstain]]
-class = "stdlib:int.to_float"
+class = "stdlib:map.upsert"
 count = 2
 
 [[abstain]]
-class = "stdlib:list.enumerate"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.filter"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.find"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.min"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.remove_at"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.sort_by"
-count = 2
-
-[[abstain]]
-class = "stdlib:list.with_capacity"
-count = 2
-
-[[abstain]]
-class = "stdlib:map.fold"
-count = 2
-
-[[abstain]]
-class = "stdlib:math.pow"
-count = 2
-
-[[abstain]]
-class = "stdlib:option.to_result"
+class = "stdlib:math.exp"
 count = 2
 
 [[abstain]]
@@ -249,51 +133,11 @@ class = "stdlib:regex.is_match"
 count = 2
 
 [[abstain]]
-class = "stdlib:result.map"
-count = 2
-
-[[abstain]]
-class = "stdlib:result.unwrap_or"
-count = 2
-
-[[abstain]]
-class = "stdlib:set.from_list"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.chars"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.is_empty"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.lines"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.push"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.replace"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.starts_with"
-count = 2
-
-[[abstain]]
-class = "stdlib:string.to_bytes"
+class = "stdlib:string.run_length_encode"
 count = 2
 
 [[abstain]]
 class = "resource:fuel"
-count = 1
-
-[[abstain]]
-class = "semantics:compare"
 count = 1
 
 [[abstain]]
@@ -302,14 +146,6 @@ count = 1
 
 [[abstain]]
 class = "semantics:float-op"
-count = 1
-
-[[abstain]]
-class = "semantics:guard-else-value"
-count = 1
-
-[[abstain]]
-class = "semantics:int-pow"
 count = 1
 
 [[abstain]]
@@ -353,23 +189,11 @@ class = "stdlib:fan.race"
 count = 1
 
 [[abstain]]
-class = "stdlib:float.abs"
+class = "stdlib:float.to_int8_checked"
 count = 1
 
 [[abstain]]
-class = "stdlib:float.round"
-count = 1
-
-[[abstain]]
-class = "stdlib:float.sqrt"
-count = 1
-
-[[abstain]]
-class = "stdlib:float.to_bits"
-count = 1
-
-[[abstain]]
-class = "stdlib:float.to_int"
+class = "stdlib:fs.read_text"
 count = 1
 
 [[abstain]]
@@ -389,15 +213,7 @@ class = "stdlib:http.with_headers"
 count = 1
 
 [[abstain]]
-class = "stdlib:int.from_hex"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.rotate_left"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.rotate_right"
+class = "stdlib:int.bits_to_float"
 count = 1
 
 [[abstain]]
@@ -405,11 +221,19 @@ class = "stdlib:int.to_hex"
 count = 1
 
 [[abstain]]
+class = "stdlib:int.to_int8"
+count = 1
+
+[[abstain]]
+class = "stdlib:int32.to_string"
+count = 1
+
+[[abstain]]
 class = "stdlib:int8.to_string"
 count = 1
 
 [[abstain]]
-class = "stdlib:list.all"
+class = "stdlib:io.read_n_bytes"
 count = 1
 
 [[abstain]]
@@ -417,95 +241,19 @@ class = "stdlib:list.binary_search"
 count = 1
 
 [[abstain]]
-class = "stdlib:list.contains"
+class = "stdlib:list.group_by"
 count = 1
 
 [[abstain]]
-class = "stdlib:list.filter_map"
+class = "stdlib:list.length"
 count = 1
 
 [[abstain]]
-class = "stdlib:list.flat_map"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.flatten"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.insert"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.product"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.range"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.reduce"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.scan"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.swap"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.take"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.take_while"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.unique"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.unique_by"
+class = "stdlib:list.tail"
 count = 1
 
 [[abstain]]
 class = "stdlib:list.window"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.windows"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.zip"
-count = 1
-
-[[abstain]]
-class = "stdlib:list.zip_with"
-count = 1
-
-[[abstain]]
-class = "stdlib:map.entries"
-count = 1
-
-[[abstain]]
-class = "stdlib:map.find"
-count = 1
-
-[[abstain]]
-class = "stdlib:map.insert"
-count = 1
-
-[[abstain]]
-class = "stdlib:map.set"
-count = 1
-
-[[abstain]]
-class = "stdlib:map.upsert"
 count = 1
 
 [[abstain]]
@@ -517,27 +265,11 @@ class = "stdlib:math.e"
 count = 1
 
 [[abstain]]
-class = "stdlib:math.exp"
-count = 1
-
-[[abstain]]
 class = "stdlib:math.log2"
 count = 1
 
 [[abstain]]
 class = "stdlib:math.sin"
-count = 1
-
-[[abstain]]
-class = "stdlib:option.filter"
-count = 1
-
-[[abstain]]
-class = "stdlib:option.map"
-count = 1
-
-[[abstain]]
-class = "stdlib:option.unwrap_or_else"
 count = 1
 
 [[abstain]]
@@ -561,69 +293,13 @@ class = "stdlib:result.or_else"
 count = 1
 
 [[abstain]]
-class = "stdlib:result.partition"
-count = 1
-
-[[abstain]]
-class = "stdlib:result.unwrap_or_else"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.count"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.from_bytes"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.from_codepoint"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.get"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.index_of"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.is_alpha"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.is_alphanumeric"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.join"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.replace_first"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.run_length_encode"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.take"
-count = 1
-
-[[abstain]]
-class = "stdlib:string.trim"
-count = 1
-
-[[abstain]]
 class = "stdlib:value.null"
 count = 1
 
 [[abstain]]
-class = "syntax:fan.settle"
+class = "syntax:fan.timeout"
 count = 1
 
 [[abstain]]
-class = "syntax:fan.timeout"
+class = "syntax:named-arg-ctor"
 count = 1
