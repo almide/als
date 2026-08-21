@@ -3,6 +3,22 @@
 > Auto-generated from the chapter files and [the contract ledger](../../contracts/contracts.toml).
 > Run `bash docs/specs/als/generate-readme.sh > docs/specs/als/README.md` to update.
 
+## bounded.md — 11 section(s)
+
+| ID | Section | Contracts |
+|----|---------|-----------|
+| [ALS-B1](./bounded.md#als-b1-bounded-属性と有界プロファイル) | `@bounded` 属性と有界プロファイル | C-308 |
+| [ALS-B2](./bounded.md#als-b2-サブセットであって方言ではない) | サブセットであって方言ではない | C-309 |
+| [ALS-B3](./bounded.md#als-b3-回数付きループのみ) | 回数付きループのみ | C-310 |
+| [ALS-B4](./bounded.md#als-b4-ループ内確保の禁止) | ループ内確保の禁止 | C-311 |
+| [ALS-B5](./bounded.md#als-b5-break--continue-の禁止) | `break` / `continue` の禁止 | C-312 |
+| [ALS-B6](./bounded.md#als-b6-再帰の禁止-—-呼び出しグラフの非循環) | 再帰の禁止 — 呼び出しグラフの非循環 | C-313 |
+| [ALS-B7](./bounded.md#als-b7-呼び出し閉包-—-呼べるもの) | 呼び出し閉包 — 呼べるもの | C-314 |
+| [ALS-B8](./bounded.md#als-b8-実行時長のヒープ構築の禁止) | 実行時長のヒープ構築の禁止 | C-315 |
+| [ALS-B9](./bounded.md#als-b9-効果と-capability) | 効果と capability | C-316 |
+| [ALS-B10](./bounded.md#als-b10-浮動小数演算の禁止（暫定）) | 浮動小数演算の禁止（暫定） | C-317 |
+| [ALS-B11](./bounded.md#als-b11-早期脱出の制限) | 早期脱出の制限 | C-318 |
+
 ## collections.md — 10 section(s)
 
 | ID | Section | Contracts |
@@ -164,4 +180,4 @@
 | [ALS-T23](./text-and-numbers.md#als-t23-符号付きゼロ) | 符号付きゼロ | C-306 |
 | [ALS-T24](./text-and-numbers.md#als-t24-float-→-int-変換) | Float → Int 変換 | C-307 |
 
-116 sections across 10 chapters.
+127 sections across 11 chapters.
