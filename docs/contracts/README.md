@@ -62,7 +62,7 @@ contemporaneous 156, **retroactive 126** (shrink-only ceiling 126), unmeasured 1
 | C-025 | float.to_fixed is round-half-to-even on the exact binary value | 0.24.0 | active | fuzz(1000) | 1 |
 | C-026 | Vendored-libm trig / exp / log / pow are byte-identical cross-target | 0.24.0 | active | fuzz(4000) | 3 |
 | C-027 | base64 encode/decode (standard + URL-safe) is byte-identical incl. errors | 0.24.0 | active | fixture | 1 |
-| C-028 | int.from_hex mirrors i64::from_str_radix incl. native quirks | 0.24.0 | active | fixture | 1 |
+| C-028 | int.from_hex: trim, strip lowercase 0x repeatedly, sign after the prefix, then radix-16 — incl. native quirks | 0.24.0 | active | fixture | 1 |
 | C-029 | int.parse error modes byte-match native ParseIntError | 0.24.0 | active | fixture | 1 |
 | C-030 | hex.encode / hex.decode are byte-identical incl. positional error detail | 0.24.0 | active | fixture | 2 |
 | C-031 | json get/set/remove_path edge cases match the infallible native oracle | 0.24.0 | active | fixture | 2 |
