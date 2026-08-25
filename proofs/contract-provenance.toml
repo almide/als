@@ -197,6 +197,11 @@ version = "0.58.0"
 date = "2026-08-19T20:31:03+09:00"
 source = "tag v0.58.0 (almide/almide)"
 
+[[release]]
+version = "0.59.0"
+date = "2026-08-21T18:39:21+09:00"
+source = "tag v0.59.0 (almide/almide)"
+
 [[contract]]
 id = "C-001"
 since = "0.24.0"
@@ -2428,4 +2433,11 @@ id = "C-319"
 since = "0.60.0"
 entry = "2026-08-21T09:34:45+09:00"
 entry_commit = "f17edf5"
+class = "requirements-first"
+
+[[contract]]
+id = "C-320"
+since = "0.60.0"
+entry = "2026-08-25T10:14:01+09:00"
+entry_commit = "e4fbc02"
 class = "requirements-first"
