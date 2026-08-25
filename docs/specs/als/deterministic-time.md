@@ -1,6 +1,6 @@
 # ALS — 決定的時間（deterministic time）
 
-> Last updated: 2026-08-20
+> Last updated: 2026-08-25
 
 正規化元: [ADR-0001](../../adr/0001-deterministic-time-units.md)（S1–S8）、
 [SPEC.md §13](../../SPEC.md)。決定的時間は「charge unit × CM-1（versioned 校正定数）」
@@ -24,8 +24,26 @@ Fixtures: `spec/wasm_cross/time_negative_trap.almd`, `time_negative_scale.almd`,
 unit が予算 unit（`ns / CM-1`、切り捨て）を超えたときのみ Err（台帳定数メッセージ）。
 同じプログラムはどのターゲット・どのホストでも同じ宣言ナノ秒で Ok ⇄ Err が反転する
 （unit 境界厳密）。入れ子は min-cap（EIP-150 式）。bind 文は charge 0。
+
+**cut の簿記（2026-08-25 裁定、C-320）**: 予算超過による cut は、通常の脱出と
+同じメーター簿記（region exit）を実行してから脱出する。ゆえに —
+
+1. 充填（exhausted）した region の判定は**必ず Err**。途中値やゼロ値の Ok
+   （stale verdict）は不適合。
+2. region の判定と値は、同一プログラム内の**他の region に依存しない**
+   （メーター状態は region 間に漏れない — 先行 region の cut が後続 region の
+   判定を変えることは観測されない）。
+3. cut が **arm 直下のループ**で発火するか **callee 内**で発火するかは観測
+   不能（同じ宣言ナノ秒で同じ判定）。arm の値は body ブロックの値であり、
+   ループ形（`for` / `while`）に依存しない。
+4. メーターが課金するのは予算対象 body の計算のみ。観測を実体化するランタイム
+   機構（文字列整形・`??` fallback 経路）は課金も cut もされず、Err 後の
+   fallback と後続出力は常に健全。
+
 Fixtures: `spec/wasm_cross/fuel_bounded_boundary.almd`, `fuel_block_body.almd`,
-`fuel_bare_result.almd`。
+`fuel_bare_result.almd`; cut 簿記は `spec/wasm_cross/fuel_cut_in_arm_loop.almd`
+（0.58.0 は規則 1〜2 に両ターゲット同一に違反する — 直下ループの cut が stale Ok(0) になり、以後の全 region が汚染される。合意判定には映らない種で、
+参照レグが値を固定するまで agreement で運ぶ。almide/almide#1572）。
 
 ## ALS-DT3 決定的 race（fan.race）
 

@@ -4079,3 +4079,14 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/closure_captured_list_mutation.almd", class = "fixture" },
 ]
+
+[[contract]]
+id        = "C-320"
+spec      = "ALS-DT2"
+title     = "A budget cut performs exit bookkeeping: exhausted is always Err, regions are independent, cut placement is unobservable"
+statement = "A `fan.bounded` cut runs the same meter bookkeeping as a normal region exit, so (1) an exhausted region's verdict is Err — never a stale Ok carrying a partial or zero value; (2) a region's verdict and value do not depend on any other region in the program (meter state cannot leak across regions); (3) whether the cut fires in a loop directly in the arm or inside a callee is unobservable, and the arm's value is the block's value regardless of loop form; (4) the meter charges the budgeted body only — runtime services that materialize observables (formatting, the `??` fallback path) are neither charged nor cut. Adjudicated 2026-08-25 from greenfield's stage-64 finding; the 0.58.0 release violates 1–2 identically on both targets (a direct-arm cut → stale ok(0) instead of Err; the leaked meter state then poisons every later region, roomy or exhausted alike; callee-loop cuts are correct — the pre-existing fuel fixtures only exercise those), so agreement cannot see it — the reference leg pins the values (almide/almide#1572)."
+since     = "0.60.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/fuel_cut_in_arm_loop.almd", class = "fixture" },
+]
