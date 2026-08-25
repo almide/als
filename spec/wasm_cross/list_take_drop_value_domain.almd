@@ -1,0 +1,22 @@
+// @contract: C-129
+// Greenfield stage-63 catch: list.take's VALUE had no observer in the
+// claimed corpus — every exercised program measured take through len or
+// iterated it whole — and a min-select operand inversion (take computed
+// MAX and returned the WHOLE list) sat latent for eighteen stages until
+// heap_result_if_bind's chain opened. The take/drop VALUE domain, both
+// spellings, pinned here: in-range, count 0, past-len, and the NEGATIVE
+// reinterpretation asymmetry (take(-1) keeps the whole list, drop(-1)
+// is empty — v0's `n as usize` verbatim, deliberately not the C-054
+// clamp).
+fn main() -> Unit = {
+  let xs = ["a", "b", "c"]
+  println("t2=" + list.join(list.take(xs, 2), "-"))
+  println("t0=[" + list.join(list.take(xs, 0), "-") + "]")
+  println("t9=" + list.join(list.take(xs, 9), "-"))
+  println("tn=" + list.join(list.take(xs, 0 - 1), "-"))
+  println("d1=" + list.join(list.drop(xs, 1), "-"))
+  println("d0=" + list.join(list.drop(xs, 0), "-"))
+  println("d9=[" + list.join(list.drop(xs, 9), "-") + "]")
+  println("dn=[" + list.join(list.drop(xs, 0 - 1), "-") + "]")
+  println("ints=${list.take([1, 2, 3, 4], 2)} ${list.drop([1, 2, 3, 4], 3)}")
+}
