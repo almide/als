@@ -32,6 +32,7 @@ mod stdlib;
 mod stdlib_ext;
 mod stdlib_ext2;
 mod stdlib_matrix;
+mod stdlib_regex;
 mod stdlib_sized;
 mod value;
 

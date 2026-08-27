@@ -21,6 +21,10 @@ pub enum Flow {
     /// ALS-DT2 budget cut: the innermost metered region exhausted at a
     /// charge site (check-then-charge); caught by that region's fan head
     Cut,
+    /// C-035/C-224: `guard … else E` took the exit path — E's value RETURNS
+    /// from the enclosing fn (an `err(e)` else keeps its established
+    /// propagate spelling)
+    Return(Value),
     /// `!` met an err/none: the failure travels to the enclosing fn boundary
     /// with its polarity (a Result channel reifies none as err("none"),
     /// ADR-0003 D3; an Option channel propagates none as none, C-211)
@@ -329,15 +333,50 @@ impl Interp {
     }
 
     fn init_globals(&mut self, prog: &Program) -> Result<(), Flow> {
+        // C-077: initialization is DEPENDENCY-respecting, computed
+        // interprocedurally — an initializer that reads a not-yet-defined
+        // global is deferred to a later pass (fixed point; the partial
+        // stdout of a deferred attempt is rolled back)
         let g = self.globals.clone();
-        for d in &prog.decls {
-            if let Decl::TopLet { name, expr, ty, .. } = d {
-                let v = self.eval(&g, expr)?;
-                let v = self.retag(v, ty.as_ref());
-                g.define(name, v);
+        let mut pending: Vec<(&String, &Expr, Option<&TypeExpr>)> = prog
+            .decls
+            .iter()
+            .filter_map(|d| match d {
+                Decl::TopLet { name, expr, ty, .. } => Some((name, expr, ty.as_ref())),
+                _ => None,
+            })
+            .collect();
+        loop {
+            let mut next = Vec::new();
+            let mut progressed = false;
+            let mut first_err: Option<Flow> = None;
+            for (name, expr, ty) in pending {
+                let (so, se) = (self.stdout.len(), self.stderr.len());
+                match self.eval(&g, expr) {
+                    Ok(v) => {
+                        let v = self.retag(v, ty);
+                        g.define(name, v);
+                        progressed = true;
+                    }
+                    Err(e) if global_unresolved(&e) => {
+                        self.stdout.truncate(so);
+                        self.stderr.truncate(se);
+                        if first_err.is_none() {
+                            first_err = Some(e);
+                        }
+                        next.push((name, expr, ty));
+                    }
+                    Err(e) => return Err(e),
+                }
             }
+            if next.is_empty() {
+                return Ok(());
+            }
+            if !progressed {
+                return Err(first_err.expect("deferred without error"));
+            }
+            pending = next;
         }
-        Ok(())
     }
 
     fn finish(self, r: R) -> Outcome {
@@ -393,6 +432,11 @@ impl Interp {
             }
             Err(Flow::Abstain { class, reason }) => Outcome::Abstain { class, reason },
             Err(Flow::Cut) => Outcome::Fault("a budget cut escaped its fan region".into()),
+            Err(Flow::Return(_)) => Outcome::Ran {
+                exit: 0,
+                stdout,
+                stderr,
+            },
             Err(Flow::Fatal(msg)) => Outcome::Fault(msg),
             Err(Flow::Break) | Err(Flow::Continue) => {
                 Outcome::Fault("break/continue escaped to the program boundary".into())
@@ -617,12 +661,7 @@ impl Interp {
                     },
                 },
             };
-            if p.mutable {
-                return self.abstain(
-                    "semantics:mut-param",
-                    format!("`{}` takes `mut {}` — ALS-M13 in-place write-back through the caller's slot is not modeled yet", f.sig.name, p.name),
-                );
-            }
+
             let v = self.retag(v, p.ty.as_ref());
             env.define(&p.name, v);
         }
@@ -630,6 +669,18 @@ impl Interp {
     }
 
     pub fn call_fn(&mut self, f: &Rc<FnDecl>, args: Vec<Value>, named: Vec<(String, Value)>) -> R {
+        self.call_fn_muts(f, args, named, None)
+    }
+
+    /// C-132/C-226: `muts_out` collects the FINAL values of `mut` parameters
+    /// so the call site can write them back through the caller's places
+    pub fn call_fn_muts(
+        &mut self,
+        f: &Rc<FnDecl>,
+        args: Vec<Value>,
+        named: Vec<(String, Value)>,
+        muts_out: Option<&mut Vec<(usize, Value)>>,
+    ) -> R {
         self.charge_fn_entry(&f.sig.name)?;
         let mut env = self.bind_params(f, args, &named)?;
         let body = match &f.body {
@@ -668,6 +719,23 @@ impl Interp {
                 }
                 Err(e) => break Err(e),
             }
+        };
+        if let Some(out) = muts_out {
+            // the trampoline may have switched to ANOTHER fn (Tail::Call);
+            // finals are read only while the frame still belongs to the
+            // original signature (SelfCall keeps it — mut_param_call_chain's
+            // tail-recursive walk rides the Bytes reference instead)
+            for (i, p) in f.sig.params.iter().enumerate() {
+                if p.mutable {
+                    if let Some(v) = env.lookup(&p.name) {
+                        out.push((i, v));
+                    }
+                }
+            }
+        }
+        let r = match r {
+            Err(Flow::Return(v)) => Ok(v),
+            other => other,
         };
         let f = &f;
         let fallible = f.sig.effect
@@ -944,7 +1012,10 @@ impl Interp {
                 }
             }
         }
-        let r = self.eval(&env, &c.body);
+        let r = match self.eval(&env, &c.body) {
+            Err(Flow::Return(v)) => Ok(v),
+            other => other,
+        };
         match r {
             Ok(v) => {
                 if c.fallible && !self.in_test {
@@ -1065,6 +1136,7 @@ impl Interp {
                 _ => "uint64",
             },
             Value::Float32(_) => "float32",
+            Value::Ptr(_) => return None,
             Value::Unit
             | Value::Record { .. }
             | Value::Variant { .. }
@@ -1240,6 +1312,19 @@ impl Interp {
                 }
                 if let Some(f) = self.fns.get(name).cloned() {
                     let (pos, named) = self.eval_args(env, args)?;
+                    if f.sig.params.iter().any(|p| p.mutable) {
+                        // C-132/C-226: a `mut` parameter's final value writes
+                        // back through the caller's place at EVERY call
+                        // position; a non-place argument simply has no slot
+                        let mut finals = Vec::new();
+                        let r = self.call_fn_muts(&f, pos, named, Some(&mut finals));
+                        for (i, v) in finals {
+                            if let Some(Arg::Pos(pe)) = args.get(i) {
+                                let _ = self.assign_place(env, pe, v);
+                            }
+                        }
+                        return r;
+                    }
                     return self.call_fn(&f, pos, named);
                 }
                 if PRELUDE.contains(&name.as_str()) {
@@ -1337,6 +1422,42 @@ impl Interp {
                         return self.call_fn(&f, pos, named);
                     }
                 }
+                // C-060: `.repr()` on a `: Repr`-deriving record — the
+                // AlmideRepr spelling (field values in DISPLAY form: strings
+                // unquoted, Value as its JSON text)
+                if name == "repr" && args.is_empty() {
+                    if let Value::Record {
+                        type_name: Some(t),
+                        fields,
+                    } = &recv
+                    {
+                        let has_repr = self
+                            .types
+                            .get(&**t)
+                            .is_some_and(|d| d.conventions.iter().any(|c| c == "Repr"));
+                        if has_repr {
+                            let mut out = format!("{t} {{ ");
+                            for (i, (n, fv)) in fields.iter().enumerate() {
+                                if i > 0 {
+                                    out.push_str(", ");
+                                }
+                                out.push_str(n);
+                                out.push_str(": ");
+                                match render(fv) {
+                                    Some(s) => out.push_str(&s),
+                                    None => {
+                                        return self.abstain(
+                                            &format!("render:{}", fv.type_name()),
+                                            format!("repr of a {} field", fv.type_name()),
+                                        )
+                                    }
+                                }
+                            }
+                            out.push_str(" }");
+                            return Ok(Value::str(&out));
+                        }
+                    }
+                }
                 match Self::module_of(&recv) {
                     Some(m) => {
                         let (mut pos, named) = self.eval_args(env, args)?;
@@ -1358,6 +1479,41 @@ impl Interp {
             Expr::TypeName { module, name } => {
                 let (pos, named) = self.eval_args(env, args)?;
                 if !named.is_empty() {
+                    // C-175: a RECORD type called with named arguments is the
+                    // record constructor — declaration order, defaults filled
+                    if pos.is_empty() {
+                        if let Some(decl) = self.types.get(name).cloned() {
+                            if let TypeBody::Record(fds) = &decl.body {
+                                let mut ordered: Vec<(Rc<str>, Value)> =
+                                    Vec::with_capacity(fds.len());
+                                for fd in fds {
+                                    match named.iter().find(|(n, _)| n == &fd.name) {
+                                        Some((_, v)) => {
+                                            let v = self.retag(v.clone(), Some(&fd.ty));
+                                            ordered.push((Rc::from(fd.name.as_str()), v));
+                                        }
+                                        None => match &fd.default {
+                                            Some(d) => {
+                                                let d = d.clone();
+                                                let dv = self.eval(env, &d)?;
+                                                ordered.push((Rc::from(fd.name.as_str()), dv));
+                                            }
+                                            None => {
+                                                return Err(Flow::Fatal(format!(
+                                                    "constructor `{name}` missing field `{}`",
+                                                    fd.name
+                                                )))
+                                            }
+                                        },
+                                    }
+                                }
+                                return Ok(Value::Record {
+                                    type_name: Some(Rc::from(name.as_str())),
+                                    fields: Rc::new(ordered),
+                                });
+                            }
+                        }
+                    }
                     return self
                         .abstain("syntax:named-arg-ctor", "named arguments to a constructor");
                 }
@@ -1447,6 +1603,15 @@ impl Interp {
                     return Ok(Value::Fn(Rc::new(Callable::Std(name.clone()))));
                 }
                 Err(Flow::Fatal(format!("unbound identifier `{name}`")))
+            }
+            Expr::TypeName { module: _, name } if name == "LittleEndian" || name == "BigEndian" => {
+                // C-213: the builtin Endian unit variants (an ARGUMENT, not
+                // part of a function name)
+                Ok(Value::Variant {
+                    type_name: Rc::from("Endian"),
+                    case: Rc::from(name.as_str()),
+                    payload: Payload::Unit,
+                })
             }
             Expr::TypeName { module: _, name } => match self.ctors.get(name).cloned() {
                 _ if env.lookup(name).is_some() => Ok(env.lookup(name).unwrap()),
@@ -1677,6 +1842,13 @@ impl Interp {
                     self.eval(&inner, then)
                 }
                 Value::None => self.eval(env, els),
+                // C-224: `if let v = r` over a Result — ok binds, err else
+                Value::Ok(v) => {
+                    let inner = Env::new(Some(env.clone()));
+                    inner.define(name, (*v).clone());
+                    self.eval(&inner, then)
+                }
+                Value::Err(_) => self.eval(env, els),
                 other => Err(Flow::Fatal(format!(
                     "if-let scrutinee is a {}",
                     other.type_name()
@@ -2690,6 +2862,8 @@ impl Interp {
                         None => return Ok(Value::Bool(false)),
                     },
                     (Value::Str(a), Value::Str(b)) => char_cmp(a, b),
+                    // C-099: false < true
+                    (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
                     _ => {
                         return self.abstain(
                             "semantics:compare",
@@ -2733,6 +2907,28 @@ impl Interp {
                 }
                 Stmt::Assign { place, expr, .. } => {
                     let v = self.eval(env, expr)?;
+                    // C-064: an effect call assigned WITHOUT `!` auto-unwraps
+                    // when the target is not itself Result-typed (proxied at
+                    // runtime by the slot's current value); err propagates
+                    let v = if let (Value::Ok(_) | Value::Err(_), true) =
+                        (&v, self.is_effect_call(env, expr))
+                    {
+                        let target_is_result =
+                            matches!(self.eval(env, place), Ok(Value::Ok(_) | Value::Err(_)));
+                        if target_is_result {
+                            v
+                        } else {
+                            match v {
+                                Value::Ok(x) => (*x).clone(),
+                                Value::Err(e) => {
+                                    return Err(Flow::Propagate(Prop::Err((*e).clone())))
+                                }
+                                other => other,
+                            }
+                        }
+                    } else {
+                        v
+                    };
                     self.assign_place(env, place, v)?;
                 }
                 Stmt::Guard { cond, els, .. } => match self.eval(env, cond)? {
@@ -2742,7 +2938,7 @@ impl Interp {
                         let v = self.eval(env, els)?;
                         return match v {
                             Value::Err(e) => Err(Flow::Propagate(Prop::Err((*e).clone()))),
-                            other => self.abstain("semantics:guard-else-value", format!("guard else evaluated to a {} (only err(e) / err(e)! / Never are read into this evaluator)", other.type_name())),
+                            other => Err(Flow::Return(other)),
                         };
                     }
                     other => {
@@ -2760,10 +2956,7 @@ impl Interp {
                         let v = self.eval(env, els)?;
                         return match v {
                             Value::Err(e) => Err(Flow::Propagate(Prop::Err((*e).clone()))),
-                            other => self.abstain(
-                                "semantics:guard-else-value",
-                                format!("guard let else evaluated to a {}", other.type_name()),
-                            ),
+                            other => Err(Flow::Return(other)),
                         };
                     }
                     other => {
@@ -2827,6 +3020,17 @@ impl Interp {
 
     /// Place assignment with value semantics (ALS-ST4): the root variable is
     /// rebound to an updated copy; no sharing is observable.
+    /// C-064: the RHS is a DIRECT call of a declared `effect fn` (the shape
+    /// whose carrier auto-unwraps at a non-Result binding position)
+    fn is_effect_call(&self, _env: &Rc<Env>, e: &Expr) -> bool {
+        if let Expr::Call { callee, .. } = e {
+            if let Expr::Ident(f) = &**callee {
+                return self.fns.get(f).map(|d| d.sig.effect).unwrap_or(false);
+            }
+        }
+        false
+    }
+
     fn assign_place(&mut self, env: &Rc<Env>, place: &Expr, v: Value) -> Result<(), Flow> {
         match place {
             Expr::TypeName { module: None, name } if env.lookup(name).is_some() => {
@@ -3440,6 +3644,15 @@ fn expr_has_loop(e: &Expr) -> bool {
 /// crude recursion probe: any mention of `name` as an identifier inside
 fn expr_calls_name(e: &Expr, name: &str) -> bool {
     expr_any(e, &|x| matches!(x, Expr::Ident(n) if n == name))
+}
+
+/// C-077: is this failure "a global that is not defined yet"?
+fn global_unresolved(e: &Flow) -> bool {
+    match e {
+        Flow::Abstain { class, .. } => class == "semantics:type-name-value",
+        Flow::Fatal(m) => m.starts_with("unbound identifier"),
+        _ => false,
+    }
 }
 
 /// C-038 sized-numeric vocabulary: type name → (bits, signed)

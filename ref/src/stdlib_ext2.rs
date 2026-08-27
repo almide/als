@@ -724,21 +724,21 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(Value::List(Rc::new(out)))
         }
         "bytes.copy_within" => {
-            // in-place; clamps like copy_from (bytes_writer_family)
+            // in-place, (src, count, dst); a window that does not FIT is a
+            // no-op, never a clamp (bytes_writer_family: copy_within_no_fit)
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
-            let (src, dst, len) = (
+            let (src, count, dst) = (
                 want_int(name, &args[1])?,
                 want_int(name, &args[2])?,
                 want_int(name, &args[3])?,
             );
             let mut v = b.borrow_mut();
-            if src >= 0 && dst >= 0 && len >= 0 {
-                let (src, dst, len) = (src as usize, dst as usize, len as usize);
-                let len = len
-                    .min(v.len().saturating_sub(src))
-                    .min(v.len().saturating_sub(dst));
-                v.copy_within(src..src + len, dst);
+            if src >= 0 && dst >= 0 && count >= 0 {
+                let (src, count, dst) = (src as usize, count as usize, dst as usize);
+                if src + count <= v.len() && dst + count <= v.len() {
+                    v.copy_within(src..src + count, dst);
+                }
             }
             Ok(Value::Unit)
         }

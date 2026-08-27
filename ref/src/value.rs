@@ -109,6 +109,10 @@ pub enum Value {
     /// a binary32 float (C-182) — narrows at birth, formats via the f32
     /// Dragon4 twin
     Float32(f32),
+    /// the RawPtr bridge (C-062): an opaque handle onto a Bytes buffer —
+    /// None is the null pointer an EMPTY buffer hands out; the pointer VALUE
+    /// is never printed, only the bytes moved through it
+    Ptr(Option<Rc<std::cell::RefCell<Vec<u8>>>>),
 }
 
 /// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
@@ -262,6 +266,7 @@ impl Value {
                 _ => "UInt64",
             },
             Value::Float32(_) => "Float32",
+            Value::Ptr(_) => "RawPtr",
         }
     }
     /// number of elements a range would materialize
@@ -419,12 +424,34 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
 /// IEEE-754 totalOrder (NaN to the max side, -0 < +0). Other types have no
 /// specified order yet → None (the caller abstains).
 pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
+    use std::cmp::Ordering;
     match (a, b) {
         (Value::Int(x), Value::Int(y)) => Some(x.cmp(y)),
         (Value::Float(x), Value::Float(y)) => Some(x.0.total_cmp(&y.0)),
         (Value::Str(x), Value::Str(y)) => Some(crate::eval::char_cmp(x, y)),
+        // C-099: false < true
+        (Value::Bool(x), Value::Bool(y)) => Some(x.cmp(y)),
+        // C-053: tuples compare lexicographically field by field
+        (Value::Tuple(xs), Value::Tuple(ys)) => seq_cmp(xs, ys),
+        // C-053: lists compare lexicographically, shorter-first on a prefix
+        (Value::List(xs), Value::List(ys)) => seq_cmp(xs, ys),
+        // C-053: none < some, some(x) orders by payload
+        (Value::None, Value::None) => Some(Ordering::Equal),
+        (Value::None, Value::Some(_)) => Some(Ordering::Less),
+        (Value::Some(_), Value::None) => Some(Ordering::Greater),
+        (Value::Some(x), Value::Some(y)) => value_cmp(x, y),
         _ => None,
     }
+}
+
+fn seq_cmp(xs: &[Value], ys: &[Value]) -> Option<std::cmp::Ordering> {
+    for (x, y) in xs.iter().zip(ys.iter()) {
+        match value_cmp(x, y)? {
+            std::cmp::Ordering::Equal => {}
+            o => return Some(o),
+        }
+    }
+    Some(xs.len().cmp(&ys.len()))
 }
 
 /// ALS-E1: decimal, including i64::MIN.
@@ -596,7 +623,8 @@ pub fn render(v: &Value) -> Option<String> {
         | Value::Path(_)
         | Value::Matrix(_)
         | Value::Time { .. }
-        | Value::Float32(_) => return None,
+        | Value::Float32(_)
+        | Value::Ptr(_) => return None,
     })
 }
 
