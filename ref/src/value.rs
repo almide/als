@@ -36,6 +36,9 @@ pub enum Callable {
     Composed(Rc<Callable>, Rc<Callable>),
     /// a variant constructor with payload, used as a function value
     Ctor(String, String),
+    /// derived Codec entry on a `: Codec` type — `T.decode` / `T.encode`
+    /// (ALS-D6); the bool is true for decode, the fallible direction
+    Codec(String, bool),
 }
 
 /// record / record-payload fields in display order
