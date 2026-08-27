@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 320 contracts: **requirements-first 16** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 131** (shrink-only ceiling 131), unmeasured 17.
 
-320 contracts
+321 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -309,7 +309,7 @@ contemporaneous 156, **retroactive 131** (shrink-only ceiling 131), unmeasured 1
 | C-272 | `fs.list_dir` returns EVERY entry on both targets, whatever the directory's size, sorted by bytes | 0.57.1 | active | fixture | 1 |
 | C-273 | The fs write-side floors answer with native's std::io Display text, and fd_write's errno is not dropped | 0.57.1 | active | fixture | 1 |
 | C-274 | A fallible callback makes an fs streaming walk fallible, stopping at the first err | 0.57.1 | active | fixture | 1 |
-| C-275 | Each test starts from re-initialized mutable module globals, on both targets | 0.57.1 | active | fixture | 1 |
+| C-275 | The http response-header surface answers identically on both targets, with case-insensitive field names | 0.57.1 | active | fixture | 1 |
 | C-276 | A String-key `list.sort_by` over HEAP elements orders and co-owns identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-277 | A return-only-generic constructor pinned by unification builds and runs identically on both targets even when const-folding erases the pinning context | 0.57.1 | active | fixture | 1 |
 | C-278 | The rope head geometry must fit the row: exceeding aborts identically, the uncovered tail copies through identically | 0.57.1 | active | fixture | 2 |
@@ -355,4 +355,5 @@ contemporaneous 156, **retroactive 131** (shrink-only ceiling 131), unmeasured 1
 | C-318 | Early exit inside a counted loop body is rejected in a @bounded function (E078) | 0.60.0 | active | fixture | 0 |
 | C-319 | A captured-and-mutated var List is shared storage through a closure | 0.60.0 | active | fixture | 1 |
 | C-320 | A budget cut performs exit bookkeeping: exhausted is always Err, regions are independent, cut placement is unobservable | 0.60.0 | active | fixture | 1 |
+| C-321 | Each test starts from re-initialized mutable module globals, on both targets | 0.57.1 | active | fixture | 0 |
 
