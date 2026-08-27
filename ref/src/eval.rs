@@ -425,6 +425,7 @@ impl Interp {
                 .unwrap_or(false),
             Callable::Std(_) | Callable::Ctor(..) => false,
             Callable::Codec(_, decode) => *decode,
+            Callable::EffectWrap(_) => true,
             Callable::Composed(_, g) => self.cb_fallible(g),
         }
     }
@@ -681,6 +682,15 @@ impl Interp {
     /// an anonymous literal bound at a slot annotated with a named record type
     /// becomes that record (declaration order, defaults filled).
     fn retag(&mut self, v: Value, ty: Option<&TypeExpr>) -> Value {
+        // ALS-M15: a callable in an `effect (A) -> B` position takes the
+        // carrier shape `(A) -> Result[B, String]` — one form for pure and
+        // fallible spellings alike
+        if let (Value::Fn(c), Some(TypeExpr::Fn { effect: true, .. })) = (&v, ty) {
+            if matches!(**c, Callable::EffectWrap(_)) {
+                return v;
+            }
+            return Value::Fn(Rc::new(Callable::EffectWrap(c.clone())));
+        }
         let name = match ty {
             Some(TypeExpr::Named { name, .. }) => name,
             _ => return v,
@@ -804,6 +814,15 @@ impl Interp {
                 case: Rc::from(case.as_str()),
                 payload: Payload::Tuple(Rc::new(args)),
             }),
+            Callable::EffectWrap(inner) => {
+                let inner = inner.clone();
+                match self.call_value(&inner, args) {
+                    Ok(v @ (Value::Ok(_) | Value::Err(_))) => Ok(v),
+                    Ok(other) => Ok(Value::Ok(Rc::new(other))),
+                    Err(Flow::Propagate(p)) => Ok(Value::Err(Rc::new(p.as_err()))),
+                    Err(e) => Err(e),
+                }
+            }
             Callable::Codec(t, decode) => {
                 let t = t.clone();
                 let decode = *decode;
@@ -925,6 +944,7 @@ impl Interp {
                         Value::List(rc) => rc,
                         _ => unreachable!(),
                     };
+                    let mut ret = Value::Unit;
                     {
                         let v = Rc::make_mut(&mut list);
                         match full {
@@ -937,7 +957,12 @@ impl Interp {
                                 v.push(rest.pop().unwrap());
                             }
                             "list.pop" => {
-                                v.pop();
+                                // pop mutates AND answers the element:
+                                // some(last), none on empty (list_comprehensive)
+                                ret = match v.pop() {
+                                    Some(x) => Value::Some(Rc::new(x)),
+                                    None => Value::None,
+                                };
                             }
                             "list.clear" => v.clear(),
                             _ => {
@@ -948,7 +973,7 @@ impl Interp {
                         }
                     }
                     env.assign(name, Value::List(list));
-                    return Ok(Value::Unit);
+                    return Ok(ret);
                 }
             }
         }
