@@ -15,192 +15,194 @@
 # the PR that raises the ceiling; a count below the ceiling must ratchet it.
 #
 # regime_start = "2026-08-20"
-# retroactive_ceiling = "131"
+# retroactive_ceiling = "132"
+# 2026-08-27: 131 -> 132 — C-321 is the REPAIRED id of the ALS-I3 test-mode
+# re-init contract whose [[contract]]/id header lines were swallowed by the
+# 0.57.1 batch's unclosed evidence arrays (found by the four-agent review,
+# now gated structurally). The behaviour and text existed id-less since that
+# batch; the id enters today against since=0.57.1, which the instrument
+# correctly classes retroactive. A repair, not a new claim over shipped
+# behaviour.
 
 [[release]]
 version = "0.24.0"
 date = "2026-06-06T00:54:08+09:00"
-source = "tag v0.24.0 (almide/almide)"
+source = "tag v0.24.0 (inherited local tag)"
 
 [[release]]
 version = "0.25.0"
 date = "2026-06-07T11:30:23+09:00"
-source = "tag v0.25.0 (almide/almide)"
+source = "tag v0.25.0 (inherited local tag)"
 
 [[release]]
 version = "0.26.7"
 date = "2026-06-09T14:23:15+09:00"
-source = "tag v0.26.7 (almide/almide)"
+source = "tag v0.26.7 (inherited local tag)"
 
 [[release]]
 version = "0.26.9"
 date = "2026-06-09T17:28:26+09:00"
-source = "tag v0.26.9 (almide/almide)"
+source = "tag v0.26.9 (inherited local tag)"
 
 [[release]]
 version = "0.26.15"
 date = "2026-06-10T02:30:57+09:00"
-source = "tag v0.26.15 (almide/almide)"
+source = "tag v0.26.15 (inherited local tag)"
 
 [[release]]
 version = "0.26.19"
 date = "2026-06-10T08:41:14+09:00"
-source = "tag v0.26.19 (almide/almide)"
+source = "tag v0.26.19 (inherited local tag)"
 
 [[release]]
 version = "0.26.20"
 date = "2026-06-10T11:47:32+09:00"
-source = "tag v0.26.20 (almide/almide)"
+source = "tag v0.26.20 (inherited local tag)"
 
 [[release]]
 version = "0.27.0"
 date = "2026-06-10T22:33:12+09:00"
-source = "tag v0.27.0 (almide/almide)"
+source = "tag v0.27.0 (inherited local tag)"
 
 [[release]]
 version = "0.27.4"
 date = "2026-06-12T08:04:01+09:00"
-source = "tag v0.27.4 (almide/almide)"
+source = "tag v0.27.4 (inherited local tag)"
 
 [[release]]
 version = "0.27.6"
 date = "2026-06-13T02:12:33+09:00"
-source = "tag v0.27.6 (almide/almide)"
+source = "tag v0.27.6 (inherited local tag)"
 
 [[release]]
 version = "0.27.7"
 date = "2026-06-14T19:50:12+09:00"
-source = "tag v0.27.7 (almide/almide)"
+source = "tag v0.27.7 (inherited local tag)"
 
 [[release]]
 version = "0.27.8"
-date = "2026-06-15T18:53:42+09:00"
-source = "tag v0.27.8 (almide/almide)"
+date = "2026-06-14T19:50:12+09:00"
+source = "tag v0.27.8 (inherited local tag)"
 
 [[release]]
 version = "0.28.1"
 date = "2026-07-07T15:23:52+09:00"
-source = "tag v0.28.1 (almide/almide)"
+source = "tag v0.28.1 (inherited local tag)"
 
 [[release]]
 version = "0.28.4"
 date = "2026-07-07T22:46:27+09:00"
-source = "tag v0.28.4 (almide/almide)"
+source = "tag v0.28.4 (inherited local tag)"
 
 [[release]]
 version = "0.28.5"
 date = "2026-07-08T01:21:50+09:00"
-source = "tag v0.28.5 (almide/almide)"
+source = "tag v0.28.5 (inherited local tag)"
 
 [[release]]
 version = "0.28.6"
 date = "2026-07-09T18:12:33+09:00"
-source = "tag v0.28.6 (almide/almide)"
+source = "tag v0.28.6 (inherited local tag)"
 
 [[release]]
 version = "0.29.0"
 date = "2026-07-15T12:14:22+09:00"
-source = "tag v0.29.0 (almide/almide)"
+source = "tag v0.29.0 (inherited local tag)"
 
 [[release]]
 version = "0.30.0"
 date = "2026-07-16T09:07:38+09:00"
-source = "tag v0.30.0 (almide/almide)"
+source = "tag v0.30.0 (inherited local tag)"
 
 [[release]]
 version = "0.31.0"
 date = "2026-07-16T18:44:26+09:00"
-source = "tag v0.31.0 (almide/almide)"
+source = "tag v0.31.0 (inherited local tag)"
 
 [[release]]
 version = "0.32.0"
 date = "2026-07-19T10:58:35+09:00"
-source = "tag v0.32.0 (almide/almide)"
+source = "tag v0.32.0 (inherited local tag)"
 
 [[release]]
 version = "0.35.0"
 date = "2026-07-25T20:10:44+09:00"
-source = "tag v0.35.0 (almide/almide)"
+source = "tag v0.35.0 (inherited local tag)"
 
 [[release]]
 version = "0.36.0"
 date = "2026-07-26T14:42:42+09:00"
-source = "tag v0.36.0 (almide/almide)"
+source = "tag v0.36.0 (inherited local tag)"
 
 [[release]]
 version = "0.37.0"
 date = "2026-07-28T17:53:33+09:00"
-source = "tag v0.37.0 (almide/almide)"
+source = "tag v0.37.0 (inherited local tag)"
 
 [[release]]
 version = "0.41.0"
-date = "2026-07-31T08:43:15+09:00"
-source = "tag v0.41.0 (almide/almide)"
+date = "2026-07-30T03:12:56+09:00"
+source = "tag v0.41.0 (inherited local tag)"
 
 [[release]]
 version = "0.42.0"
 date = "2026-07-31T22:41:36+09:00"
-source = "tag v0.42.0 (almide/almide)"
+source = "tag v0.42.0 (inherited local tag)"
 
 [[release]]
 version = "0.44.0"
-date = "2026-08-01T05:52:13+09:00"
-source = "tag v0.44.0 (almide/almide)"
+date = "2026-08-01T01:40:25+09:00"
+source = "tag v0.44.0 (inherited local tag)"
 
 [[release]]
 version = "0.47.0"
-date = "2026-08-01T15:02:16+09:00"
-source = "tag v0.47.0 (almide/almide)"
+date = "2026-08-01T09:26:37+09:00"
+source = "tag v0.47.0 (inherited local tag)"
 
 [[release]]
 version = "0.52.0"
 date = "2026-08-03T12:28:54+09:00"
-source = "tag v0.52.0 (almide/almide)"
+source = "tag v0.52.0 (inherited local tag)"
 
 [[release]]
 version = "0.53.0"
 date = "2026-08-03T15:42:37+09:00"
-source = "tag v0.53.0 (almide/almide)"
+source = "tag v0.53.0 (inherited local tag)"
 
 [[release]]
 version = "0.53.5"
 date = "2026-08-05T01:28:42+09:00"
-source = "tag v0.53.5 (almide/almide)"
+source = "tag v0.53.5 (inherited local tag)"
 
 [[release]]
 version = "0.53.6"
 date = "2026-08-05T05:34:55+09:00"
-source = "tag v0.53.6 (almide/almide)"
+source = "tag v0.53.6 (inherited local tag)"
 
 [[release]]
 version = "0.55.0"
 date = "2026-08-06T20:01:04+09:00"
-source = "tag v0.55.0 (almide/almide)"
+source = "tag v0.55.0 (inherited local tag)"
 
 [[release]]
 version = "0.56.0"
 date = "2026-08-06T23:40:51+09:00"
-source = "tag v0.56.0 (almide/almide)"
+source = "tag v0.56.0 (inherited local tag)"
 
 [[release]]
 version = "0.57.1"
 date = "2026-08-17T12:11:56+09:00"
-source = "tag v0.57.1 (almide/almide)"
+source = "tag v0.57.1 (inherited local tag)"
 
 [[release]]
 version = "0.57.2"
 date = "2026-08-18T14:57:05+09:00"
-source = "tag v0.57.2 (almide/almide)"
+source = "tag v0.57.2 (inherited local tag)"
 
 [[release]]
 version = "0.58.0"
 date = "2026-08-19T20:31:03+09:00"
-source = "tag v0.58.0 (almide/almide)"
-
-[[release]]
-version = "0.59.0"
-date = "2026-08-21T18:39:21+09:00"
-source = "tag v0.59.0 (almide/almide)"
+source = "tag v0.58.0 (inherited local tag)"
 
 [[contract]]
 id = "C-001"
@@ -2128,6 +2130,13 @@ entry_commit = "d1448f0"
 class = "contemporaneous"
 
 [[contract]]
+id = "C-321"
+since = "0.57.1"
+entry = "2026-08-27T14:41:02+09:00"
+entry_commit = "b3fe9d7"
+class = "retroactive"
+
+[[contract]]
 id = "C-276"
 since = "0.57.1"
 entry = "2026-08-14T03:50:23+09:00"
@@ -2438,6 +2447,6 @@ class = "requirements-first"
 [[contract]]
 id = "C-320"
 since = "0.60.0"
-entry = "2026-08-25T10:14:01+09:00"
-entry_commit = "e4fbc02"
+entry = "2026-08-25T10:16:43+09:00"
+entry_commit = "5ecbdc5"
 class = "requirements-first"
