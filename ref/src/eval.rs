@@ -169,10 +169,10 @@ struct MeterFrame {
 const STD_MODULES: &[&str] = &[
     "string", "list", "map", "set", "int", "float", "value", "result", "option", "math",
     "datetime", "error", "bytes", "matrix", "prim", "int8", "int16", "int32", "uint8", "uint16",
-    "uint32", "uint64", "float32", "json", "fs", "http", "env", "io", "random", "regex", "process",
-    "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "mem", "fan", "compute",
-    "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple",
-    "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml",
+    "uint32", "uint64", "int64", "float32", "json", "fs", "http", "env", "io", "random", "regex",
+    "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "mem", "fan",
+    "compute", "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char",
+    "tuple", "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml",
 ];
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
@@ -829,6 +829,52 @@ impl Interp {
             }
             return Value::Fn(Rc::new(Callable::EffectWrap(c.clone())));
         }
+        // C-038/C-182: a literal (or value) in a sized-numeric position
+        // narrows to the declared width AT BIRTH
+        if let Some(TypeExpr::Named {
+            module: None,
+            name,
+            args,
+        }) = ty
+        {
+            if args.is_empty() {
+                if let Some((bits, signed)) = sized_of(name) {
+                    if let Value::Int(n) = &v {
+                        return Value::Sized {
+                            bits,
+                            signed,
+                            v: *n,
+                        };
+                    }
+                }
+                if name == "Float32" {
+                    if let Value::Float(F64(f)) = &v {
+                        return Value::Float32(*f as f32);
+                    }
+                }
+            }
+            // List[T] narrows its elements
+            if name == "List" && args.len() == 1 {
+                if let Value::List(xs) = &v {
+                    let out: Vec<Value> = xs
+                        .iter()
+                        .map(|x| self.retag(x.clone(), Some(&args[0])))
+                        .collect();
+                    return Value::List(Rc::new(out));
+                }
+            }
+        }
+        // tuple positions narrow element-wise
+        if let (Value::Tuple(xs), Some(TypeExpr::Tuple(ts))) = (&v, ty) {
+            if xs.len() == ts.len() {
+                let out: Vec<Value> = xs
+                    .iter()
+                    .zip(ts.iter())
+                    .map(|(x, tx)| self.retag(x.clone(), Some(tx)))
+                    .collect();
+                return Value::Tuple(Rc::new(out));
+            }
+        }
         let name = match ty {
             Some(TypeExpr::Named { name, .. }) => name,
             _ => return v,
@@ -845,7 +891,8 @@ impl Interp {
                             if let Some((k, fv)) =
                                 fields.iter().find(|(k, _)| &**k == fd.name.as_str())
                             {
-                                ordered.push((k.clone(), fv.clone()));
+                                let fv = self.retag(fv.clone(), Some(&fd.ty));
+                                ordered.push((k.clone(), fv));
                             } else if let Some(d) = &fd.default {
                                 let g = self.globals.clone();
                                 if let Ok(dv) = self.eval(&g, d) {
@@ -1007,6 +1054,17 @@ impl Interp {
             Value::Bytes(_) => "bytes",
             Value::Path(_) => "json",
             Value::Matrix(_) => "matrix",
+            Value::Sized { bits, signed, .. } => match (bits, signed) {
+                (8, true) => "int8",
+                (16, true) => "int16",
+                (32, true) => "int32",
+                (64, true) => "int64",
+                (8, false) => "uint8",
+                (16, false) => "uint16",
+                (32, false) => "uint32",
+                _ => "uint64",
+            },
+            Value::Float32(_) => "float32",
             Value::Unit
             | Value::Record { .. }
             | Value::Variant { .. }
@@ -1344,7 +1402,12 @@ impl Interp {
         self.tick()?;
         match e {
             Expr::Int(n) => Ok(Value::Int(*n)),
-            Expr::BigInt(_) => self.abstain("semantics:uint64-upper-half", "a literal above i64::MAX (UInt64 upper half, C-179) — sized integers are not implemented yet"),
+            // C-179: a literal above i64::MAX is a UInt64 bit pattern
+            Expr::BigInt(n) => Ok(Value::Sized {
+                bits: 64,
+                signed: false,
+                v: *n as i64,
+            }),
             Expr::Float(f) => Ok(Value::Float(*f)),
             Expr::Bool(b) => Ok(Value::Bool(*b)),
             Expr::Unit => Ok(Value::Unit),
@@ -1358,7 +1421,15 @@ impl Interp {
                             let v = self.force(v)?;
                             match render(&v) {
                                 Some(s) => out.push_str(&s),
-                                None => return self.abstain(&format!("render:{}", v.type_name()), format!("interpolating a {} is not implemented yet", v.type_name())),
+                                None => {
+                                    return self.abstain(
+                                        &format!("render:{}", v.type_name()),
+                                        format!(
+                                            "interpolating a {} is not implemented yet",
+                                            v.type_name()
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
@@ -1379,10 +1450,22 @@ impl Interp {
             }
             Expr::TypeName { module: _, name } => match self.ctors.get(name).cloned() {
                 _ if env.lookup(name).is_some() => Ok(env.lookup(name).unwrap()),
-                Some((t, CaseShape::Unit)) => Ok(Value::Variant { type_name: Rc::from(t.as_str()), case: Rc::from(name.as_str()), payload: Payload::Unit }),
-                Some((t, CaseShape::Tuple(_))) => Ok(Value::Fn(Rc::new(Callable::Ctor(t, name.clone())))),
-                Some((_, CaseShape::Record(_))) => self.abstain("semantics:record-ctor-as-value", format!("record-payload constructor `{name}` used as a value")),
-                None => self.abstain("semantics:type-name-value", format!("type name `{name}` in value position")),
+                Some((t, CaseShape::Unit)) => Ok(Value::Variant {
+                    type_name: Rc::from(t.as_str()),
+                    case: Rc::from(name.as_str()),
+                    payload: Payload::Unit,
+                }),
+                Some((t, CaseShape::Tuple(_))) => {
+                    Ok(Value::Fn(Rc::new(Callable::Ctor(t, name.clone()))))
+                }
+                Some((_, CaseShape::Record(_))) => self.abstain(
+                    "semantics:record-ctor-as-value",
+                    format!("record-payload constructor `{name}` used as a value"),
+                ),
+                None => self.abstain(
+                    "semantics:type-name-value",
+                    format!("type name `{name}` in value position"),
+                ),
             },
             Expr::List(items) => {
                 let mut out = Vec::with_capacity(items.len());
@@ -1397,7 +1480,10 @@ impl Interp {
                     let kv = self.eval(env, k)?;
                     let vv = self.eval(env, v)?;
                     // ALS-ST4 upsert semantics also for duplicate literal keys
-                    if let Some(slot) = out.iter_mut().find(|(k2, _)| values_eq(k2, &kv) == Some(true)) {
+                    if let Some(slot) = out
+                        .iter_mut()
+                        .find(|(k2, _)| values_eq(k2, &kv) == Some(true))
+                    {
                         slot.1 = vv;
                     } else {
                         out.push((kv, vv));
@@ -1413,12 +1499,22 @@ impl Interp {
                 }
                 Ok(Value::Tuple(Rc::new(out)))
             }
-            Expr::Record { module: _, type_name, spread, fields } => {
+            Expr::Record {
+                module: _,
+                type_name,
+                spread,
+                fields,
+            } => {
                 let mut out: Vec<(Rc<str>, Value)> = Vec::new();
                 if let Some(sp) = spread {
                     match self.eval(env, sp)? {
                         Value::Record { fields: base, .. } => out = (*base).clone(),
-                        other => return Err(Flow::Fatal(format!("spread of a non-record ({})", other.type_name()))),
+                        other => {
+                            return Err(Flow::Fatal(format!(
+                                "spread of a non-record ({})",
+                                other.type_name()
+                            )))
+                        }
                     }
                 }
                 for (n, x) in fields {
@@ -1436,7 +1532,11 @@ impl Interp {
                         let (tn, shape) = self.ctors.get(t).cloned().unwrap();
                         let fdecls = match shape {
                             CaseShape::Record(f) => f,
-                            _ => return Err(Flow::Fatal(format!("`{t}` is not a record-payload constructor"))),
+                            _ => {
+                                return Err(Flow::Fatal(format!(
+                                    "`{t}` is not a record-payload constructor"
+                                )))
+                            }
                         };
                         let mut ordered: Vec<(Rc<str>, Value)> = Vec::with_capacity(fdecls.len());
                         for fd in &fdecls {
@@ -1447,33 +1547,54 @@ impl Interp {
                                         let v = self.eval(env, d)?;
                                         ordered.push((Rc::from(fd.name.as_str()), v));
                                     }
-                                    None => return Err(Flow::Fatal(format!("constructor `{t}` missing field `{}`", fd.name))),
+                                    None => {
+                                        return Err(Flow::Fatal(format!(
+                                            "constructor `{t}` missing field `{}`",
+                                            fd.name
+                                        )))
+                                    }
                                 },
                             }
                         }
-                        Ok(Value::Variant { type_name: Rc::from(tn.as_str()), case: Rc::from(t.as_str()), payload: Payload::Record(Rc::new(ordered)) })
+                        Ok(Value::Variant {
+                            type_name: Rc::from(tn.as_str()),
+                            case: Rc::from(t.as_str()),
+                            payload: Payload::Record(Rc::new(ordered)),
+                        })
                     }
                     Some(t) => {
                         // named record: declaration order (ALS-R2), defaults filled
                         if let Some(decl) = self.types.get(t).cloned() {
                             if let TypeBody::Record(fdecls) = &decl.body {
-                                let mut ordered: Vec<(Rc<str>, Value)> = Vec::with_capacity(fdecls.len());
+                                let mut ordered: Vec<(Rc<str>, Value)> =
+                                    Vec::with_capacity(fdecls.len());
                                 for fd in fdecls {
                                     match out.iter().find(|(k, _)| &**k == fd.name.as_str()) {
-                                        Some((k, v)) => ordered.push((k.clone(), v.clone())),
+                                        Some((k, v)) => {
+                                            let v = self.retag(v.clone(), Some(&fd.ty));
+                                            ordered.push((k.clone(), v));
+                                        }
                                         None => match &fd.default {
                                             Some(d) => {
                                                 let v = self.eval(env, d)?;
                                                 ordered.push((Rc::from(fd.name.as_str()), v));
                                             }
-                                            None => return Err(Flow::Fatal(format!("record `{t}` missing field `{}`", fd.name))),
+                                            None => {
+                                                return Err(Flow::Fatal(format!(
+                                                    "record `{t}` missing field `{}`",
+                                                    fd.name
+                                                )))
+                                            }
                                         },
                                     }
                                 }
                                 out = ordered;
                             }
                         }
-                        Ok(Value::Record { type_name: Some(Rc::from(t.as_str())), fields: Rc::new(out) })
+                        Ok(Value::Record {
+                            type_name: Some(Rc::from(t.as_str())),
+                            fields: Rc::new(out),
+                        })
                     }
                     None => {
                         // the checker infers a nominal type for an anonymous literal
@@ -1483,7 +1604,9 @@ impl Interp {
                         let mut hits: Vec<String> = Vec::new();
                         for (tname, decl) in self.types.iter() {
                             if let TypeBody::Record(fds) = &decl.body {
-                                if fds.len() == names.len() && fds.iter().all(|fd| names.contains(&fd.name.as_str())) {
+                                if fds.len() == names.len()
+                                    && fds.iter().all(|fd| names.contains(&fd.name.as_str()))
+                                {
                                     hits.push(tname.clone());
                                 }
                             }
@@ -1492,9 +1615,15 @@ impl Interp {
                             let t = hits.pop().unwrap();
                             let decl = self.types.get(&t).cloned().unwrap();
                             if let TypeBody::Record(fds) = &decl.body {
-                                let mut ordered: Vec<(Rc<str>, Value)> = Vec::with_capacity(fds.len());
+                                let mut ordered: Vec<(Rc<str>, Value)> =
+                                    Vec::with_capacity(fds.len());
                                 for fd in fds {
-                                    let (k, v) = out.iter().find(|(k, _)| &**k == fd.name.as_str()).cloned().unwrap();
+                                    let (k, v) = out
+                                        .iter()
+                                        .find(|(k, _)| &**k == fd.name.as_str())
+                                        .cloned()
+                                        .unwrap();
+                                    let v = self.retag(v, Some(&fd.ty));
                                     ordered.push((k, v));
                                 }
                                 return Ok(Value::Record {
@@ -1506,10 +1635,18 @@ impl Interp {
                         // anonymous: field-name order (ALS-R2) — a stable insertion sort
                         let mut sorted: Vec<(Rc<str>, Value)> = Vec::with_capacity(out.len());
                         for item in out {
-                            let pos = sorted.iter().position(|(k, _)| char_cmp(k, &item.0) == std::cmp::Ordering::Greater).unwrap_or(sorted.len());
+                            let pos = sorted
+                                .iter()
+                                .position(|(k, _)| {
+                                    char_cmp(k, &item.0) == std::cmp::Ordering::Greater
+                                })
+                                .unwrap_or(sorted.len());
                             sorted.insert(pos, item);
                         }
-                        Ok(Value::Record { type_name: None, fields: Rc::new(sorted) })
+                        Ok(Value::Record {
+                            type_name: None,
+                            fields: Rc::new(sorted),
+                        })
                     }
                 }
             }
@@ -1523,29 +1660,50 @@ impl Interp {
                     Some(e2) => self.eval(env, e2),
                     None => Ok(Value::Unit),
                 },
-                other => Err(Flow::Fatal(format!("if condition is a {}", other.type_name()))),
+                other => Err(Flow::Fatal(format!(
+                    "if condition is a {}",
+                    other.type_name()
+                ))),
             },
-            Expr::IfLet { name, scrut, then, els } => match self.eval(env, scrut)? {
+            Expr::IfLet {
+                name,
+                scrut,
+                then,
+                els,
+            } => match self.eval(env, scrut)? {
                 Value::Some(v) => {
                     let inner = Env::new(Some(env.clone()));
                     inner.define(name, (*v).clone());
                     self.eval(&inner, then)
                 }
                 Value::None => self.eval(env, els),
-                other => Err(Flow::Fatal(format!("if-let scrutinee is a {}", other.type_name()))),
+                other => Err(Flow::Fatal(format!(
+                    "if-let scrutinee is a {}",
+                    other.type_name()
+                ))),
             },
             Expr::Match { subject, arms } => {
                 let v = self.eval(env, subject)?;
                 self.eval_match(env, v, arms)
             }
             Expr::PipeMatch { .. } => Err(Flow::Fatal("pipe-match outside a pipe".into())),
-            Expr::For { binders, iter, body } => {
+            Expr::For {
+                binders,
+                iter,
+                body,
+            } => {
                 if let Expr::Range { lo, hi, inclusive } = &**iter {
                     let l = self.eval(env, lo)?;
                     let h = self.eval(env, hi)?;
                     let (a, b) = match (l, h) {
                         (Value::Int(a), Value::Int(b)) => (a, b),
-                        (a, b) => return Err(Flow::Fatal(format!("range over {} and {}", a.type_name(), b.type_name()))),
+                        (a, b) => {
+                            return Err(Flow::Fatal(format!(
+                                "range over {} and {}",
+                                a.type_name(),
+                                b.type_name()
+                            )))
+                        }
                     };
                     let end = if *inclusive { b } else { b - 1 };
                     let mut i = a;
@@ -1594,8 +1752,16 @@ impl Interp {
                 }
                 let items: Vec<Value> = match it {
                     Value::List(xs) | Value::Set(xs) => (*xs).clone(),
-                    Value::Map(kvs) => kvs.iter().map(|(k, v)| Value::Tuple(Rc::new(vec![k.clone(), v.clone()]))).collect(),
-                    other => return self.abstain("semantics:for-iterable", format!("for-in over a {}", other.type_name())),
+                    Value::Map(kvs) => kvs
+                        .iter()
+                        .map(|(k, v)| Value::Tuple(Rc::new(vec![k.clone(), v.clone()])))
+                        .collect(),
+                    other => {
+                        return self.abstain(
+                            "semantics:for-iterable",
+                            format!("for-in over a {}", other.type_name()),
+                        )
+                    }
                 };
                 for item in items {
                     self.charge(1)?; // ALS-DT2 loop-head check
@@ -1613,7 +1779,12 @@ impl Interp {
                                     }
                                 }
                             }
-                            other => return Err(Flow::Fatal(format!("for-in destructuring of a {}", other.type_name()))),
+                            other => {
+                                return Err(Flow::Fatal(format!(
+                                    "for-in destructuring of a {}",
+                                    other.type_name()
+                                )))
+                            }
                         }
                     }
                     match self.eval(&inner, body) {
@@ -1633,7 +1804,12 @@ impl Interp {
                     match self.eval(env, cond)? {
                         Value::Bool(true) => {}
                         Value::Bool(false) => break,
-                        other => return Err(Flow::Fatal(format!("while condition is a {}", other.type_name()))),
+                        other => {
+                            return Err(Flow::Fatal(format!(
+                                "while condition is a {}",
+                                other.type_name()
+                            )))
+                        }
                     }
                     match self.eval(env, body) {
                         Ok(_) => {}
@@ -1644,7 +1820,11 @@ impl Interp {
                 }
                 Ok(Value::Unit)
             }
-            Expr::Fan { head, head_args, arms } => {
+            Expr::Fan {
+                head,
+                head_args,
+                arms,
+            } => {
                 match head {
                     None => {
                         // ALS-R3: deterministic, list order; the all-ok path yields the
@@ -1683,7 +1863,9 @@ impl Interp {
                                 other => return Ok(Value::Ok(Rc::new(other))),
                             }
                         }
-                        Ok(Value::Err(Rc::new(Value::str("fan.any: all candidates failed"))))
+                        Ok(Value::Err(Rc::new(Value::str(
+                            "fan.any: all candidates failed",
+                        ))))
                     }
                     Some(h) if h == "settle" => {
                         // ALS-R3: a TUPLE of per-arm Results, list order
@@ -1705,7 +1887,11 @@ impl Interp {
                         if head_args.len() != 1 || arms.len() != 1 {
                             return self.abstain(
                                 &format!("syntax:fan.{h}"),
-                                format!("`fan.{h}` with {} head arg(s) and {} arm(s)", head_args.len(), arms.len()),
+                                format!(
+                                    "`fan.{h}` with {} head arg(s) and {} arm(s)",
+                                    head_args.len(),
+                                    arms.len()
+                                ),
                             );
                         }
                         let b = self.eval(env, &head_args[0])?;
@@ -1716,7 +1902,10 @@ impl Interp {
                             // ALS-DT5: a wall deadline, checked at charge sites
                             (false, Value::Time { wall: true, ns }) => (
                                 u64::MAX,
-                                Some(std::time::Instant::now() + std::time::Duration::from_nanos((*ns).max(0) as u64)),
+                                Some(
+                                    std::time::Instant::now()
+                                        + std::time::Duration::from_nanos((*ns).max(0) as u64),
+                                ),
                             ),
                             (_, other) => {
                                 return self.abstain(
@@ -1754,7 +1943,10 @@ impl Interp {
                             budget = (*ns / 3) as u64;
                             rest = &vals[1..];
                         } else if let Some(Value::Time { wall: true, .. }) = vals.first() {
-                            return self.abstain("semantics:fan-budget", "`fan.race` over a wall-clock budget");
+                            return self.abstain(
+                                "semantics:fan-budget",
+                                "`fan.race` over a wall-clock budget",
+                            );
                         }
                         enum Arm {
                             Block(Expr),
@@ -1765,12 +1957,20 @@ impl Interp {
                         } else if rest.len() == 2 {
                             // the mapper form: fan.race(budget?, xs, f)
                             let Value::List(xs) = &rest[0] else {
-                                return self.abstain("syntax:fan.race", "`fan.race` mapper over a non-list");
+                                return self.abstain(
+                                    "syntax:fan.race",
+                                    "`fan.race` mapper over a non-list",
+                                );
                             };
                             let f = rest[1].clone();
-                            xs.iter().map(|x| Arm::Mapped(f.clone(), x.clone())).collect()
+                            xs.iter()
+                                .map(|x| Arm::Mapped(f.clone(), x.clone()))
+                                .collect()
                         } else {
-                            return self.abstain("syntax:fan.race", format!("`fan.race` with {} head arg(s)", rest.len()));
+                            return self.abstain(
+                                "syntax:fan.race",
+                                format!("`fan.race` with {} head arg(s)", rest.len()),
+                            );
                         };
                         let mut best: Option<(u64, Value)> = None;
                         for arm in arm_list {
@@ -1807,10 +2007,15 @@ impl Interp {
                         }
                         Ok(match best {
                             Some((_, v)) => Value::Ok(Rc::new(v)),
-                            None => Value::Err(Rc::new(Value::str("fan.race: all candidates failed"))),
+                            None => {
+                                Value::Err(Rc::new(Value::str("fan.race: all candidates failed")))
+                            }
                         })
                     }
-                    Some(h) => self.abstain(&format!("syntax:fan.{h}"), format!("`fan.{h}` block head is not implemented yet")),
+                    Some(h) => self.abstain(
+                        &format!("syntax:fan.{h}"),
+                        format!("`fan.{h}` block head is not implemented yet"),
+                    ),
                 }
             }
             Expr::Lambda { params, body } => {
@@ -1820,9 +2025,19 @@ impl Interp {
                 let fallible = expr_has_unwrap(body);
                 let snap = Env::new(Some(self.globals.clone()));
                 snapshot_into(env, &snap, &self.globals);
-                Ok(Value::Fn(Rc::new(Callable::Closure(Rc::new(Closure { params: params.clone(), body: (**body).clone(), env: snap, fallible })))))
+                Ok(Value::Fn(Rc::new(Callable::Closure(Rc::new(Closure {
+                    params: params.clone(),
+                    body: (**body).clone(),
+                    env: snap,
+                    fallible,
+                })))))
             }
-            Expr::Call { callee, type_args: _, args, line } => {
+            Expr::Call {
+                callee,
+                type_args: _,
+                args,
+                line,
+            } => {
                 self.cur_line = *line;
                 self.eval_call(env, callee, args)
             }
@@ -1838,11 +2053,16 @@ impl Interp {
                             Ok(xs[i as usize].clone())
                         }
                     }
-                    (Value::Map(kvs), k) => Ok(match kvs.iter().find(|(k2, _)| values_eq(k2, &k) == Some(true)) {
-                        Some((_, v)) => Value::Some(Rc::new(v.clone())),
-                        None => Value::None,
-                    }),
-                    (o, i) => self.abstain("semantics:index", format!("indexing a {} with a {}", o.type_name(), i.type_name())),
+                    (Value::Map(kvs), k) => Ok(
+                        match kvs.iter().find(|(k2, _)| values_eq(k2, &k) == Some(true)) {
+                            Some((_, v)) => Value::Some(Rc::new(v.clone())),
+                            None => Value::None,
+                        },
+                    ),
+                    (o, i) => self.abstain(
+                        "semantics:index",
+                        format!("indexing a {} with a {}", o.type_name(), i.type_name()),
+                    ),
                 }
             }
             Expr::Member { obj, name } => {
@@ -1851,39 +2071,69 @@ impl Interp {
                         return Ok(Value::Fn(Rc::new(Callable::Std(format!("{m}.{name}")))));
                     }
                 }
-                if let Expr::TypeName { module: None, name: t } = &**obj {
+                if let Expr::TypeName {
+                    module: None,
+                    name: t,
+                } = &**obj
+                {
                     if self.methods.contains_key(&(t.clone(), name.clone())) {
-                        return Ok(Value::Fn(Rc::new(Callable::Method(t.clone(), name.clone()))));
+                        return Ok(Value::Fn(Rc::new(Callable::Method(
+                            t.clone(),
+                            name.clone(),
+                        ))));
                     }
                     // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
                     if (name == "decode" || name == "encode")
-                        && self.types.get(t).is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
+                        && self
+                            .types
+                            .get(t)
+                            .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
                     {
-                        return Ok(Value::Fn(Rc::new(Callable::Codec(t.clone(), name == "decode"))));
+                        return Ok(Value::Fn(Rc::new(Callable::Codec(
+                            t.clone(),
+                            name == "decode",
+                        ))));
                     }
                 }
                 let v = self.eval(env, obj)?;
                 match &v {
-                    Value::Record { fields, .. } => match fields.iter().find(|(n, _)| &**n == name.as_str()) {
-                        Some((_, fv)) => Ok(fv.clone()),
-                        None => Err(Flow::Fatal(format!("no field `{name}` on record"))),
-                    },
-                    Value::Variant { payload: Payload::Record(fields), .. } => match fields.iter().find(|(n, _)| &**n == name.as_str()) {
+                    Value::Record { fields, .. } => {
+                        match fields.iter().find(|(n, _)| &**n == name.as_str()) {
+                            Some((_, fv)) => Ok(fv.clone()),
+                            None => Err(Flow::Fatal(format!("no field `{name}` on record"))),
+                        }
+                    }
+                    Value::Variant {
+                        payload: Payload::Record(fields),
+                        ..
+                    } => match fields.iter().find(|(n, _)| &**n == name.as_str()) {
                         Some((_, fv)) => Ok(fv.clone()),
                         None => Err(Flow::Fatal(format!("no field `{name}` on variant payload"))),
                     },
-                    other => self.abstain("semantics:member", format!("member `.{name}` on a {}", other.type_name())),
+                    other => self.abstain(
+                        "semantics:member",
+                        format!("member `.{name}` on a {}", other.type_name()),
+                    ),
                 }
             }
             Expr::TupleIndex { obj, k } => match self.eval(env, obj)? {
-                Value::Tuple(items) => items.get(*k).cloned().ok_or_else(|| Flow::Fatal(format!("tuple index .{k} out of range"))),
-                other => Err(Flow::Fatal(format!("tuple index on a {}", other.type_name()))),
+                Value::Tuple(items) => items
+                    .get(*k)
+                    .cloned()
+                    .ok_or_else(|| Flow::Fatal(format!("tuple index .{k} out of range"))),
+                other => Err(Flow::Fatal(format!(
+                    "tuple index on a {}",
+                    other.type_name()
+                ))),
             },
             Expr::Unwrap(inner) => match self.eval(env, inner)? {
                 Value::Ok(v) | Value::Some(v) => Ok((*v).clone()),
                 Value::Err(e) => {
                     if self.in_test {
-                        Err(Flow::Abort(format!("unwrap on err: {}", render(&e).unwrap_or_default())))
+                        Err(Flow::Abort(format!(
+                            "unwrap on err: {}",
+                            render(&e).unwrap_or_default()
+                        )))
                     } else {
                         Err(Flow::Propagate(Prop::Err((*e).clone())))
                     }
@@ -1897,7 +2147,10 @@ impl Interp {
                 }
                 other => self.abstain(
                     "semantics:carrier-shape",
-                    format!("`!` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                    format!(
+                        "`!` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet",
+                        other.type_name()
+                    ),
                 ),
             },
             Expr::ToOption(inner) => match self.eval(env, inner)? {
@@ -1906,16 +2159,24 @@ impl Interp {
                 v @ (Value::Some(_) | Value::None) => Ok(v),
                 other => self.abstain(
                     "semantics:carrier-shape",
-                    format!("`?` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                    format!(
+                        "`?` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet",
+                        other.type_name()
+                    ),
                 ),
             },
             Expr::OptChain { obj, name } => match self.eval(env, obj)? {
                 Value::Some(v) => match &*v {
-                    Value::Record { fields, .. } => match fields.iter().find(|(n, _)| &**n == name.as_str()) {
-                        Some((_, fv)) => Ok(Value::Some(Rc::new(fv.clone()))),
-                        None => Err(Flow::Fatal(format!("no field `{name}` on record"))),
-                    },
-                    other => Err(Flow::Fatal(format!("`?.{name}` on some({})", other.type_name()))),
+                    Value::Record { fields, .. } => {
+                        match fields.iter().find(|(n, _)| &**n == name.as_str()) {
+                            Some((_, fv)) => Ok(Value::Some(Rc::new(fv.clone()))),
+                            None => Err(Flow::Fatal(format!("no field `{name}` on record"))),
+                        }
+                    }
+                    other => Err(Flow::Fatal(format!(
+                        "`?.{name}` on some({})",
+                        other.type_name()
+                    ))),
                 },
                 Value::None => Ok(Value::None),
                 other => Err(Flow::Fatal(format!("`?.` on a {}", other.type_name()))),
@@ -1925,7 +2186,10 @@ impl Interp {
                 Value::Err(_) | Value::None => self.eval(env, fallback),
                 other => self.abstain(
                     "semantics:carrier-shape",
-                    format!("`??` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet", other.type_name()),
+                    format!(
+                        "`??` on a {} — the effect-slot carrier shape (ALS-M15) is not modeled yet",
+                        other.type_name()
+                    ),
                 ),
             },
             Expr::Binary { op, lhs, rhs } => {
@@ -1961,7 +2225,12 @@ impl Interp {
             Expr::Pipe { lhs, rhs } => {
                 let v = self.eval(env, lhs)?;
                 match &**rhs {
-                    Expr::Call { callee, type_args: _, args, line } => {
+                    Expr::Call {
+                        callee,
+                        type_args: _,
+                        args,
+                        line,
+                    } => {
                         self.cur_line = *line;
                         let mut full: Vec<Arg> = Vec::with_capacity(args.len() + 1);
                         full.push(Arg::Pos(Expr::Ident("__pipe_value".into())));
@@ -1975,7 +2244,11 @@ impl Interp {
                         // a callable: `x |> f`, `x |> mod.f`, `x |> (f >> g)`
                         let inner = Env::new(Some(env.clone()));
                         inner.define("__pipe_value", v);
-                        self.eval_call(&inner, other, &[Arg::Pos(Expr::Ident("__pipe_value".into()))])
+                        self.eval_call(
+                            &inner,
+                            other,
+                            &[Arg::Pos(Expr::Ident("__pipe_value".into()))],
+                        )
                     }
                 }
             }
@@ -1992,15 +2265,25 @@ impl Interp {
                         let end = if *inclusive { b.saturating_add(1) } else { b };
                         Ok(Value::Range(a, end))
                     }
-                    (a, b) => Err(Flow::Fatal(format!("range over {} and {}", a.type_name(), b.type_name()))),
+                    (a, b) => Err(Flow::Fatal(format!(
+                        "range over {} and {}",
+                        a.type_name(),
+                        b.type_name()
+                    ))),
                 }
             }
             Expr::Some(x) => Ok(Value::Some(Rc::new(self.eval(env, x)?))),
             Expr::None => Ok(Value::None),
             Expr::Ok(x) => Ok(Value::Ok(Rc::new(self.eval(env, x)?))),
             Expr::Err(x) => Ok(Value::Err(Rc::new(self.eval(env, x)?))),
-            Expr::Todo(msg) => self.abstain("runtime:todo", format!("todo({msg:?}) reached — ALS-E30: no cross-target contract")),
-            Expr::Hole => self.abstain("runtime:hole", "typed hole reached — ALS-E30: no cross-target contract"),
+            Expr::Todo(msg) => self.abstain(
+                "runtime:todo",
+                format!("todo({msg:?}) reached — ALS-E30: no cross-target contract"),
+            ),
+            Expr::Hole => self.abstain(
+                "runtime:hole",
+                "typed hole reached — ALS-E30: no cross-target contract",
+            ),
             Expr::Break => Err(Flow::Break),
             Expr::Continue => Err(Flow::Continue),
             Expr::Ascription { expr, ty: _ } => self.eval(env, expr),
@@ -2209,6 +2492,131 @@ impl Interp {
                 Ok(Value::Float(F64(fnan(crate::libm::almide_rt_libm_pow(
                     a.0, b.0,
                 )))))
+            }
+            // C-180: sized-integer arithmetic wraps at the declared width;
+            // / and % are total per width (zero divisor and signed MIN/-1
+            // abort in the T6 form); unsigned widths divide/compare unsigned
+            (
+                Add | Sub | Mul,
+                Value::Sized { bits, signed, v: a },
+                Value::Sized {
+                    bits: b2,
+                    signed: s2,
+                    v: b,
+                },
+            ) if bits == b2 && signed == s2 => {
+                let r = match op {
+                    Add => a.wrapping_add(*b),
+                    Sub => a.wrapping_sub(*b),
+                    _ => a.wrapping_mul(*b),
+                };
+                Ok(Value::Sized {
+                    bits: *bits,
+                    signed: *signed,
+                    v: wrap_sized(*bits, *signed, r),
+                })
+            }
+            (
+                Div | Rem,
+                Value::Sized { bits, signed, v: a },
+                Value::Sized {
+                    bits: b2,
+                    signed: s2,
+                    v: b,
+                },
+            ) if bits == b2 && signed == s2 => {
+                if *signed {
+                    if *b == 0 {
+                        return Err(Flow::Abort("division by zero".into()));
+                    }
+                    let min = wrap_sized(*bits, true, 1i64 << (*bits as u32 - 1));
+                    if *a == min && *b == -1 {
+                        return Err(Flow::Abort("integer overflow".into()));
+                    }
+                    let r = if op == Div { a / b } else { a % b };
+                    Ok(Value::Sized {
+                        bits: *bits,
+                        signed: true,
+                        v: r,
+                    })
+                } else {
+                    let (ua, ub) = (sized_unsigned(*bits, *a), sized_unsigned(*bits, *b));
+                    if ub == 0 {
+                        return Err(Flow::Abort("division by zero".into()));
+                    }
+                    let r = if op == Div { ua / ub } else { ua % ub };
+                    Ok(Value::Sized {
+                        bits: *bits,
+                        signed: false,
+                        v: r as i64,
+                    })
+                }
+            }
+            (Pow, Value::Sized { bits, signed, v: a }, Value::Int(e))
+            | (Pow, Value::Sized { bits, signed, v: a }, Value::Sized { v: e, .. }) => {
+                // C-184: `^` is math.pow at the base's own width — wrapping
+                // exponentiation by squaring, negative exponent aborts
+                if *e < 0 {
+                    return Err(Flow::Abort("negative exponent".into()));
+                }
+                let mut acc: i64 = 1;
+                let mut base = *a;
+                let mut k = *e as u64;
+                while k > 0 {
+                    if k & 1 == 1 {
+                        acc = wrap_sized(*bits, *signed, acc.wrapping_mul(base));
+                    }
+                    base = wrap_sized(*bits, *signed, base.wrapping_mul(base));
+                    k >>= 1;
+                }
+                Ok(Value::Sized {
+                    bits: *bits,
+                    signed: *signed,
+                    v: acc,
+                })
+            }
+            // context-typed literal: an Int operand beside a Sized one takes
+            // the sized width (the checker already typed it there); Pow keeps
+            // its Int exponent above, so only the remaining ops coerce
+            (_, Value::Sized { bits, signed, .. }, Value::Int(n)) => {
+                let rv = Value::Sized {
+                    bits: *bits,
+                    signed: *signed,
+                    v: wrap_sized(*bits, *signed, *n),
+                };
+                self.binop(op, l.clone(), rv)
+            }
+            (_, Value::Int(n), Value::Sized { bits, signed, .. }) => {
+                let lv = Value::Sized {
+                    bits: *bits,
+                    signed: *signed,
+                    v: wrap_sized(*bits, *signed, *n),
+                };
+                self.binop(op, lv, r.clone())
+            }
+            (
+                Lt | Le | Gt | Ge | Eq | Ne,
+                Value::Sized { bits, signed, v: a },
+                Value::Sized {
+                    bits: b2,
+                    signed: s2,
+                    v: b,
+                },
+            ) if bits == b2 && signed == s2 => {
+                let ord = if *signed {
+                    a.cmp(b)
+                } else {
+                    sized_unsigned(*bits, *a).cmp(&sized_unsigned(*bits, *b))
+                };
+                let res = match op {
+                    Lt => ord == std::cmp::Ordering::Less,
+                    Le => ord != std::cmp::Ordering::Greater,
+                    Gt => ord == std::cmp::Ordering::Greater,
+                    Ge => ord != std::cmp::Ordering::Less,
+                    Eq => ord == std::cmp::Ordering::Equal,
+                    _ => ord != std::cmp::Ordering::Equal,
+                };
+                Ok(Value::Bool(res))
             }
             // ALS-DT1 time algebra: + saturates, - saturates at 0,
             // * Int saturates and aborts on a negative factor; same-clock only
@@ -3032,4 +3440,41 @@ fn expr_has_loop(e: &Expr) -> bool {
 /// crude recursion probe: any mention of `name` as an identifier inside
 fn expr_calls_name(e: &Expr, name: &str) -> bool {
     expr_any(e, &|x| matches!(x, Expr::Ident(n) if n == name))
+}
+
+/// C-038 sized-numeric vocabulary: type name → (bits, signed)
+fn sized_of(name: &str) -> Option<(u8, bool)> {
+    Some(match name {
+        "Int8" => (8, true),
+        "Int16" => (16, true),
+        "Int32" => (32, true),
+        "UInt8" => (8, false),
+        "UInt16" => (16, false),
+        "UInt32" => (32, false),
+        "UInt64" => (64, false),
+        _ => return None,
+    })
+}
+
+/// C-180: re-wrap an i64 lane value at the declared width — signed widths
+/// sign-extend (shl+sar), unsigned widths mask; 64-bit keeps the pattern
+pub(crate) fn wrap_sized(bits: u8, signed: bool, v: i64) -> i64 {
+    if bits == 64 {
+        return v;
+    }
+    let shift = 64 - bits as u32;
+    if signed {
+        (v << shift) >> shift
+    } else {
+        ((v as u64) & (u64::MAX >> shift)) as i64
+    }
+}
+
+/// unsigned READ of a sized slot (UInt64 upper half included)
+pub(crate) fn sized_unsigned(bits: u8, v: i64) -> u64 {
+    if bits == 64 {
+        v as u64
+    } else {
+        (v as u64) & (u64::MAX >> (64 - bits as u32))
+    }
 }
