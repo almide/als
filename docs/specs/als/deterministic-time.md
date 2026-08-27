@@ -24,7 +24,9 @@ Fixtures: `spec/wasm_cross/time_negative_trap.almd`, `time_negative_scale.almd`,
 unit が予算 unit（`ns / CM-1`、切り捨て）を超えたときのみ Err（台帳定数メッセージ
 `fan.bounded: budget exhausted`）。同じプログラムはどのターゲット・どのホストでも
 同じ宣言ナノ秒で Ok ⇄ Err が反転する（unit 境界厳密）。入れ子は min-cap
-（EIP-150 式）。bind 文は charge 0。
+（EIP-150 式 — 現行リリースは region の入れ子自体を E007 で拒否するため、
+この規則の executable 証拠は参照評価器の実装のみである）。bind 文は
+charge 0。
 
 **charge 表（CM-1 v0.3 = 3ns/unit、C-207）**: charge site は (a) fn entry —
 1 unit、ただしループ無し・非再帰の callee は共有 MIR インライナで消える

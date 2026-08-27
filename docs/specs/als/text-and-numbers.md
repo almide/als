@@ -46,10 +46,13 @@ Fixture: `spec/wasm_cross/float_parse.almd`。
 
 - 数値は ALS-T2 の値規範で binary64 化する
 - 文字列のサロゲートペア（`\uD800`–`\uDBFF` + `\uDC00`–`\uDFFF`）は合成する。
-  不対サロゲートはエラー
+  不対サロゲートは**黙って落ちる**（寛容 — `json_string_span.almd` が
+  両ターゲット同一で pin。厳格拒否は不採用）
+- 先頭が値として読める入力は**前置 parse**で受理される（`"[1] x"` →
+  `ok([1])` — RFC 8259 の全文一致要求への寛容拡張、0.59.1 実測）
 - エラー報告は**文字単位の位置**（バイトでなくコードポイント index）を含む
 
-Fixture: `spec/wasm_cross/json_*.almd` 群、read_message roundtrip。
+Fixture: `spec/wasm_cross/json_*.almd` 群（`json_string_span.almd` 含む）。
 
 ## ALS-T4 `list.chunk` / `list.windows`
 
@@ -165,7 +168,9 @@ Contracts: C-026。
 ## ALS-T11 バイナリテキスト符号化
 
 `base64.encode/decode`（standard + URL-safe）と `hex.encode/decode` は RFC 4648
-に従い、decode エラーは**位置情報込みで**両ターゲット同文言。大文字小文字の
+に従い、decode エラーは両ターゲット同文言（base64 は位置なし —
+`invalid base64 character` / `invalid base64 length: N`; 位置付きは hex 側
+`invalid hex char at 0`、C-030）。大文字小文字の
 扱い・パディング規則・不正長の検出を含む。
 Contracts: C-027, C-030。
 
@@ -185,7 +190,10 @@ Contracts: C-023。
 ## ALS-T14 wrap / rotate のマスク飽和
 
 `int.wrap_*` / `int.rotate_*` の bits 引数が 64 を超える場合、マスクは
-`u64::MAX` に**飽和**する（モジュロではない）。bits ≤ 0 は ALS-T6 の abort。
+`u64::MAX` に**飽和**する（モジュロではない）。bits ≤ 0 は wrap 族では
+**黙って全域**（`wrap_add(1,1,0)` → 0、`wrap_add(1,1,-1)` → 2 — 0.59.1
+実測、abort しない）; abort するのは rotate 族のみ（`Error: rotate width
+must be positive`、ALS-T6）。
 Contracts: C-048。
 
 ## ALS-T15 符号と min/max の NaN 規則
@@ -267,7 +275,7 @@ Float 計算の観測可能な結果（stdout・stderr・exit code、および `
 フラグ・実行環境の浮動小数モードに依存しない。この一文が数値決定性の規範であり、
 次の節群がその構成要素である — 既存: T2（`float.parse` 正確丸め）・T9（`to_fixed`）・
 T10（超越関数の単一実装）・T13（最短往復表示）・T15（符号と NaN 無視）・
-ALS-C9（totalOrder）・ALS-E3（`-0.0` 表示）・ALS-M10（等値）・ALS-R4（非有限
+ALS-C9（totalOrder）・ALS-E3（`-0.0` 表示）・ALS-C3（等値）・ALS-R4（非有限
 定数表示）・C-210（NaN の正準観測）; 本ファミリーで新設: T20（丸めと縮約禁止）・
 T21（非正規数の保存）・T22（超越関数の誤差上限）・T23（符号付きゼロ）・
 T24（Float → Int 変換）。
@@ -373,7 +381,7 @@ Fixture: `spec/wasm_cross/math_transcendental_bits.almd`、
 （最近接偶数丸めでは異符号ゼロの和は `+0` — `+0.0` がリテラルでも同じで、
 `x + 0.0 → x` は `x = -0.0` に対して成り立たない恒等式なので、実装は畳み込んでは
 ならない。`x - 0.0 → x` と `x * 1.0 → x` は成り立つ）、`1.0 / -inf = -0.0`。等値は符号を
-無視する（`0.0 == -0.0` は真、ALS-M10）。表示は符号を保つ（`-0.0` → `-0.0`、
+無視する（`0.0 == -0.0` は真、ALS-C3）。表示は符号を保つ（`-0.0` → `-0.0`、
 ALS-E3）。`float.min/max`・`math.fmin/fmax` は **IEEE-754-2019 `minimum`/`maximum`
 のゼロ順序**に従う: `-0.0 < +0.0` として扱い、`min(-0.0, 0.0) = min(0.0, -0.0) = -0.0`、
 `max(-0.0, 0.0) = max(0.0, -0.0) = +0.0` — 引数順に依存せず（可換）、ALS-C9 の
@@ -403,10 +411,11 @@ test "signed zero propagates, compares equal, and orders -0 < +0 in min/max" {
 Fixture: `spec/wasm_cross/float_signed_zero_minmax.almd`、
 `spec/wasm_cross/float_sign_minmax_ieee.almd`、
 `spec/stdlib/float_determinism_test.almd`（伝播・等値）、
-`spec/stdlib/float_minmax_zero_order_test.almd`（±0 の順序 — 0.58.0 リリースは
+`spec/stdlib/float_minmax_zero_order_test.almd`（±0 の順序 — 0.59.1 まで
 旧規則のままなので、ピン前進までこのファイルが赤）、
-`spec/stdlib/float_signed_zero_sum_test.almd`（リテラル `0.0` との和 — 0.58.0 の
-native は `x + 0.0` を `x` に畳み込んでおり、このファイルの赤がその発見）。
+`spec/stdlib/float_signed_zero_sum_test.almd`（リテラル `0.0` との和 —
+0.58.0 native の `x + 0.0 -> x` 畳み込みをこのファイルの赤が発見し、
+0.59.1 が符号厳密な恒等式だけ残す形で修正済み・現緑）。
 Contracts: C-306。
 
 ## ALS-T24 Float → Int 変換
