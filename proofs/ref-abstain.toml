@@ -9,9 +9,5 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 1
-evaluated = 610
-
-[[abstain]]
-class = "resource:fuel"
-count = 1
+ceiling = 0
+evaluated = 611
