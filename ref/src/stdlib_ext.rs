@@ -129,6 +129,7 @@ pub const EXT_FNS: &[&str] = &[
     "fs.list_dir",
     "fs.is_dir",
     "fs.is_file",
+    "fs.is_symlink",
     "fs.copy",
     "fs.rename",
     "fs.remove_all",
@@ -545,8 +546,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "bytes.to_string" => {
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
-            let s = String::from_utf8_lossy(&b.borrow()).to_string();
-            Ok(Value::str(&s))
+            // the carrier: ok(s) on valid UTF-8, err with the validator's
+            // message otherwise (b2s_probe against 0.59.1) — never lossy
+            let v = b.borrow().clone();
+            Ok(match String::from_utf8(v) {
+                Ok(s) => ok(Value::str(&s)),
+                Err(e) => err_str(&format!("invalid UTF-8: {}", e.utf8_error())),
+            })
         }
         "bytes.to_list" => {
             arity(name, &args, 1)?;
@@ -914,6 +920,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 } else {
                     std::fs::remove_file(&p)
                 }
+            } else if p.is_dir() {
+                // C-228: single-entry semantics — an empty dir removes, a
+                // non-empty dir errs like remove_dir, never recursive
+                std::fs::remove_dir(&p)
             } else {
                 std::fs::remove_file(&p)
             };
@@ -921,6 +931,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Ok(()) => ok(Value::Unit),
                 Err(e) => io_err(e),
             })
+        }
+        "fs.is_symlink" => {
+            arity(name, &args, 1)?;
+            // C-228 family: true only for a symlink itself; a plain file,
+            // dir, or missing path answers false
+            let is = std::path::Path::new(&**want_str(name, &args[0])?)
+                .symlink_metadata()
+                .map(|m| m.file_type().is_symlink())
+                .unwrap_or(false);
+            Ok(Value::Bool(is))
         }
         "fs.list_dir" => {
             arity(name, &args, 1)?;
