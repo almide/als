@@ -31,6 +31,7 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.dot_row",
     "matrix.pow",
     "matrix.gelu",
+    "matrix.softmax_rows",
     "matrix.rms_norm_rows",
     "matrix.select_rows_f32",
     "matrix.select_rows_q8_0_dq",
@@ -258,15 +259,19 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         "matrix.gelu" => {
             arity(name, &args, 1)?;
-            let _ = want_mat(name, &args[0])?;
-            // C-223: gelu computes through the CANONICAL degree-6 fast-exp
-            // (`1 - 2/(exp(2y)+1)`), whose coefficients the judge does not
-            // pin yet — a libm tanh is bit-different in the 8th digit, so
-            // abstaining is the only honest answer until the algorithm lands
-            it.abstain_pub(
-                "stdlib:matrix.gelu",
-                "the canonical deg-6 fast-exp is not pinned in the judge yet",
-            )
+            let m = want_mat(name, &args[0])?;
+            let data = m.data.iter().map(|x| gelu_scalar(*x)).collect();
+            Ok(mat(m.rows, m.cols, data))
+        }
+        "matrix.softmax_rows" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            let mut data = Vec::with_capacity(m.data.len());
+            for r in 0..m.rows {
+                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
+                data.extend(softmax_row(row));
+            }
+            Ok(mat(m.rows, m.cols, data))
         }
         "matrix.rms_norm_rows" => {
             arity(name, &args, 3)?;
@@ -409,4 +414,67 @@ fn q_element(b: &[u8], off: i64, k: i128, q8: bool) -> f64 {
         0.0 - scale
     };
     0.0 + v
+}
+
+/// ALS-T25: the CANONICAL fast-exp (C-223) — deg-6 unfused Horner, ties-to-
+/// even range reduction, 2^k by bit shift, clamped to ±708. Every step is a
+/// separate mul-then-add on purpose: an FMA anywhere re-opens #1197.
+#[allow(clippy::approx_constant, clippy::manual_clamp)] // the T25 coefficients ARE the algorithm; the clamp is spelled out for wasm fmax/fmin NaN propagation
+fn fast_exp(x0: f64) -> f64 {
+    // the clamp is spelled with wasm fmax/fmin semantics: a NaN PROPAGATES
+    // (Rust's f64::max would discard it and answer -708.0)
+    let x = if x0.is_nan() {
+        x0
+    } else if x0 < -708.0 {
+        -708.0
+    } else if x0 > 708.0 {
+        708.0
+    } else {
+        x0
+    };
+    let kf = (x * 1.4426950408889634).round_ties_even();
+    let r = x - kf * 0.6931471805599453;
+    let mut p = 0.001388888888888889;
+    p = p * r + 0.008333333333333333;
+    p = p * r + 0.041666666666666664;
+    p = p * r + 0.16666666666666666;
+    p = p * r + 0.5;
+    p = p * r + 1.0;
+    p = p * r + 1.0;
+    p * f64::from_bits(((kf as i64 + 1023) << 52) as u64)
+}
+
+/// ALS-T25 gelu: the identity `1 - 2/(e2+1)` (not `(e2-1)/(e2+1)`), the cube
+/// association `(x*x)*x`, and the halve-first scaling `(0.5*x)*(1+t)`.
+fn gelu_scalar(x: f64) -> f64 {
+    let inner = 0.7978845608028654 * (x + 0.044715 * ((x * x) * x));
+    let e2 = fast_exp(2.0 * inner);
+    let t = 1.0 - 2.0 / (e2 + 1.0);
+    (0.5 * x) * (1.0 + t)
+}
+
+/// ALS-T25 softmax row: row-max from element 0 scanned with `>` (a NaN
+/// element leaves the max), fast-exp per element, ONE left-to-right sum,
+/// reciprocal-multiply; a non-positive or NaN sum answers the uniform row.
+fn softmax_row(row: &[f64]) -> Vec<f64> {
+    let n = row.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut mx = row[0];
+    for x in &row[1..] {
+        if *x > mx {
+            mx = *x;
+        }
+    }
+    let exps: Vec<f64> = row.iter().map(|x| fast_exp(x - mx)).collect();
+    let mut s = 0.0f64;
+    for e in &exps {
+        s += e;
+    }
+    if s <= 0.0 || s.is_nan() {
+        return vec![1.0 / n as f64; n];
+    }
+    let inv = 1.0 / s;
+    exps.iter().map(|v| v * inv).collect()
 }
