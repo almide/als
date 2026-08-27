@@ -482,6 +482,39 @@ if ! bash docs/contracts/generate-readme.sh 2>/dev/null | diff -q - docs/contrac
   err "docs/contracts/README.md is stale — run: bash docs/contracts/generate-readme.sh > docs/contracts/README.md"
 fi
 
+# ── STRUCTURAL INTEGRITY (2026-08-27, the corruption class a four-agent
+# review caught that this gate did not): every [[contract]] block carries
+# exactly one id line, every `evidence = [` closes before the next block,
+# and no statement key repeats inside a block. The awk scans above read
+# LINES and sailed straight past an id-less block and two unterminated
+# arrays (C-274/C-275, the swallowed ALS-I3 contract, C-220's double
+# statement) — this block reads STRUCTURE.
+if ! python3 - <<'PYEOF'
+import sys, re
+text = open("docs/contracts/contracts.toml", encoding="utf-8").read()
+blocks = re.split(r"(?m)^\[\[contract\]\]\s*$", text)[1:]
+bad = []
+for n, b in enumerate(blocks, 1):
+    ids = re.findall(r'^id\s*=\s*"(C-\d+)"', b, re.M)
+    stmts = len(re.findall(r'^statement\s*=', b, re.M))
+    if len(ids) != 1:
+        bad.append(f"block #{n}: {len(ids)} id line(s) ({ids or 'none'})")
+        continue
+    cid = ids[0]
+    if stmts != 1:
+        bad.append(f"{cid}: {stmts} statement lines")
+    opens = len(re.findall(r'^evidence\s*=\s*\[', b, re.M))
+    closes = len(re.findall(r'^\]', b, re.M))
+    if opens != 1 or closes < 1:
+        bad.append(f"{cid}: evidence array open/close = {opens}/{closes}")
+for msg in bad:
+    print(f"::error::ledger structure: {msg}")
+sys.exit(1 if bad else 0)
+PYEOF
+then
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "::error::contract-ledger gate FAILED — see messages above."
   exit 1
