@@ -21,7 +21,7 @@
 [[gate]]
 path = "scripts/check-contracts.sh"
 class = "MUTATION_TESTED"
-evidence = "Inherited from the implementation's ledger (F1 2026-07-04 spec-resolution mutation; the 2026-08-16 SIGPIPE membership-race repair with 12 documented one-line mutations in the script's own footer). Two-repo mode re-verified at extraction (2026-08-20, als founding session): removing a judge-resident fixture (spec/wasm_cross/float_parse.almd) flipped the gate red with C-024 named in both the missing-evidence and broken-symmetry directions; restore returned green."
+evidence = "Inherited from the implementation's ledger (F1 2026-07-04 spec-resolution mutation; the 2026-08-16 SIGPIPE membership-race repair with 12 documented one-line mutations in the script's own footer). Two-repo mode re-verified at extraction (2026-08-20, als founding session): removing a judge-resident fixture (spec/wasm_cross/float_parse.almd) flipped the gate red with C-024 named in both the missing-evidence and broken-symmetry directions; restore returned green. 2026-08-27 structural-integrity clause added after a four-agent review caught corruption the line-oriented awk scans missed (id-less block, two unterminated evidence arrays, a doubled statement key — C-274/C-275/C-220 and the swallowed ALS-I3 contract, repaired as C-321): the new block splits on line-anchored [[contract]] markers and was negative-tested in all three directions against C-100 (id removed, ] removed, statement doubled — each red, restore green). The demo also caught the clause's own first draft as a silent no-op (a double-escaped regex matched nothing), which is the reason the three-direction demonstration is recorded rather than assumed."
 
 [[gate]]
 path = "scripts/check-als-element-coverage.sh"
