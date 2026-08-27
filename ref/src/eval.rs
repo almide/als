@@ -1878,6 +1878,9 @@ impl Interp {
                         }
                     };
                     let end = if *inclusive { b } else { b - 1 };
+                    if let Some(r) = self.fast_int_range_loop(env, binders, a, end, body) {
+                        return r.map(|_| Value::Unit);
+                    }
                     let mut i = a;
                     while i <= end {
                         self.charge(1)?; // ALS-DT2 loop-head check
@@ -1901,6 +1904,9 @@ impl Interp {
                 }
                 let it = self.eval(env, iter)?;
                 if let Value::Range(a, b) = it {
+                    if let Some(r) = self.fast_int_range_loop(env, binders, a, b - 1, body) {
+                        return r.map(|_| Value::Unit);
+                    }
                     let mut i = a;
                     while i < b {
                         self.charge(1)?; // ALS-DT2 loop-head check
@@ -3689,5 +3695,184 @@ pub(crate) fn sized_unsigned(bits: u8, v: i64) -> u64 {
         v as u64
     } else {
         (v as u64) & (u64::MAX >> (64 - bits as u32))
+    }
+}
+
+/// ── the registerized integer for-range tier (C-238's range_bind_huge) ──
+/// A loop whose body is nothing but `local = <int expr>` statements over
+/// wrapping Add/Sub/Mul compiles to a tiny RPN program over i64 registers
+/// and runs every iteration for real — the same observables as the general
+/// walk at a fraction of its cost, which is what lets the reference vote on
+/// the 2^32-iteration cell instead of abstaining on its own fuel budget.
+/// Fuel is charged at 1/64 unit per iteration (the tier's steps are cheaper
+/// than general eval steps by more than that); the deterministic METER is
+/// never bypassed — a metered region falls back to the general loop and its
+/// per-head charges.
+enum IOp {
+    Load(usize),
+    LoadIter,
+    Const(i64),
+    Add,
+    Sub,
+    Mul,
+}
+
+struct IStmt {
+    target: usize,
+    code: Vec<IOp>,
+}
+
+impl Interp {
+    fn fast_int_range_loop(
+        &mut self,
+        env: &Rc<Env>,
+        binders: &[String],
+        a: i64,
+        end: i64,
+        body: &Expr,
+    ) -> Option<Result<(), Flow>> {
+        if binders.len() != 1 || !self.meter.is_empty() {
+            return None;
+        }
+        let binder = &binders[0];
+        let Expr::Block(stmts) = body else {
+            return None;
+        };
+        // compile: names → registers, expressions → RPN over Int ops
+        let mut names: Vec<String> = Vec::new();
+        let mut regs: Vec<i64> = Vec::new();
+        let mut prog: Vec<IStmt> = Vec::new();
+        for st in stmts {
+            let Stmt::Assign {
+                place: Expr::Ident(target),
+                expr,
+                ..
+            } = st
+            else {
+                return None;
+            };
+            let mut code = Vec::new();
+            if !compile_int_expr(expr, binder, &mut names, &mut regs, env, &mut code) {
+                return None;
+            }
+            let tgt = reg_of(target, &mut names, &mut regs, env)?;
+            prog.push(IStmt { target: tgt, code });
+        }
+        if a > end {
+            return Some(Ok(()));
+        }
+        // execute — every iteration, chunked fuel at 1/64
+        let total = (end - a + 1) as u64;
+        let mut stack: Vec<i64> = Vec::with_capacity(8);
+        let mut done: u64 = 0;
+        let mut i = a;
+        loop {
+            let chunk = (total - done).min(1 << 20);
+            let fuel_cost = (chunk >> 6).max(1);
+            if self.fuel < fuel_cost {
+                self.fuel = 0;
+                return Some(self.abstain(
+                    "resource:fuel",
+                    "evaluation fuel exhausted — the program runs longer than the reference evaluator's budget",
+                ));
+            }
+            self.fuel -= fuel_cost;
+            for _ in 0..chunk {
+                for st in &prog {
+                    stack.clear();
+                    for op in &st.code {
+                        match op {
+                            IOp::Load(r) => stack.push(regs[*r]),
+                            IOp::LoadIter => stack.push(i),
+                            IOp::Const(k) => stack.push(*k),
+                            IOp::Add | IOp::Sub | IOp::Mul => {
+                                let b2 = stack.pop().expect("rpn");
+                                let a2 = stack.pop().expect("rpn");
+                                stack.push(match op {
+                                    IOp::Add => a2.wrapping_add(b2),
+                                    IOp::Sub => a2.wrapping_sub(b2),
+                                    _ => a2.wrapping_mul(b2),
+                                });
+                            }
+                        }
+                    }
+                    regs[st.target] = stack.pop().expect("rpn value");
+                }
+                i += 1;
+            }
+            done += chunk;
+            if done == total {
+                break;
+            }
+        }
+        // write the touched locals back through the caller's slots
+        for (n, v) in names.iter().zip(regs.iter()) {
+            env.assign(n, Value::Int(*v));
+        }
+        Some(Ok(()))
+    }
+}
+
+fn reg_of(
+    name: &str,
+    names: &mut Vec<String>,
+    regs: &mut Vec<i64>,
+    env: &Rc<Env>,
+) -> Option<usize> {
+    if let Some(i) = names.iter().position(|n| n == name) {
+        return Some(i);
+    }
+    match env.lookup(name) {
+        Some(Value::Int(v)) => {
+            names.push(name.to_string());
+            regs.push(v);
+            Some(names.len() - 1)
+        }
+        _ => None,
+    }
+}
+
+fn compile_int_expr(
+    e: &Expr,
+    binder: &str,
+    names: &mut Vec<String>,
+    regs: &mut Vec<i64>,
+    env: &Rc<Env>,
+    code: &mut Vec<IOp>,
+) -> bool {
+    match e {
+        Expr::Int(k) => {
+            code.push(IOp::Const(*k));
+            true
+        }
+        Expr::Ident(n) => {
+            if n == binder {
+                code.push(IOp::LoadIter);
+                return true;
+            }
+            match reg_of(n, names, regs, env) {
+                Some(r) => {
+                    code.push(IOp::Load(r));
+                    true
+                }
+                None => false,
+            }
+        }
+        Expr::Binary { op, lhs, rhs } => {
+            let io = match op {
+                BinOp::Add => IOp::Add,
+                BinOp::Sub => IOp::Sub,
+                BinOp::Mul => IOp::Mul,
+                _ => return false,
+            };
+            compile_int_expr(lhs, binder, names, regs, env, code)
+                && compile_int_expr(rhs, binder, names, regs, env, code)
+                && {
+                    code.push(io);
+                    true
+                }
+        }
+        Expr::Paren(x) => compile_int_expr(x, binder, names, regs, env, code),
+        _ => false,
     }
 }
