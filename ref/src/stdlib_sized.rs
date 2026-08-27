@@ -58,6 +58,7 @@ pub const SIZED_FNS: &[&str] = &[
     "float.to_uint64_checked",
     "float.to_float32_checked",
     "float32.to_string",
+    "float.from_float32",
 ];
 
 fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
@@ -286,6 +287,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             } else {
                 Value::None
             })
+        }
+        "float.from_float32" => {
+            arity(name, &args, 1)?;
+            match &args[0] {
+                Value::Float32(g) => Ok(Value::Float(F64(*g as f64))),
+                other => Err(Flow::Fatal(format!(
+                    "{name}: expected Float32, got {}",
+                    other.type_name()
+                ))),
+            }
         }
         "float32.to_string" => {
             arity(name, &args, 1)?;

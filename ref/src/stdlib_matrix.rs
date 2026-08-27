@@ -33,6 +33,11 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.gelu",
     "matrix.softmax_rows",
     "matrix.rms_norm_rows",
+    "matrix.rope_rotate",
+    "matrix.rope_rotate_at",
+    "matrix.rope_rotate_neox_at",
+    "matrix.multi_head_attention",
+    "matrix.masked_multi_head_attention",
     "matrix.select_rows_f32",
     "matrix.select_rows_q8_0_dq",
     "matrix.select_rows_q1_0",
@@ -285,6 +290,127 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 "stdlib:matrix.rms_norm_rows",
                 "rms_norm_rows over a non-empty matrix is not implemented yet",
             )
+        }
+        "matrix.rope_rotate" | "matrix.rope_rotate_at" | "matrix.rope_rotate_neox_at" => {
+            // RoPE (rope_at_family / rope_geometry_family): per row p at
+            // absolute position start+p, per head, per pair, rotate by
+            // angle = pos * (1.0 / libm_pow(theta, 2i/head_dim)) — 1/pow,
+            // NOT the fast-exp (the last-ulp divergence the 2026-08-15
+            // burn-down measured); non-pair columns copy through
+            let at = name.ends_with("_at");
+            let neox = name.contains("neox");
+            arity(name, &args, if at { 5 } else { 4 })?;
+            let m = want_mat(name, &args[0])?;
+            let nh = want_int(name, &args[1])?;
+            let head_dim = want_int(name, &args[2])?;
+            let theta = want_float(name, &args[3])?;
+            let start = if at {
+                want_int(name, &args[4])?.max(0)
+            } else {
+                0
+            };
+            if nh < 1 {
+                return Err(Flow::Abort("head count must be positive".into()));
+            }
+            if m.rows > 0 && head_dim > 0 && nh > m.cols / head_dim {
+                return Err(Flow::Abort("head geometry exceeds row width".into()));
+            }
+            let half = head_dim / 2;
+            let mut data = m.data.clone();
+            for p in 0..m.rows {
+                let base = (p * m.cols) as usize;
+                let pos_f = (start + p) as f64;
+                for h in 0..nh {
+                    for i in 0..half {
+                        let (j0, j1) = if neox {
+                            (
+                                (h * head_dim + i) as usize,
+                                (h * head_dim + half + i) as usize,
+                            )
+                        } else {
+                            let j0 = (h * head_dim + 2 * i) as usize;
+                            (j0, j0 + 1)
+                        };
+                        let x0 = data[base + j0];
+                        let x1 = data[base + j1];
+                        let e = (2 * i) as f64 / head_dim as f64;
+                        let inv_freq = 1.0 / crate::libm::almide_rt_libm_pow(theta, e);
+                        let angle = pos_f * inv_freq;
+                        let s = crate::libm::almide_rt_libm_sin(angle);
+                        let c = crate::libm::almide_rt_libm_cos(angle);
+                        data[base + j0] = x0 * c - x1 * s;
+                        data[base + j1] = x0 * s + x1 * c;
+                    }
+                }
+            }
+            Ok(mat(m.rows, m.cols, data))
+        }
+        "matrix.multi_head_attention" | "matrix.masked_multi_head_attention" => {
+            // transcribed from the convergent self-host __mha_impl (C-198):
+            // dh = dm/nh truncating, scale = 1/sqrt(dh), causal mask adds
+            // -1e9 past (sk-sq)+i, softmax via the canonical fast-exp with a
+            // degenerate row falling back to uniform weights, out = Σ w·v
+            let causal = name.contains("masked");
+            arity(name, &args, 4)?;
+            let q = want_mat(name, &args[0])?;
+            let k = want_mat(name, &args[1])?;
+            let v = want_mat(name, &args[2])?;
+            let nh = want_int(name, &args[3])?;
+            if nh < 1 {
+                return Err(Flow::Abort("head count must be positive".into()));
+            }
+            let (sq, sk, dm) = (q.rows, k.rows, if q.rows == 0 { 0 } else { q.cols });
+            let dh = dm / nh;
+            let scale = 1.0 / (dh as f64).sqrt();
+            let mut out = vec![0.0f64; (sq * dm) as usize];
+            for i in 0..sq {
+                let qb = (i * q.cols) as usize;
+                for h in 0..nh {
+                    let col0 = (h * dh) as usize;
+                    let mask = if causal { (sk - sq) + i } else { -1 };
+                    let mut scores = vec![0.0f64; sk as usize];
+                    for j in 0..sk {
+                        let kb = (j * k.cols) as usize;
+                        let mut dot = 0.0f64;
+                        for kk in 0..dh as usize {
+                            dot += q.data[qb + col0 + kk] * k.data[kb + col0 + kk];
+                        }
+                        let scaled = dot * scale;
+                        scores[j as usize] = if mask >= 0 && j > mask {
+                            scaled + (0.0 - 1_000_000_000.0)
+                        } else {
+                            scaled
+                        };
+                    }
+                    let mut mx = scores.first().copied().unwrap_or(0.0);
+                    for s in scores.iter().skip(1) {
+                        if *s > mx {
+                            mx = *s;
+                        }
+                    }
+                    let mut sum = 0.0f64;
+                    for s in scores.iter_mut() {
+                        let e = fast_exp(*s - mx);
+                        *s = e;
+                        sum += e;
+                    }
+                    if sum <= 0.0 || sum.is_nan() {
+                        for s in scores.iter_mut() {
+                            *s = 1.0;
+                        }
+                        sum = sk as f64;
+                    }
+                    for (j, s) in scores.iter().enumerate() {
+                        let w = *s / sum;
+                        let vb = j * v.cols as usize;
+                        for kk in 0..dh as usize {
+                            let o = (i * dm) as usize + col0 + kk;
+                            out[o] += v.data[vb + col0 + kk] * w;
+                        }
+                    }
+                }
+            }
+            Ok(mat(sq, dm, out))
         }
         "matrix.select_rows_f32" => {
             arity(name, &args, 4)?;

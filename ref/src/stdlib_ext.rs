@@ -70,6 +70,23 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.clear",
     "bytes.append",
     "bytes.to_string",
+    "bytes.append_i16_le",
+    "bytes.write_uint16",
+    "bytes.write_uint32",
+    "bytes.write_int32",
+    "bytes.write_float32",
+    "bytes.set_uint16",
+    "bytes.set_uint32",
+    "bytes.read_uint16",
+    "bytes.read_uint32",
+    "bytes.read_int32",
+    "bytes.read_float32",
+    "bytes.as_ptr",
+    "bytes.as_mut_ptr",
+    "bytes.from_raw_ptr",
+    "bytes.copy_to_ptr",
+    "bytes.heap_save",
+    "bytes.heap_restore",
     "bytes.set_at",
     "bytes.fill",
     "bytes.copy_from",
@@ -210,6 +227,18 @@ fn want_dyn<'a>(name: &str, v: &'a Value) -> Result<&'a Dyn, Flow> {
     match v {
         Value::Dyn(d) => Ok(d),
         other => mismatch(name, "Value", other),
+    }
+}
+
+fn want_endian(name: &str, v: &Value) -> Result<bool, Flow> {
+    match v {
+        Value::Variant {
+            type_name, case, ..
+        } if &**type_name == "Endian" => Ok(&**case == "LittleEndian"),
+        other => Err(Flow::Fatal(format!(
+            "{name}: expected an Endian, got {}",
+            other.type_name()
+        ))),
     }
 }
 
@@ -482,24 +511,30 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                         }
                     }
                     (PathSeg::Index(i), Dyn::A(items)) => {
-                        if *i < 0 || *i as usize >= items.len() {
+                        // C-031: a negative index normalizes (len + i)
+                        let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
+                        if idx < 0 || idx as usize >= items.len() {
                             return Ok(Ok(Value::None));
                         }
-                        cur = items[*i as usize].clone();
+                        cur = items[idx as usize].clone();
                     }
                     _ => return Ok(Ok(Value::None)), // D1: type-mismatch node degrades to none
                 }
             }
             Ok(some(Value::Dyn(cur)))
         }
-        "json.set_path" | "json.remove_path" => {
-            // D1 pins the edges against the serde_json oracle; the write forms
-            // are rarer — take them in a later round rather than guess
-            return Err(Flow::Abstain {
-                class: format!("stdlib:{name}"),
-                reason: "json path writes are not implemented by the reference evaluator yet"
-                    .into(),
-            });
+        "json.set_path" => {
+            arity(name, &args, 3)?;
+            let root = want_dyn(name, &args[0])?.clone();
+            let segs = want_path(name, &args[1])?;
+            let v = want_dyn(name, &args[2])?.clone();
+            Ok(ok(Value::Dyn(json_set_at(&root, segs, &v))))
+        }
+        "json.remove_path" => {
+            arity(name, &args, 2)?;
+            let root = want_dyn(name, &args[0])?.clone();
+            let segs = want_path(name, &args[1])?;
+            Ok(Value::Dyn(json_remove_at(&root, segs)))
         }
         "json.to_map" => {
             arity(name, &args, 1)?;
@@ -553,6 +588,185 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Ok(s) => ok(Value::str(&s)),
                 Err(e) => err_str(&format!("invalid UTF-8: {}", e.utf8_error())),
             })
+        }
+        "bytes.append_i16_le" => {
+            arity(name, &args, 2)?;
+            let b = want_bytes(name, &args[0])?;
+            let n = want_int(name, &args[1])?;
+            b.borrow_mut().extend_from_slice(&(n as i16).to_le_bytes());
+            Ok(Value::Unit)
+        }
+        // ── C-213: the Endian-parameterized sized-typed surface — the byte
+        // order is an ARGUMENT; writes append, sets splice (no-fit no-op),
+        // reads answer the SIZED value (0 of the width when out of range) ──
+        "bytes.write_uint16" | "bytes.write_uint32" | "bytes.write_int32" => {
+            arity(name, &args, 3)?;
+            let b = want_bytes(name, &args[0])?;
+            let n = want_int(name, &args[1])?;
+            let le = want_endian(name, &args[2])?;
+            let mut bytes_out: Vec<u8> = if name.ends_with("16") {
+                if le {
+                    (n as u16).to_le_bytes().to_vec()
+                } else {
+                    (n as u16).to_be_bytes().to_vec()
+                }
+            } else if le {
+                (n as u32).to_le_bytes().to_vec()
+            } else {
+                (n as u32).to_be_bytes().to_vec()
+            };
+            b.borrow_mut().append(&mut bytes_out);
+            Ok(Value::Unit)
+        }
+        "bytes.write_float32" => {
+            arity(name, &args, 3)?;
+            let b = want_bytes(name, &args[0])?;
+            let f = want_float(name, &args[1])? as f32;
+            let le = want_endian(name, &args[2])?;
+            let raw = if le { f.to_le_bytes() } else { f.to_be_bytes() };
+            b.borrow_mut().extend_from_slice(&raw);
+            Ok(Value::Unit)
+        }
+        "bytes.set_uint16" | "bytes.set_uint32" => {
+            arity(name, &args, 4)?;
+            let b = want_bytes(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let n = want_int(name, &args[2])?;
+            let le = want_endian(name, &args[3])?;
+            let raw: Vec<u8> = if name.ends_with("16") {
+                if le {
+                    (n as u16).to_le_bytes().to_vec()
+                } else {
+                    (n as u16).to_be_bytes().to_vec()
+                }
+            } else if le {
+                (n as u32).to_le_bytes().to_vec()
+            } else {
+                (n as u32).to_be_bytes().to_vec()
+            };
+            let mut buf = b.borrow_mut();
+            if off >= 0 && (off as usize) + raw.len() <= buf.len() {
+                let off = off as usize;
+                buf[off..off + raw.len()].copy_from_slice(&raw);
+            }
+            Ok(Value::Unit)
+        }
+        "bytes.read_uint16" | "bytes.read_uint32" | "bytes.read_int32" | "bytes.read_float32" => {
+            arity(name, &args, 3)?;
+            let b = want_bytes(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let le = want_endian(name, &args[2])?;
+            let width = if name.ends_with("16") { 2 } else { 4 };
+            let buf = b.borrow();
+            let mut raw = [0u8; 4];
+            if off >= 0 && (off as usize) + width <= buf.len() {
+                raw[..width].copy_from_slice(&buf[off as usize..off as usize + width]);
+            }
+            Ok(match &name[11..] {
+                "uint16" => {
+                    let v = if le {
+                        u16::from_le_bytes([raw[0], raw[1]])
+                    } else {
+                        u16::from_be_bytes([raw[0], raw[1]])
+                    };
+                    Value::Sized {
+                        bits: 16,
+                        signed: false,
+                        v: v as i64,
+                    }
+                }
+                "uint32" => {
+                    let v = if le {
+                        u32::from_le_bytes(raw)
+                    } else {
+                        u32::from_be_bytes(raw)
+                    };
+                    Value::Sized {
+                        bits: 32,
+                        signed: false,
+                        v: v as i64,
+                    }
+                }
+                "int32" => {
+                    let v = if le {
+                        i32::from_le_bytes(raw)
+                    } else {
+                        i32::from_be_bytes(raw)
+                    };
+                    Value::Sized {
+                        bits: 32,
+                        signed: true,
+                        v: v as i64,
+                    }
+                }
+                _ => {
+                    let v = if le {
+                        f32::from_le_bytes(raw)
+                    } else {
+                        f32::from_be_bytes(raw)
+                    };
+                    Value::Float32(v)
+                }
+            })
+        }
+        // ── C-062: the RawPtr / linear-memory bridge — an empty buffer hands
+        // out NULL and every bridge op through null moves nothing ──
+        "bytes.as_ptr" | "bytes.as_mut_ptr" => {
+            arity(name, &args, 1)?;
+            let b = want_bytes(name, &args[0])?;
+            let empty = b.borrow().is_empty();
+            Ok(Value::Ptr(if empty { None } else { Some(b) }))
+        }
+        "bytes.from_raw_ptr" => {
+            arity(name, &args, 2)?;
+            let n = want_int(name, &args[1])?.max(0) as usize;
+            Ok(match &args[0] {
+                Value::Ptr(Some(src)) => {
+                    let s = src.borrow();
+                    let take = n.min(s.len());
+                    Value::Bytes(Rc::new(std::cell::RefCell::new(s[..take].to_vec())))
+                }
+                Value::Ptr(None) => Value::Bytes(Rc::new(std::cell::RefCell::new(Vec::new()))),
+                other => {
+                    return Err(Flow::Fatal(format!(
+                        "{name}: expected RawPtr, got {}",
+                        other.type_name()
+                    )))
+                }
+            })
+        }
+        "bytes.copy_to_ptr" => {
+            arity(name, &args, 3)?;
+            let src = want_bytes(name, &args[0])?;
+            // C-034: the cap is UNSIGNED — a negative one saturates to all
+            let cap = want_int(name, &args[2])?;
+            let cap = if cap < 0 { usize::MAX } else { cap as usize };
+            Ok(match &args[1] {
+                Value::Ptr(Some(dst)) => {
+                    let s = src.borrow();
+                    let mut d = dst.borrow_mut();
+                    let n = cap.min(s.len()).min(d.len());
+                    d[..n].copy_from_slice(&s[..n]);
+                    Value::Int(n as i64)
+                }
+                Value::Ptr(None) => Value::Int(0),
+                other => {
+                    return Err(Flow::Fatal(format!(
+                        "{name}: expected RawPtr, got {}",
+                        other.type_name()
+                    )))
+                }
+            })
+        }
+        // C-041: the arena checkpoints are trivial under RC discipline on
+        // BOTH legs — the contract is only that post-restore work matches
+        "bytes.heap_save" => {
+            arity(name, &args, 0)?;
+            Ok(Value::Int(0))
+        }
+        "bytes.heap_restore" => {
+            arity(name, &args, 1)?;
+            Ok(Value::Unit)
         }
         "bytes.to_list" => {
             arity(name, &args, 1)?;
@@ -1666,3 +1880,78 @@ fn jp_object(b: &[u8], p0: usize) -> Result<(Dyn, usize), String> {
 // keep the unused-import lint quiet if Ordering falls out of use later
 #[allow(dead_code)]
 fn _o(_: Ordering) {}
+
+/// C-031 set_path: infallible — Field over a non-object AUTOVIVIFIES (the
+/// node is replaced by a fresh single-key object, absent descents seed `{}`),
+/// Index over a non-array or out of range is a LOCAL no-op, a negative index
+/// normalizes (len + i). Mirrors native `set_at_steps` (json.rs oracle).
+fn json_set_at(node: &Dyn, segs: &[PathSeg], v: &Dyn) -> Dyn {
+    let Some((seg, rest)) = segs.split_first() else {
+        return v.clone();
+    };
+    match (seg, node) {
+        (PathSeg::Field(k), Dyn::O(fields)) => {
+            let mut out: Vec<(Rc<str>, Dyn)> = (**fields).clone();
+            match out.iter_mut().find(|(k2, _)| k2 == k) {
+                Some(slot) => slot.1 = json_set_at(&slot.1.clone(), rest, v),
+                None => out.push((
+                    k.clone(),
+                    json_set_at(&Dyn::O(Rc::new(Vec::new())), rest, v),
+                )),
+            }
+            Dyn::O(Rc::new(out))
+        }
+        (PathSeg::Field(k), _) => Dyn::O(Rc::new(vec![(
+            k.clone(),
+            json_set_at(&Dyn::O(Rc::new(Vec::new())), rest, v),
+        )])),
+        (PathSeg::Index(i), Dyn::A(items)) => {
+            let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
+            if idx < 0 || idx as usize >= items.len() {
+                return node.clone();
+            }
+            let mut out = (**items).clone();
+            out[idx as usize] = json_set_at(&out[idx as usize].clone(), rest, v);
+            Dyn::A(Rc::new(out))
+        }
+        (PathSeg::Index(_), _) => node.clone(),
+    }
+}
+
+/// C-031 remove_path: infallible; missing keys, non-containers and
+/// out-of-range indexes are no-ops, a negative index normalizes.
+fn json_remove_at(node: &Dyn, segs: &[PathSeg]) -> Dyn {
+    let Some((seg, rest)) = segs.split_first() else {
+        return node.clone();
+    };
+    match (seg, node) {
+        (PathSeg::Field(k), Dyn::O(fields)) => {
+            let mut out: Vec<(Rc<str>, Dyn)> = Vec::with_capacity(fields.len());
+            for (k2, child) in fields.iter() {
+                if k2 == k {
+                    if rest.is_empty() {
+                        continue; // removed
+                    }
+                    out.push((k2.clone(), json_remove_at(child, rest)));
+                } else {
+                    out.push((k2.clone(), child.clone()));
+                }
+            }
+            Dyn::O(Rc::new(out))
+        }
+        (PathSeg::Index(i), Dyn::A(items)) => {
+            let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
+            if idx < 0 || idx as usize >= items.len() {
+                return node.clone();
+            }
+            let mut out = (**items).clone();
+            if rest.is_empty() {
+                out.remove(idx as usize);
+            } else {
+                out[idx as usize] = json_remove_at(&out[idx as usize].clone(), rest);
+            }
+            Dyn::A(Rc::new(out))
+        }
+        _ => node.clone(),
+    }
+}
