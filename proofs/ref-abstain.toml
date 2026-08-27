@@ -9,69 +9,9 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 22
-evaluated = 589
-
-[[abstain]]
-class = "semantics:mut-param"
-count = 3
-
-[[abstain]]
-class = "semantics:compare"
-count = 2
-
-[[abstain]]
-class = "semantics:guard-else-value"
-count = 2
-
-[[abstain]]
-class = "stdlib:matrix.rope_rotate"
-count = 2
-
-[[abstain]]
-class = "stdlib:regex.is_match"
-count = 2
+ceiling = 1
+evaluated = 610
 
 [[abstain]]
 class = "resource:fuel"
-count = 1
-
-[[abstain]]
-class = "semantics:type-mismatch"
-count = 1
-
-[[abstain]]
-class = "semantics:type-name-value"
-count = 1
-
-[[abstain]]
-class = "semantics:ufcs-receiver"
-count = 1
-
-[[abstain]]
-class = "stdlib:bytes.as_mut_ptr"
-count = 1
-
-[[abstain]]
-class = "stdlib:bytes.as_ptr"
-count = 1
-
-[[abstain]]
-class = "stdlib:bytes.heap_save"
-count = 1
-
-[[abstain]]
-class = "stdlib:bytes.write_uint16"
-count = 1
-
-[[abstain]]
-class = "stdlib:json.set_path"
-count = 1
-
-[[abstain]]
-class = "stdlib:matrix.masked_multi_head_attention"
-count = 1
-
-[[abstain]]
-class = "syntax:named-arg-ctor"
 count = 1
