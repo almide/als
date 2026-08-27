@@ -56,7 +56,7 @@ fn step(s: State, accel: Int) -> State = State { pos: s.pos + s.vel, vel: s.vel 
 @bounded
 fn simulate(accel: Int) -> State = {
   var s = State { pos: 0, vel: 0 }
-  for i in 0..<10 {
+  for _i in 0..<10 {
     s = step(s, accel)
   }
   s
