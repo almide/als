@@ -2545,6 +2545,35 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(hof_out(fal, bail, acc))
         }
 
+        "fan.race" => it.fan_race_values(args),
+        // ── ALS-DT1: time constructors (compute.* deterministic clock,
+        // duration.* wall clock) — negative aborts, overflow saturates ──
+        "compute.ns" | "compute.us" | "compute.ms" | "compute.s" | "compute.min" | "compute.h"
+        | "duration.ns" | "duration.us" | "duration.ms" | "duration.s" | "duration.min"
+        | "duration.h" => {
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            if n < 0 {
+                return Err(Flow::Abort(format!("negative time: {name}({n})")));
+            }
+            let per: i64 = if name.ends_with(".ns") {
+                1
+            } else if name.ends_with(".us") {
+                1_000
+            } else if name.ends_with(".ms") {
+                1_000_000
+            } else if name.ends_with(".s") {
+                1_000_000_000
+            } else if name.ends_with(".min") {
+                60_000_000_000
+            } else {
+                3_600_000_000_000
+            };
+            Ok(Value::Time {
+                wall: name.starts_with("duration."),
+                ns: n.saturating_mul(per),
+            })
+        }
         other => match crate::stdlib_ext::call_ext(it, other, args.clone())
             .or_else(|| crate::stdlib_ext2::call_ext2(it, other, args.clone()))
             .or_else(|| crate::stdlib_matrix::call_matrix(it, other, args))
