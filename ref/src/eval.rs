@@ -424,6 +424,7 @@ impl Interp {
                 })
                 .unwrap_or(false),
             Callable::Std(_) | Callable::Ctor(..) => false,
+            Callable::Codec(_, decode) => *decode,
             Callable::Composed(_, g) => self.cb_fallible(g),
         }
     }
@@ -803,6 +804,32 @@ impl Interp {
                 case: Rc::from(case.as_str()),
                 payload: Payload::Tuple(Rc::new(args)),
             }),
+            Callable::Codec(t, decode) => {
+                let t = t.clone();
+                let decode = *decode;
+                if args.len() != 1 {
+                    return Err(Flow::Fatal(format!(
+                        "`{t}.{}` takes 1 argument, got {}",
+                        if decode { "decode" } else { "encode" },
+                        args.len()
+                    )));
+                }
+                let arg = self.force(args.into_iter().next().unwrap())?;
+                if decode {
+                    let Value::Dyn(d) = &arg else {
+                        return self.abstain(
+                            "semantics:codec",
+                            format!("`{t}.decode` on a {}", arg.type_name()),
+                        );
+                    };
+                    match self.codec_decode(&t, &d.clone())? {
+                        Ok(v) => Ok(Value::Ok(Rc::new(v))),
+                        Err(e) => Ok(Value::Err(Rc::new(Value::str(&e)))),
+                    }
+                } else {
+                    Ok(Value::Dyn(self.codec_encode(&t, &arg)?))
+                }
+            }
         }
     }
 
@@ -1043,6 +1070,23 @@ impl Interp {
                     if let Some(f) = self.methods.get(&(t.clone(), name.clone())).cloned() {
                         let (pos, named) = self.eval_args(env, args)?;
                         return self.call_fn(&f, pos, named);
+                    }
+                    // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
+                    if (name == "decode" || name == "encode")
+                        && self
+                            .types
+                            .get(t)
+                            .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
+                    {
+                        let c = Callable::Codec(t.clone(), name == "decode");
+                        let (pos, named) = self.eval_args(env, args)?;
+                        if !named.is_empty() {
+                            return self.abstain(
+                                "syntax:named-arg-on-value",
+                                "named arguments to a Codec entry",
+                            );
+                        }
+                        return self.call_value(&c, pos);
                     }
                 }
                 // value receiver: field-fn, convention method, or UFCS stdlib
@@ -1527,6 +1571,12 @@ impl Interp {
                 if let Expr::TypeName { module: None, name: t } = &**obj {
                     if self.methods.contains_key(&(t.clone(), name.clone())) {
                         return Ok(Value::Fn(Rc::new(Callable::Method(t.clone(), name.clone()))));
+                    }
+                    // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
+                    if (name == "decode" || name == "encode")
+                        && self.types.get(t).is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
+                    {
+                        return Ok(Value::Fn(Rc::new(Callable::Codec(t.clone(), name == "decode"))));
                     }
                 }
                 let v = self.eval(env, obj)?;
@@ -2252,5 +2302,314 @@ fn stmt_has_unwrap(s: &Stmt) -> bool {
         Stmt::Assign { place, expr, .. } => expr_has_unwrap(place) || expr_has_unwrap(expr),
         Stmt::Guard { cond, els, .. } => expr_has_unwrap(cond) || expr_has_unwrap(els),
         Stmt::GuardLet { scrut, els, .. } => expr_has_unwrap(scrut) || expr_has_unwrap(els),
+    }
+}
+
+// ── ALS-D6: the derived Codec bridge between record/variant values and the
+// dynamic Value (Dyn) model. Decode walks the DECLARED fields in order and
+// returns the first error; encode walks declaration order and omits `none`.
+// Everything the corpus does not pin abstains instead of guessing.
+impl Interp {
+    fn codec_decl(&self, t: &str) -> Result<Rc<TypeDecl>, Flow> {
+        match self.types.get(t) {
+            Some(d) if d.conventions.iter().any(|c| c == "Codec") => Ok(d.clone()),
+            _ => self.abstain(
+                "semantics:codec",
+                format!("`{t}` used as a Codec without a `: Codec` declaration"),
+            ),
+        }
+    }
+
+    /// outer Err = abstain/fatal; inner Err = the decode error string (C-084)
+    fn codec_decode(&mut self, t: &str, d: &Dyn) -> Result<Result<Value, String>, Flow> {
+        let decl = self.codec_decl(t)?;
+        match &decl.body {
+            TypeBody::Record(fds) => {
+                let Dyn::O(pairs) = d else {
+                    return Ok(Err("expected Object".into()));
+                };
+                let mut fields: Vec<(Rc<str>, Value)> = Vec::with_capacity(fds.len());
+                for fd in fds {
+                    let key = fd.alias.as_deref().unwrap_or(&fd.name);
+                    let found = pairs
+                        .iter()
+                        .find(|(k, _)| &**k == key)
+                        .map(|(_, v)| v.clone());
+                    match self.codec_decode_field(fd, key, found.as_ref())? {
+                        Ok(v) => fields.push((Rc::from(fd.name.as_str()), v)),
+                        Err(e) => return Ok(Err(e)),
+                    }
+                }
+                Ok(Ok(Value::Record {
+                    type_name: Some(Rc::from(t)),
+                    fields: Rc::new(fields),
+                }))
+            }
+            TypeBody::Variant(cases) => {
+                let Dyn::O(pairs) = d else {
+                    return self.abstain(
+                        "semantics:codec-variant-shape",
+                        format!("variant `{t}` decoded from a non-object"),
+                    );
+                };
+                if pairs.len() != 1 {
+                    return self.abstain(
+                        "semantics:codec-variant-shape",
+                        format!("variant `{t}` document with {} keys", pairs.len()),
+                    );
+                }
+                let (tag, payload) = (&pairs[0].0, &pairs[0].1);
+                let case = cases.iter().find(|c| match c {
+                    VariantCase::Unit(n) | VariantCase::Tuple(n, _) | VariantCase::Record(n, _) => {
+                        **n == **tag
+                    }
+                });
+                let Some(case) = case else {
+                    return Ok(Err(format!("unknown variant for {t}")));
+                };
+                match case {
+                    VariantCase::Unit(n) => match payload {
+                        Dyn::Null => Ok(Ok(Value::Variant {
+                            type_name: Rc::from(t),
+                            case: Rc::from(n.as_str()),
+                            payload: Payload::Unit,
+                        })),
+                        _ => self.abstain(
+                            "semantics:codec-variant-shape",
+                            format!("unit case `{n}` with a non-null payload"),
+                        ),
+                    },
+                    VariantCase::Tuple(n, tys) => {
+                        let n = n.clone();
+                        let tys = tys.clone();
+                        let Dyn::A(items) = payload else {
+                            return self.abstain(
+                                "semantics:codec-variant-shape",
+                                format!("tuple case `{n}` with a non-array payload"),
+                            );
+                        };
+                        if items.len() != tys.len() {
+                            return self.abstain(
+                                "semantics:codec-variant-shape",
+                                format!(
+                                    "tuple case `{n}` arity {} document, {} declared",
+                                    items.len(),
+                                    tys.len()
+                                ),
+                            );
+                        }
+                        let items = items.clone();
+                        let mut out = Vec::with_capacity(items.len());
+                        for (ty, it) in tys.iter().zip(items.iter()) {
+                            match self.codec_decode_ty(ty, it)? {
+                                Ok(v) => out.push(v),
+                                Err(e) => return Ok(Err(e)),
+                            }
+                        }
+                        Ok(Ok(Value::Variant {
+                            type_name: Rc::from(t),
+                            case: Rc::from(n.as_str()),
+                            payload: Payload::Tuple(Rc::new(out)),
+                        }))
+                    }
+                    VariantCase::Record(n, _) => self.abstain(
+                        "semantics:codec-variant-shape",
+                        format!("record-payload case `{n}`"),
+                    ),
+                }
+            }
+            TypeBody::Alias(_) => {
+                self.abstain("semantics:codec", format!("`{t}.decode` on a type alias"))
+            }
+        }
+    }
+
+    fn codec_decode_field(
+        &mut self,
+        fd: &FieldDecl,
+        key: &str,
+        found: Option<&Dyn>,
+    ) -> Result<Result<Value, String>, Flow> {
+        if let TypeExpr::Option(inner) = &fd.ty {
+            // C-209: missing and explicit null both fold to none — except
+            // Option[Value], the 3-state cell (null → some(null))
+            let dynamic =
+                matches!(&**inner, TypeExpr::Named { module: None, name, .. } if name == "Value");
+            return match found {
+                None => {
+                    if fd
+                        .default
+                        .as_ref()
+                        .is_some_and(|d| !matches!(d, Expr::None))
+                    {
+                        return self.abstain(
+                            "semantics:codec-field-type",
+                            format!(
+                                "Option field `{key}` with a non-none default and a missing key"
+                            ),
+                        );
+                    }
+                    Ok(Ok(Value::None))
+                }
+                Some(Dyn::Null) if !dynamic => Ok(Ok(Value::None)),
+                Some(v) => Ok(match self.codec_decode_ty(inner, v)? {
+                    Ok(x) => Ok(Value::Some(Rc::new(x))),
+                    Err(e) => Err(e),
+                }),
+            };
+        }
+        match found {
+            Some(v) => self.codec_decode_ty(&fd.ty, v),
+            None => match &fd.default {
+                Some(dx) => {
+                    let dx = dx.clone();
+                    let env = Env::new(Some(self.globals.clone()));
+                    Ok(Ok(self.eval(&env, &dx)?))
+                }
+                None => Ok(Err(format!("missing field '{key}'"))),
+            },
+        }
+    }
+
+    fn codec_decode_ty(&mut self, ty: &TypeExpr, d: &Dyn) -> Result<Result<Value, String>, Flow> {
+        match ty {
+            TypeExpr::Named {
+                module: None,
+                name,
+                args,
+            } => match (name.as_str(), args.as_slice()) {
+                ("Int", []) => Ok(match d {
+                    Dyn::I(n) => Ok(Value::Int(*n)),
+                    _ => Err("expected Int".into()),
+                }),
+                // C-085: an integer-formed JSON number widens into a Float field
+                ("Float", []) => Ok(match d {
+                    Dyn::F(f) => Ok(Value::Float(F64(*f))),
+                    Dyn::I(n) => Ok(Value::Float(F64(*n as f64))),
+                    _ => Err("expected Float".into()),
+                }),
+                ("String", []) => Ok(match d {
+                    Dyn::S(s) => Ok(Value::Str(s.clone())),
+                    _ => Err("expected Str".into()),
+                }),
+                ("Bool", []) => Ok(match d {
+                    Dyn::B(b) => Ok(Value::Bool(*b)),
+                    _ => Err("expected Bool".into()),
+                }),
+                ("Value", []) => Ok(Ok(Value::Dyn(d.clone()))),
+                ("List", [elem]) => {
+                    let Dyn::A(items) = d else {
+                        return Ok(Err("expected Array".into()));
+                    };
+                    let elem = elem.clone();
+                    let items = items.clone();
+                    let mut out = Vec::with_capacity(items.len());
+                    for it in items.iter() {
+                        match self.codec_decode_ty(&elem, it)? {
+                            Ok(v) => out.push(v),
+                            Err(e) => return Ok(Err(e)),
+                        }
+                    }
+                    Ok(Ok(Value::List(Rc::new(out))))
+                }
+                (other, []) if self.types.contains_key(other) => {
+                    let other = other.to_string();
+                    self.codec_decode(&other, d)
+                }
+                (other, _) => self.abstain(
+                    "semantics:codec-field-type",
+                    format!("decoding a `{other}` field"),
+                ),
+            },
+            _ => self.abstain(
+                "semantics:codec-field-type",
+                format!("decoding a field of shape {ty:?}"),
+            ),
+        }
+    }
+
+    fn codec_encode(&mut self, t: &str, v: &Value) -> Result<Dyn, Flow> {
+        let decl = self.codec_decl(t)?;
+        match (&decl.body, v) {
+            (TypeBody::Record(fds), Value::Record { fields, .. }) => {
+                let fields = fields.clone();
+                let mut out: Vec<(Rc<str>, Dyn)> = Vec::with_capacity(fds.len());
+                for fd in fds {
+                    let Some((_, fv)) = fields.iter().find(|(k, _)| &**k == fd.name.as_str())
+                    else {
+                        return self.abstain(
+                            "semantics:codec",
+                            format!("record value missing declared field `{}`", fd.name),
+                        );
+                    };
+                    let key: Rc<str> = Rc::from(fd.alias.as_deref().unwrap_or(&fd.name));
+                    match fv {
+                        // C-209: none is OMITTED, never an explicit null
+                        Value::None => {}
+                        Value::Some(inner) => {
+                            out.push((key, self.codec_encode_val(&inner.clone())?))
+                        }
+                        other => out.push((key, self.codec_encode_val(&other.clone())?)),
+                    }
+                }
+                Ok(Dyn::O(Rc::new(out)))
+            }
+            (TypeBody::Variant(_), Value::Variant { case, payload, .. }) => {
+                // externally-tagged: {"Case": [payload…]}, unit {"Case": null}
+                match payload {
+                    Payload::Unit => Ok(Dyn::O(Rc::new(vec![(case.clone(), Dyn::Null)]))),
+                    Payload::Tuple(items) => {
+                        let case = case.clone();
+                        let items = items.clone();
+                        let mut a = Vec::with_capacity(items.len());
+                        for it in items.iter() {
+                            a.push(self.codec_encode_val(it)?);
+                        }
+                        Ok(Dyn::O(Rc::new(vec![(case, Dyn::A(Rc::new(a)))])))
+                    }
+                    Payload::Record(_) => self.abstain(
+                        "semantics:codec-variant-shape",
+                        format!("encoding a record-payload case of `{t}`"),
+                    ),
+                }
+            }
+            (_, other) => self.abstain(
+                "semantics:codec",
+                format!("`{t}.encode` on a {}", other.type_name()),
+            ),
+        }
+    }
+
+    fn codec_encode_val(&mut self, v: &Value) -> Result<Dyn, Flow> {
+        match v {
+            Value::Int(n) => Ok(Dyn::I(*n)),
+            Value::Float(F64(f)) => Ok(Dyn::F(*f)),
+            Value::Bool(b) => Ok(Dyn::B(*b)),
+            Value::Str(s) => Ok(Dyn::S(s.clone())),
+            // Value passes through verbatim in both directions (C-209)
+            Value::Dyn(d) => Ok(d.clone()),
+            Value::List(items) => {
+                let items = items.clone();
+                let mut out = Vec::with_capacity(items.len());
+                for it in items.iter() {
+                    out.push(self.codec_encode_val(it)?);
+                }
+                Ok(Dyn::A(Rc::new(out)))
+            }
+            Value::Record {
+                type_name: Some(t), ..
+            } => {
+                let t = t.to_string();
+                self.codec_encode(&t, v)
+            }
+            Value::Variant { type_name, .. } => {
+                let t = type_name.to_string();
+                self.codec_encode(&t, v)
+            }
+            other => self.abstain(
+                "semantics:codec-field-type",
+                format!("encoding a {}", other.type_name()),
+            ),
+        }
     }
 }
