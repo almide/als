@@ -1115,10 +1115,11 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         "list.pop" => {
             arity(name, &args, 1)?;
-            let xs = want_list(name, &args[0])?;
-            let mut v = (**xs).clone();
-            v.pop();
-            Ok(Value::List(Rc::new(v)))
+            let _ = want_list(name, &args[0])?;
+            it.abstain_pub(
+                "stdlib:list.pop",
+                "list.pop outside a var-binding receiver — the write-back place is not modeled",
+            )
         }
         "list.clear" => {
             arity(name, &args, 1)?;
