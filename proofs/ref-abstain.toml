@@ -9,8 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 34
-evaluated = 577
+ceiling = 22
+evaluated = 589
 
 [[abstain]]
 class = "semantics:mut-param"
@@ -22,18 +22,6 @@ count = 2
 
 [[abstain]]
 class = "semantics:guard-else-value"
-count = 2
-
-[[abstain]]
-class = "semantics:uint64-upper-half"
-count = 2
-
-[[abstain]]
-class = "stdlib:float32.to_string"
-count = 2
-
-[[abstain]]
-class = "stdlib:int.from_int8"
 count = 2
 
 [[abstain]]
@@ -74,30 +62,6 @@ count = 1
 
 [[abstain]]
 class = "stdlib:bytes.write_uint16"
-count = 1
-
-[[abstain]]
-class = "stdlib:float.to_int8_checked"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.bits_to_float"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.to_int8"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.to_uint64"
-count = 1
-
-[[abstain]]
-class = "stdlib:int32.to_string"
-count = 1
-
-[[abstain]]
-class = "stdlib:int8.to_string"
 count = 1
 
 [[abstain]]
