@@ -147,7 +147,12 @@ Contracts: C-028, C-029。
 
 `float.to_fixed(x, n)` は**正確な二進値に対する round-half-to-even**（銀行丸め）。
 十進文字列経由の再丸めや half-up は不適合。n=0 の小数点無し、負数・境界値
-（0.5 ちょうど等）も同規則。
+（0.5 ちょうど等）も同規則。n の定義域は **0..=4096** で、域外は T6 形
+（`Error: to_fixed requires decimals in 0..=4096`、exit 1）で停止する。
+非有限値は表示形をそのまま返す: `inf`・`-inf`・`NaN`。ゼロ量の符号は保存
+（`to_fixed(-0.4, 0)` は `-0`）。Fixtures:
+`spec/wasm_cross/to_fixed_domain_abort.almd`、
+`spec/wasm_cross/to_fixed_wide_precision.almd`。
 Contracts: C-025。
 
 ## ALS-T10 数学関数の決定性
