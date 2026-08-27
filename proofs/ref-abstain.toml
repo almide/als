@@ -9,16 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 52
-evaluated = 559
-
-[[abstain]]
-class = "syntax:fan.bounded"
-count = 11
-
-[[abstain]]
-class = "syntax:fan.race"
-count = 4
+ceiling = 34
+evaluated = 577
 
 [[abstain]]
 class = "semantics:mut-param"
@@ -85,14 +77,6 @@ class = "stdlib:bytes.write_uint16"
 count = 1
 
 [[abstain]]
-class = "stdlib:compute.ns"
-count = 1
-
-[[abstain]]
-class = "stdlib:fan.race"
-count = 1
-
-[[abstain]]
 class = "stdlib:float.to_int8_checked"
 count = 1
 
@@ -122,10 +106,6 @@ count = 1
 
 [[abstain]]
 class = "stdlib:matrix.masked_multi_head_attention"
-count = 1
-
-[[abstain]]
-class = "syntax:fan.timeout"
 count = 1
 
 [[abstain]]
