@@ -18,6 +18,9 @@ use crate::value::*;
 pub enum Flow {
     /// ALS-R1 abort: `Error: <msg>` on stderr, exit 1
     Abort(String),
+    /// ALS-DT2 budget cut: the innermost metered region exhausted at a
+    /// charge site (check-then-charge); caught by that region's fan head
+    Cut,
     /// `!` met an err/none: the failure travels to the enclosing fn boundary
     /// with its polarity (a Result channel reifies none as err("none"),
     /// ADR-0003 D3; an Option channel propagates none as none, C-211)
@@ -147,6 +150,20 @@ pub struct Interp {
     in_test: bool,
     /// line of the innermost call being dispatched (C-153 `at: line N`)
     pub cur_line: usize,
+    /// ALS-DT2 deterministic meter: one frame per active fan region, the
+    /// TOP frame is charged (min-cap at push, debit-on-exit — EIP-150)
+    meter: Vec<MeterFrame>,
+    /// C-294 memo: fn name → loop-free-and-non-recursive (entry charge 0)
+    inline_exempt: BTreeMap<String, bool>,
+}
+
+/// one active fan.bounded / fan.race arm / fan.timeout region
+struct MeterFrame {
+    /// charge units admitted (min-capped against the parent at push)
+    budget: u64,
+    spent: u64,
+    /// fan.timeout deadline, checked cooperatively at charge sites (DT5)
+    deadline: Option<std::time::Instant>,
 }
 
 const STD_MODULES: &[&str] = &[
@@ -272,6 +289,8 @@ impl Interp {
             fuel: 200_000_000,
             in_test: false,
             cur_line: 0,
+            meter: Vec::new(),
+            inline_exempt: BTreeMap::new(),
         };
         for d in &prog.decls {
             match d {
@@ -373,6 +392,7 @@ impl Interp {
                 }
             }
             Err(Flow::Abstain { class, reason }) => Outcome::Abstain { class, reason },
+            Err(Flow::Cut) => Outcome::Fault("a budget cut escaped its fan region".into()),
             Err(Flow::Fatal(msg)) => Outcome::Fault(msg),
             Err(Flow::Break) | Err(Flow::Continue) => {
                 Outcome::Fault("break/continue escaped to the program boundary".into())
@@ -390,6 +410,121 @@ impl Interp {
     /// stdlib-facing abstain
     pub fn abstain_pub<T>(&self, class: &str, reason: impl Into<String>) -> Result<T, Flow> {
         self.abstain(class, reason)
+    }
+
+    // ── ALS-DT2: the deterministic meter (CM-1 v0.3 = 3 ns/unit) ───────
+    /// check-then-charge at a charge site: the TOP frame only; a timeout
+    /// frame reads the wall clock here (DT5's cooperative check)
+    fn charge(&mut self, cost: u64) -> Result<(), Flow> {
+        let Some(f) = self.meter.last_mut() else {
+            return Ok(());
+        };
+        if let Some(d) = f.deadline {
+            if std::time::Instant::now() >= d {
+                return Err(Flow::Cut);
+            }
+        }
+        if f.spent.saturating_add(cost) > f.budget {
+            return Err(Flow::Cut);
+        }
+        f.spent += cost;
+        Ok(())
+    }
+
+    /// C-294: a loop-free non-recursive callee is inlined by the shared-MIR
+    /// inliner, entry charge and all — its call costs 0 units
+    fn entry_exempt(&mut self, name: &str) -> bool {
+        if let Some(&e) = self.inline_exempt.get(name) {
+            return e;
+        }
+        let e = match self.fns.get(name) {
+            Some(f) => match &f.body {
+                Some(b) => !expr_has_loop(b) && !expr_calls_name(b, name),
+                None => false,
+            },
+            None => false,
+        };
+        self.inline_exempt.insert(name.to_string(), e);
+        e
+    }
+
+    fn charge_fn_entry(&mut self, name: &str) -> Result<(), Flow> {
+        if self.meter.is_empty() || self.entry_exempt(name) {
+            return Ok(());
+        }
+        self.charge(1)
+    }
+
+    /// push a region frame min-capped against the parent (EIP-150)
+    fn meter_push(&mut self, budget: u64, deadline: Option<std::time::Instant>) {
+        let cap = match self.meter.last() {
+            Some(p) => p.budget.saturating_sub(p.spent),
+            None => u64::MAX,
+        };
+        self.meter.push(MeterFrame {
+            budget: budget.min(cap),
+            spent: 0,
+            deadline,
+        });
+    }
+
+    /// pop the region frame and perform the exit bookkeeping (C-320: a cut
+    /// exits like a normal region exit — the parent is debited either way)
+    fn meter_pop(&mut self) -> u64 {
+        let f = self.meter.pop().expect("meter frame");
+        if let Some(p) = self.meter.last_mut() {
+            p.spent = p.spent.saturating_add(f.spent);
+        }
+        f.spent
+    }
+
+    /// the VALUE form of `fan.race(budget?, xs, f)` (T7-1 mapper via the
+    /// stdlib route): same winner rule as the block form — lexicographic
+    /// min (spend, index) among admitted, non-Err arms
+    pub fn fan_race_values(&mut self, args: Vec<Value>) -> R {
+        let mut budget = u64::MAX;
+        let mut rest = &args[..];
+        if let Some(Value::Time { wall: false, ns }) = args.first() {
+            budget = (*ns / 3) as u64;
+            rest = &args[1..];
+        } else if let Some(Value::Time { wall: true, .. }) = args.first() {
+            return self.abstain(
+                "semantics:fan-budget",
+                "`fan.race` over a wall-clock budget",
+            );
+        }
+        let [Value::List(xs), Value::Fn(f)] = rest else {
+            return self.abstain(
+                "syntax:fan.race",
+                format!("`fan.race` value form with {} argument(s)", rest.len()),
+            );
+        };
+        let (xs, f) = (xs.clone(), f.clone());
+        let mut best: Option<(u64, Value)> = None;
+        for x in xs.iter() {
+            self.meter_push(budget, None);
+            let r = self.call_value(&f, vec![x.clone()]);
+            let spent = self.meter_pop();
+            match r {
+                Ok(Value::Err(_)) => continue,
+                Ok(Value::Ok(v)) => {
+                    if best.as_ref().map(|(s, _)| spent < *s).unwrap_or(true) {
+                        best = Some((spent, (*v).clone()));
+                    }
+                }
+                Ok(other) => {
+                    if best.as_ref().map(|(s, _)| spent < *s).unwrap_or(true) {
+                        best = Some((spent, other));
+                    }
+                }
+                Err(Flow::Cut) => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(match best {
+            Some((_, v)) => Value::Ok(Rc::new(v)),
+            None => Value::Err(Rc::new(Value::str("fan.race: all candidates failed"))),
+        })
     }
 
     /// ADR-0006: is a value in callback position fallible? Closures carry the
@@ -495,6 +630,7 @@ impl Interp {
     }
 
     pub fn call_fn(&mut self, f: &Rc<FnDecl>, args: Vec<Value>, named: Vec<(String, Value)>) -> R {
+        self.charge_fn_entry(&f.sig.name)?;
         let mut env = self.bind_params(f, args, &named)?;
         let body = match &f.body {
             Some(b) => b,
@@ -513,9 +649,11 @@ impl Interp {
             match self.eval_tail(&env, body, &f) {
                 Ok(Tail::Value(v)) => break Ok(v),
                 Ok(Tail::SelfCall(args2)) => {
+                    self.charge_fn_entry(&f.sig.name)?;
                     env = self.bind_params(&f, args2, &[])?;
                 }
                 Ok(Tail::Call(g, args2)) => {
+                    self.charge_fn_entry(&g.sig.name)?;
                     env = self.bind_params(&g, args2, &[])?;
                     f = g;
                     body = match &f.body {
@@ -869,9 +1007,11 @@ impl Interp {
             Value::Bytes(_) => "bytes",
             Value::Path(_) => "json",
             Value::Matrix(_) => "matrix",
-            Value::Unit | Value::Record { .. } | Value::Variant { .. } | Value::Fn(_) => {
-                return None
-            }
+            Value::Unit
+            | Value::Record { .. }
+            | Value::Variant { .. }
+            | Value::Fn(_)
+            | Value::Time { .. } => return None,
         })
     }
 
@@ -1410,6 +1550,7 @@ impl Interp {
                     let end = if *inclusive { b } else { b - 1 };
                     let mut i = a;
                     while i <= end {
+                        self.charge(1)?; // ALS-DT2 loop-head check
                         let inner = Env::new(Some(env.clone()));
                         if binders.len() != 1 {
                             return Err(Flow::Fatal("tuple destructuring over a range".into()));
@@ -1425,12 +1566,14 @@ impl Interp {
                         }
                         i += 1;
                     }
+                    self.charge(1)?; // the final failing head check
                     return Ok(Value::Unit);
                 }
                 let it = self.eval(env, iter)?;
                 if let Value::Range(a, b) = it {
                     let mut i = a;
                     while i < b {
+                        self.charge(1)?; // ALS-DT2 loop-head check
                         let inner = Env::new(Some(env.clone()));
                         if binders.len() != 1 {
                             return Err(Flow::Fatal("tuple destructuring over a range".into()));
@@ -1446,6 +1589,7 @@ impl Interp {
                         }
                         i += 1;
                     }
+                    self.charge(1)?; // the final failing head check
                     return Ok(Value::Unit);
                 }
                 let items: Vec<Value> = match it {
@@ -1454,6 +1598,7 @@ impl Interp {
                     other => return self.abstain("semantics:for-iterable", format!("for-in over a {}", other.type_name())),
                 };
                 for item in items {
+                    self.charge(1)?; // ALS-DT2 loop-head check
                     let inner = Env::new(Some(env.clone()));
                     if binders.len() == 1 {
                         if binders[0] != "_" {
@@ -1478,10 +1623,13 @@ impl Interp {
                         Err(f) => return Err(f),
                     }
                 }
+                self.charge(1)?; // the final failing head check
                 Ok(Value::Unit)
             }
             Expr::While { cond, body } => {
                 loop {
+                    // ALS-DT2: every loop-head check is one charge unit
+                    self.charge(1)?;
                     match self.eval(env, cond)? {
                         Value::Bool(true) => {}
                         Value::Bool(false) => break,
@@ -1496,7 +1644,7 @@ impl Interp {
                 }
                 Ok(Value::Unit)
             }
-            Expr::Fan { head, head_args: _, arms } => {
+            Expr::Fan { head, head_args, arms } => {
                 match head {
                     None => {
                         // ALS-R3: deterministic, list order; the all-ok path yields the
@@ -1552,6 +1700,115 @@ impl Interp {
                         } else {
                             Ok(Value::Tuple(Rc::new(out)))
                         }
+                    }
+                    Some(h) if h == "bounded" || h == "timeout" => {
+                        if head_args.len() != 1 || arms.len() != 1 {
+                            return self.abstain(
+                                &format!("syntax:fan.{h}"),
+                                format!("`fan.{h}` with {} head arg(s) and {} arm(s)", head_args.len(), arms.len()),
+                            );
+                        }
+                        let b = self.eval(env, &head_args[0])?;
+                        let bounded = h == "bounded";
+                        let (budget, deadline) = match (bounded, &b) {
+                            // ALS-DT2: budget units = floor(ns / CM-1), CM-1 v0.3 = 3
+                            (true, Value::Time { wall: false, ns }) => ((*ns / 3) as u64, None),
+                            // ALS-DT5: a wall deadline, checked at charge sites
+                            (false, Value::Time { wall: true, ns }) => (
+                                u64::MAX,
+                                Some(std::time::Instant::now() + std::time::Duration::from_nanos((*ns).max(0) as u64)),
+                            ),
+                            (_, other) => {
+                                return self.abstain(
+                                    "semantics:fan-budget",
+                                    format!("`fan.{h}` head over a {}", other.type_name()),
+                                )
+                            }
+                        };
+                        self.meter_push(budget, deadline);
+                        let r = self.eval(env, &arms[0]);
+                        self.meter_pop();
+                        match r {
+                            Ok(v) => Ok(match v {
+                                w @ (Value::Ok(_) | Value::Err(_)) => w,
+                                other => Value::Ok(Rc::new(other)),
+                            }),
+                            Err(Flow::Cut) => Ok(Value::Err(Rc::new(Value::str(if bounded {
+                                "fan.bounded: budget exhausted"
+                            } else {
+                                "fan.timeout: deadline exceeded"
+                            })))),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    Some(h) if h == "race" => {
+                        // ALS-DT3: winner = lexicographic min (spend, index)
+                        // among arms that stayed in budget and did not Err
+                        let mut vals = Vec::new();
+                        for a in head_args {
+                            vals.push(self.eval(env, a)?);
+                        }
+                        let mut budget = u64::MAX;
+                        let mut rest = &vals[..];
+                        if let Some(Value::Time { wall: false, ns }) = vals.first() {
+                            budget = (*ns / 3) as u64;
+                            rest = &vals[1..];
+                        } else if let Some(Value::Time { wall: true, .. }) = vals.first() {
+                            return self.abstain("semantics:fan-budget", "`fan.race` over a wall-clock budget");
+                        }
+                        enum Arm {
+                            Block(Expr),
+                            Mapped(Value, Value),
+                        }
+                        let arm_list: Vec<Arm> = if rest.is_empty() {
+                            arms.iter().map(|a| Arm::Block(a.clone())).collect()
+                        } else if rest.len() == 2 {
+                            // the mapper form: fan.race(budget?, xs, f)
+                            let Value::List(xs) = &rest[0] else {
+                                return self.abstain("syntax:fan.race", "`fan.race` mapper over a non-list");
+                            };
+                            let f = rest[1].clone();
+                            xs.iter().map(|x| Arm::Mapped(f.clone(), x.clone())).collect()
+                        } else {
+                            return self.abstain("syntax:fan.race", format!("`fan.race` with {} head arg(s)", rest.len()));
+                        };
+                        let mut best: Option<(u64, Value)> = None;
+                        for arm in arm_list {
+                            self.meter_push(budget, None);
+                            let r = match &arm {
+                                Arm::Block(a) => self.eval(env, a),
+                                Arm::Mapped(f, x) => match f {
+                                    Value::Fn(c) => {
+                                        let c = c.clone();
+                                        self.call_value(&c, vec![x.clone()])
+                                    }
+                                    other => Err(Flow::Fatal(format!(
+                                        "fan.race mapper is a {}",
+                                        other.type_name()
+                                    ))),
+                                },
+                            };
+                            let spent = self.meter_pop();
+                            match r {
+                                Ok(Value::Err(_)) => continue, // self-disqualifies (DT3)
+                                Ok(Value::Ok(v)) => {
+                                    if best.as_ref().map(|(s, _)| spent < *s).unwrap_or(true) {
+                                        best = Some((spent, (*v).clone()));
+                                    }
+                                }
+                                Ok(other) => {
+                                    if best.as_ref().map(|(s, _)| spent < *s).unwrap_or(true) {
+                                        best = Some((spent, other));
+                                    }
+                                }
+                                Err(Flow::Cut) => continue, // exhausted arm
+                                Err(e) => return Err(e),    // an admitted trap escapes (C-205)
+                            }
+                        }
+                        Ok(match best {
+                            Some((_, v)) => Value::Ok(Rc::new(v)),
+                            None => Value::Err(Rc::new(Value::str("fan.race: all candidates failed"))),
+                        })
                     }
                     Some(h) => self.abstain(&format!("syntax:fan.{h}"), format!("`fan.{h}` block head is not implemented yet")),
                 }
@@ -1953,9 +2210,47 @@ impl Interp {
                     a.0, b.0,
                 )))))
             }
+            // ALS-DT1 time algebra: + saturates, - saturates at 0,
+            // * Int saturates and aborts on a negative factor; same-clock only
+            (Add, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Time {
+                    wall: *wa,
+                    ns: a.saturating_add(*b).max(0),
+                })
+            }
+            (Sub, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Time {
+                    wall: *wa,
+                    ns: a.saturating_sub(*b).max(0),
+                })
+            }
+            (Mul, Value::Time { wall, ns }, Value::Int(k))
+            | (Mul, Value::Int(k), Value::Time { wall, ns }) => {
+                if *k < 0 {
+                    return Err(Flow::Abort(format!("negative time scale: {k}")));
+                }
+                Ok(Value::Time {
+                    wall: *wall,
+                    ns: ns.saturating_mul(*k),
+                })
+            }
+            (Lt, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Bool(a < b))
+            }
+            (Le, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Bool(a <= b))
+            }
+            (Gt, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Bool(a > b))
+            }
+            (Ge, Value::Time { wall: wa, ns: a }, Value::Time { wall: wb, ns: b }) if wa == wb => {
+                Ok(Value::Bool(a >= b))
+            }
             (Add, Value::Str(a), Value::Str(b)) => {
                 let mut s = a.to_string();
                 s.push_str(b);
+                // ALS-DT2: bulk concat costs 1 + result_len/16 units
+                self.charge(1 + (s.len() as u64) / 16)?;
                 Ok(Value::str(&s))
             }
             (Add, Value::List(a), Value::List(b)) => {
@@ -2638,4 +2933,103 @@ impl Interp {
             ),
         }
     }
+}
+
+/// generic short-circuiting AST probe (mirrors expr_has_unwrap's walk,
+/// but descends into lambdas too — a loop inside a lambda still loops)
+fn expr_any(e: &Expr, pred: &dyn Fn(&Expr) -> bool) -> bool {
+    if pred(e) {
+        return true;
+    }
+    match e {
+        Expr::Unwrap(x) => expr_any(x, pred),
+        Expr::Lambda { body, .. } => expr_any(body, pred),
+        Expr::Int(_)
+        | Expr::BigInt(_)
+        | Expr::Float(_)
+        | Expr::Bool(_)
+        | Expr::Unit
+        | Expr::Ident(_)
+        | Expr::TypeName { .. }
+        | Expr::EmptyMap
+        | Expr::None
+        | Expr::Todo(_)
+        | Expr::Hole
+        | Expr::Break
+        | Expr::Continue => false,
+        Expr::Str(segs) => segs
+            .iter()
+            .any(|s| matches!(s, StrSeg::Expr(x) if expr_any(x, pred))),
+        Expr::List(xs) | Expr::Tuple(xs) => xs.iter().any(|x| expr_any(x, pred)),
+        Expr::Map(ps) => ps
+            .iter()
+            .any(|(k, v)| expr_any(k, pred) || expr_any(v, pred)),
+        Expr::Record { spread, fields, .. } => {
+            spread.as_ref().map(|s| expr_any(s, pred)).unwrap_or(false)
+                || fields.iter().any(|(_, x)| expr_any(x, pred))
+        }
+        Expr::Block(stmts) => stmts.iter().any(|s| stmt_any(s, pred)),
+        Expr::If { cond, then, els } => {
+            expr_any(cond, pred)
+                || expr_any(then, pred)
+                || els.as_ref().map(|x| expr_any(x, pred)).unwrap_or(false)
+        }
+        Expr::IfLet {
+            scrut, then, els, ..
+        } => expr_any(scrut, pred) || expr_any(then, pred) || expr_any(els, pred),
+        Expr::Match { subject, arms } => {
+            expr_any(subject, pred)
+                || arms.iter().any(|a| {
+                    expr_any(&a.body, pred)
+                        || a.guard.as_ref().map(|x| expr_any(x, pred)).unwrap_or(false)
+                })
+        }
+        Expr::PipeMatch { arms } => arms.iter().any(|a| expr_any(&a.body, pred)),
+        Expr::For { iter, body, .. } => expr_any(iter, pred) || expr_any(body, pred),
+        Expr::While { cond, body } => expr_any(cond, pred) || expr_any(body, pred),
+        Expr::Fan {
+            head_args, arms, ..
+        } => head_args.iter().any(|x| expr_any(x, pred)) || arms.iter().any(|x| expr_any(x, pred)),
+        Expr::Call { callee, args, .. } => {
+            expr_any(callee, pred)
+                || args.iter().any(|a| match a {
+                    Arg::Pos(x) | Arg::Named(_, x) => expr_any(x, pred),
+                    Arg::Placeholder => false,
+                })
+        }
+        Expr::Index { obj, idx } => expr_any(obj, pred) || expr_any(idx, pred),
+        Expr::Member { obj, .. } | Expr::TupleIndex { obj, .. } | Expr::OptChain { obj, .. } => {
+            expr_any(obj, pred)
+        }
+        Expr::ToOption(x) | Expr::Some(x) | Expr::Ok(x) | Expr::Err(x) | Expr::Paren(x) => {
+            expr_any(x, pred)
+        }
+        Expr::UnwrapOr { expr, fallback } => expr_any(expr, pred) || expr_any(fallback, pred),
+        Expr::Binary { lhs, rhs, .. } | Expr::Pipe { lhs, rhs } | Expr::Compose { lhs, rhs } => {
+            expr_any(lhs, pred) || expr_any(rhs, pred)
+        }
+        Expr::Unary { expr, .. } | Expr::Ascription { expr, .. } => expr_any(expr, pred),
+        Expr::Range { lo, hi, .. } => expr_any(lo, pred) || expr_any(hi, pred),
+    }
+}
+
+fn stmt_any(s: &Stmt, pred: &dyn Fn(&Expr) -> bool) -> bool {
+    match s {
+        Stmt::Let { expr, .. } | Stmt::Var { expr, .. } | Stmt::Expr(expr, _) => {
+            expr_any(expr, pred)
+        }
+        Stmt::Assign { place, expr, .. } => expr_any(place, pred) || expr_any(expr, pred),
+        Stmt::Guard { cond, els, .. } => expr_any(cond, pred) || expr_any(els, pred),
+        Stmt::GuardLet { scrut, els, .. } => expr_any(scrut, pred) || expr_any(els, pred),
+    }
+}
+
+/// ALS-DT2 / C-294: does this body contain a loop form anywhere?
+fn expr_has_loop(e: &Expr) -> bool {
+    expr_any(e, &|x| matches!(x, Expr::While { .. } | Expr::For { .. }))
+}
+
+/// crude recursion probe: any mention of `name` as an identifier inside
+fn expr_calls_name(e: &Expr, name: &str) -> bool {
+    expr_any(e, &|x| matches!(x, Expr::Ident(n) if n == name))
 }

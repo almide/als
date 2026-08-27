@@ -92,6 +92,12 @@ pub enum Value {
     Path(Rc<Vec<PathSeg>>),
     /// the `matrix` value — row-major f64 storage (C-161 family)
     Matrix(Rc<Mat>),
+    /// a deterministic-time quantity (ALS-DT1): `compute.*` (wall=false) or
+    /// `duration.*` (wall=true), stored in saturating nanoseconds
+    Time {
+        wall: bool,
+        ns: i64,
+    },
 }
 
 /// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
@@ -233,6 +239,7 @@ impl Value {
             Value::Bytes(_) => "Bytes",
             Value::Path(_) => "JsonPath",
             Value::Matrix(_) => "Matrix",
+            Value::Time { .. } => "Time",
         }
     }
     /// number of elements a range would materialize
@@ -527,9 +534,12 @@ pub fn render(v: &Value) -> Option<String> {
             }
         },
         Value::Dyn(d) => dyn_text(d),
-        Value::Fn(_) | Value::Range(..) | Value::Bytes(_) | Value::Path(_) | Value::Matrix(_) => {
-            return None
-        }
+        Value::Fn(_)
+        | Value::Range(..)
+        | Value::Bytes(_)
+        | Value::Path(_)
+        | Value::Matrix(_)
+        | Value::Time { .. } => return None,
     })
 }
 
