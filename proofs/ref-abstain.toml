@@ -9,8 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 74
-evaluated = 537
+ceiling = 65
+evaluated = 546
 
 [[abstain]]
 class = "syntax:fan.bounded"
@@ -21,15 +21,7 @@ class = "semantics:carrier-shape"
 count = 7
 
 [[abstain]]
-class = "stdlib:matrix.ones"
-count = 6
-
-[[abstain]]
 class = "semantics:to-fixed-domain"
-count = 4
-
-[[abstain]]
-class = "stdlib:matrix.from_lists"
 count = 4
 
 [[abstain]]
@@ -61,7 +53,7 @@ class = "stdlib:int.from_int8"
 count = 2
 
 [[abstain]]
-class = "stdlib:matrix.select_rows_f32"
+class = "stdlib:matrix.rope_rotate"
 count = 2
 
 [[abstain]]
@@ -137,11 +129,15 @@ class = "stdlib:json.set_path"
 count = 1
 
 [[abstain]]
-class = "stdlib:matrix.from_q1_0_bytes"
+class = "stdlib:matrix.gelu"
 count = 1
 
 [[abstain]]
-class = "stdlib:matrix.select_rows_q1_0"
+class = "stdlib:matrix.masked_multi_head_attention"
+count = 1
+
+[[abstain]]
+class = "stdlib:matrix.softmax_rows"
 count = 1
 
 [[abstain]]
