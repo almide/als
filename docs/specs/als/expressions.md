@@ -46,7 +46,7 @@ bin     := "0b" bindigit (bindigit | "_")*
 **値の規範**: 型は `Bool`。表示形は文字列補間・`==` の被演算子など全観測点で
 `true` / `false` の小文字綴りとする。
 
-テスト: `spec/wasm_cross/literal_int_forms.almd`(契約 C-231)。
+テスト: `spec/wasm_cross/literal_int_forms.almd`(契約 C-232)。
 
 ## ALS-E4 ユニットリテラル(`ExprKind::Unit`)
 
@@ -115,8 +115,9 @@ ADR-0008)。式文位置と補間 `${...}` 内は字句経路が異なるが同�
 `(A, B)` を取れる。
 
 **連鎖 index の裁定**: `n.0.1` は**受理しない** — 字句解析が `0.1` を浮動
-小数点リテラルとして読むため `Expected a name` になる。入れ子の読み出しは
-`(n.0).1` と書く(実測 pin)。
+小数点リテラルとして読む。0.59.1 は専用診断でこれを説明する
+(「`.0.1` lexes as the float literal '0.1', not two projections」、hint は
+`(x.0).1` へ括弧付けを指示)。入れ子の読み出しは `(n.0).1` と書く(実測 pin)。
 
 **値の規範**: タプルは位置ごとに型を持つ固定長の値。`==` は要素ごとの
 構造的等値。分解束縛・`.k`・パラメータ渡し・返り値のいずれの経路でも
@@ -168,8 +169,10 @@ Option 型のデフォルトを持つ `??` で一段ずつ剥がせる(`sn ?? no
 
 **値の規範**: レンジは第一級の値 — `let r = 0..<3` と束縛してから
 `for i in r` で駆動でき、インライン頭 `for i in 0..<3` と同じ列を生む。
-束縛は実リスト(`list.range`)を実体化する(#1272 の回帰 pin: 遅延空値の
-束縛は wasm で 0 回反復だった)。排他 `0..<3` → 0,1,2、包含 `0...5` →
+for-in の head としてだけ使われる束縛は**実体化しない**(#1400、C-238 —
+`range_bind_no_materialize.almd` / `range_bind_huge.almd`(2^32 反復・32 GB
+非実体化)/ `range_materialize_oom.almd` が固定する; #1272 の遅延空値
+0 回反復はその前段の回帰 pin)。それ以外の使用は実リストへ実体化する。排他 `0..<3` → 0,1,2、包含 `0...5` →
 0〜5、非零開始・呼び出し境界も両ターゲット同一(fixture は総和
 3 / 15 / 9 / 6 を pin)。
 
@@ -201,7 +204,7 @@ JSON/他言語からの転記ミスは検査時に止まる)。
 `??` で既定値に落とす。欠損キーは `none`(実測: `m["zz"] ?? -1` → `-1`)。
 挿入順は決定的に保存される(AlmideMap の規範; 反復順は挿入順)。
 
-テスト: `spec/wasm_cross/collection_literals.almd`(契約 C-239)。
+テスト: `spec/wasm_cross/collection_literals.almd`(契約 C-240)。
 
 ## ALS-ST1 束縛文(`Stmt::Let` / `Stmt::Var` / `Stmt::Assign`)
 
@@ -326,8 +329,10 @@ ALS-ST1)。
 8、List[String] 要素出力、List[(Int, Int)] の分解ヘッド → 53)。反復対象は
 ループ開始前に一度だけ評価される。
 
-**既知の制限(loud、誤値なし)**: `break` / `continue` は while と同じく
-v1 の wall(#1277)。
+`break` / `continue` はガード付きで両ターゲット横断が着地済み(C-256 /
+#1306 — `loop_break_continue.almd` が for-range break を、
+`spec/lang/loop_break_continue_test.almd` が for-list continue を pin。
+受理形は ALS-E24)。
 
 テスト: `spec/wasm_cross/for_in_forms.almd`(契約 C-248)、レンジ head は
 `range_first_class.almd`(C-238)、マップ反復は
@@ -412,7 +417,7 @@ pin。
 **値の規範**: 値は `e` のまま、型検査の期待型として `T` を供給する
 (fixture: `(7: Int)` → 7)。実行時表現に影響しない。
 
-テスト: `spec/wasm_cross/place_assign_ascription.almd`(契約 C-253)。
+テスト: `spec/wasm_cross/place_assign_ascription.almd`(契約 C-254 — C-253 と fixture を共有)。
 
 ## ALS-E23 レコード(`ExprKind::Record` / `ExprKind::SpreadRecord` / `ExprKind::Member`)
 
@@ -464,8 +469,8 @@ ALS-R1 の abort 形へ)。`err(_)?` → `none`、`ok(4)?` → `some(4)`(fixture
 対応物を持たない(削除は語彙掃除の followup、#1300 の CallArg::Label と
 同類)。
 
-**`?.` は未節化**: OptionalChain の record 主体は wasm の untracked-subject
-match wall(loud)に当たるため、行は UNWRITTEN 維持。
+**`?.` は ALS-E28 が規範化済み**(スカラー系は C-264 が pin)。record 主体の
+wasm 側 wall は E28 の限界節が記録する。
 
 テスト: `spec/wasm_cross/error_operators.almd`(契約 C-257)。
 
@@ -539,8 +544,8 @@ C-094/C-126(`protocol_ufcs_inferred_lambda.almd`)が pin。test ブロックは
 `\t`・`\n`・`\\`(綴りとも fmt 安定、値を fixture が pin)。
 `\u{…}`(値置換される)・heredoc `"""…"""`(単一行へ潰される)・引用符
 選択(自動切替)は受理されるが fmt が形を保存しないため**形の規範化は
-OPEN(#1263)**。未知エスケープ(`\q`)と範囲外 `\u{…}` の黙過は
-**OPEN(#1264)** — 現状は素通りであり、これを規範とは認めない。
+OPEN(#1263)**。未知エスケープ(`\q`)は検査時に
+**E047**(unknown escape sequence)で拒否される(#1264 着地、0.59.1 実測)。
 
 **値の規範(確定分)**: `\t` → タブ、`\n` → 改行、`\\` → バックスラッシュ
 1 字(fixture が可視括りで pin)。空文字列は長さ 0 の値。
@@ -596,16 +601,20 @@ match が受け取る(fixture: `checked(-3)` の err を match が拾って
 **scalar/heap の境界**: スカラー値のガードは #1336 で両レグ live。
 `guard let x = e else …`(`Stmt::GuardLet`)は**別クラス** — フロント
 エンドで variant match へ脱糖され、tail 位置の variant match ブリックに
-当たるため wasm では wall(loud)。当該ブリック待ちで UNWRITTEN 維持。
+当たっていたが、ALS-ST6(#1340 / C-266)の着地で guard let は節化済み —
+Stmt::GuardLet の coverage 行は ALS-ST6 を指す。else アームは raise に
+加え `continue` も受理される(`spec/lang/guard_test.almd` が pin)。
 
 テスト: `spec/wasm_cross/guard_statement.almd`(契約 C-265)、
 `spec/lang/guard_test.almd`(wasm レグ)。
 
 ## ALS-ST6 guard let 文(`Stmt::GuardLet`)
 
-**受理形**: `guard let x = scrut else raise-expr` — 文位置。`scrut` は
+**受理形**: `guard let x = scrut else else-expr` — 文位置。`scrut` は
 Result / Option、`x` は Ok / Some のペイロードに束縛され、後続文の全域で
-可視。else アームは raise(`err(e)` / `err(e)!`)。
+可視。else アームは raise(`err(e)` / `err(e)!`)に加え**値形**も取り、
+その値が関数から返る(`guard let head = list.first(xs) else { d }` —
+`spec/lang/guard_let_test.almd` が受理形として pin)。
 
 **値の規範**: 成功極性なら束縛して素通り(fixture: `int.parse("21")` →
 v=21 → 42)。失敗極性なら else の err が呼び出し元へ伝搬する(fixture:
@@ -625,13 +634,15 @@ v=21 → 42)。失敗極性なら else の err が呼び出し元へ伝搬する
 
 ## ALS-E29 二項演算子(`ExprKind::Binary`)
 
-**受理形**: 算術 `+ - * / % **`、比較 `< <= > >=`、等値 `== !=`、論理
-`and` / `or`(キーワード; `&&`/`||` は無い — 否定は `not`、ALS-E7)。
+**受理形**: 算術 `+ - * / % **`(冪は `^` 綴りも同義 — cited fixture は
+`2 ^ 10` を pin し、`2 ** 10` と同値 1024)、比較 `< <= > >=`、等値
+`== !=`、論理 `and` / `or`(キーワード; `&&`/`||` は無い — 否定は `not`、
+ALS-E7)。
 
 **Int 除算・剰余の裁定**: `/` は**ゼロ方向へ切り捨て**(fixture:
 `-7 / 3` → **-2**、`7 / 3` → 2)、`%` は**被除数の符号**を取る(`-7 % 3`
 → **-1**)。C/Rust と同じ規約であり、床除算ではない。ゼロ除算の扱いは
-実行時中断(C-053 の裁定)。
+実行時中断(C-001 の裁定)。
 
 **`+` の多重定義**: 数値の加算に加え、**String と List の連結**を担う
 (`"cat" + "dog"` → `catdog`、`[1,2] + [3]` は長さ 3)。混在型の `+` は

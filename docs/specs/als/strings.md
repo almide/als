@@ -9,10 +9,13 @@ Almide Language Specification の文字列規範。実装（v0 native / v1 wasm�
 
 ## ALS-S1 コードポイント意味論
 
-文字列は UTF-8 バイト列であり、`string.len`・`slice`・`chars`・`char_at`・
-`index_of`・添字は**コードポイント単位**で数える（バイトでも grapheme でもない）。
+文字列は UTF-8 バイト列であり、`string.len`・`slice`・`chars`・`string.get`・
+`index_of` は**コードポイント単位**で数える（バイトでも grapheme でもない;
+`s[i]` 添字構文は String に対して E026 で拒否され、要素アクセスは
+`string.get(s, i) -> Option[String]`）。
 マルチバイト文字（CJK・絵文字・結合文字を含む）に対する全操作は、この単位で
-一貫していなければならない。範囲外の `char_at`/`slice` は空文字列を返す。
+一貫していなければならない。範囲外は `string.get` が none、`slice` が
+空文字列を返す。
 Contracts: C-016。
 
 ## ALS-S2 空パターンの検索規則
