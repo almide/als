@@ -9,16 +9,12 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 59
-evaluated = 552
+ceiling = 52
+evaluated = 559
 
 [[abstain]]
 class = "syntax:fan.bounded"
 count = 11
-
-[[abstain]]
-class = "semantics:carrier-shape"
-count = 7
 
 [[abstain]]
 class = "syntax:fan.race"
