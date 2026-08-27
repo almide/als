@@ -377,7 +377,7 @@ pub fn display_form(f: F64) -> String {
 /// remainder against one half of the last kept unit, exactly.
 pub fn to_fixed(f: F64, n: i64) -> Option<String> {
     let x = f.0;
-    if !x.is_finite() || !(0..=1074).contains(&n) {
+    if !x.is_finite() || !(0..=4096).contains(&n) {
         return None;
     }
     let neg = x.is_sign_negative();

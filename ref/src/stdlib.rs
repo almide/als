@@ -1830,9 +1830,17 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let x = F64(want_float(name, &args[0])?);
             let n = want_int(name, &args[1])?;
+            // ALS-T9: a non-finite value renders as its display form
+            if !x.0.is_finite() {
+                return Ok(Value::str(&fmtfloat::display_form(x)));
+            }
+            // ALS-T9: the digit-count domain is 0..=4096, T6 form outside it
+            if !(0..=4096).contains(&n) {
+                return Err(Flow::Abort("to_fixed requires decimals in 0..=4096".into()));
+            }
             match fmtfloat::to_fixed(x, n) {
                 Some(s) => Ok(Value::str(&s)),
-                None => it.abstain_pub("semantics:to-fixed-domain", "to_fixed on a non-finite value or out-of-range digit count — the rule is not in a chapter this evaluator has read"),
+                None => it.abstain_pub("semantics:to-fixed-domain", "to_fixed answered nothing for a finite in-domain input — unreachable by ALS-T9"),
             }
         }
         "float.clamp" => {
