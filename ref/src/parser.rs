@@ -33,6 +33,7 @@ pub fn parse_program(src: &str) -> PResult<Program> {
         toks,
         pos: 0,
         no_brace_literal: false,
+        no_postfix_unwrap_or: false,
     };
     p.program()
 }
@@ -44,6 +45,7 @@ fn parse_expr_src(src: &str, line: usize) -> PResult<Expr> {
         toks,
         pos: 0,
         no_brace_literal: false,
+        no_postfix_unwrap_or: false,
     };
     p.skip_nl();
     let e = p.expr()?;
@@ -63,6 +65,9 @@ struct P {
     /// while parsing a `while`/`for`/`match`/`if let` head, a `{` after a
     /// TypeName is the body, not a record literal
     no_brace_literal: bool,
+    /// while parsing a `|>` RHS, a trailing `??` belongs to the piped
+    /// result, not the function expression
+    no_postfix_unwrap_or: bool,
 }
 
 impl P {
@@ -1128,7 +1133,19 @@ impl P {
     fn pipe_expr(&mut self) -> PResult<Expr> {
         let mut lhs = self.range_expr()?;
         loop {
-            self.cont(&["|>"], &[]);
+            self.cont(&["|>", "??"], &[]);
+            // after a pipe RHS the suppressed `??` re-surfaces here and
+            // applies to the piped result (pipe_probe against 0.59.1)
+            if self.at_sym("??") {
+                self.bump();
+                self.skip_nl();
+                let fb = self.unary_expr()?;
+                lhs = Expr::UnwrapOr {
+                    expr: Box::new(lhs),
+                    fallback: Box::new(fb),
+                };
+                continue;
+            }
             if self.eat_sym("|>") {
                 self.skip_nl();
                 let rhs = if self.at_kw("match") {
@@ -1137,7 +1154,15 @@ impl P {
                     let arms = self.match_arms()?;
                     Expr::PipeMatch { arms }
                 } else {
-                    self.compose_expr()?
+                    // the RHS is the function position: a trailing `??`
+                    // belongs to the PIPED RESULT (`parts |> list.first
+                    // ?? "none"` reads `(parts |> list.first) ?? "none"`),
+                    // so postfix `??` is suppressed inside it
+                    let saved = self.no_postfix_unwrap_or;
+                    self.no_postfix_unwrap_or = true;
+                    let r = self.compose_expr();
+                    self.no_postfix_unwrap_or = saved;
+                    r?
                 };
                 lhs = Expr::Pipe {
                     lhs: Box::new(lhs),
@@ -1371,7 +1396,7 @@ impl P {
                 e = Expr::ToOption(Box::new(e));
                 continue;
             }
-            if self.at_sym("??") {
+            if self.at_sym("??") && !self.no_postfix_unwrap_or {
                 self.bump();
                 self.skip_nl();
                 let fb = self.unary_expr()?;
