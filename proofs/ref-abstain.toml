@@ -9,8 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 65
-evaluated = 546
+ceiling = 63
+evaluated = 548
 
 [[abstain]]
 class = "syntax:fan.bounded"
@@ -129,15 +129,7 @@ class = "stdlib:json.set_path"
 count = 1
 
 [[abstain]]
-class = "stdlib:matrix.gelu"
-count = 1
-
-[[abstain]]
 class = "stdlib:matrix.masked_multi_head_attention"
-count = 1
-
-[[abstain]]
-class = "stdlib:matrix.softmax_rows"
 count = 1
 
 [[abstain]]
