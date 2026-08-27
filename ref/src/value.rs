@@ -98,6 +98,17 @@ pub enum Value {
         wall: bool,
         ns: i64,
     },
+    /// a sized integer (C-038/C-179/C-180): the i64 slot carries the bit
+    /// pattern — sign-extended for signed widths, zero-extended (bits<64) or
+    /// raw two's-complement (UInt64's upper half) for unsigned
+    Sized {
+        bits: u8,
+        signed: bool,
+        v: i64,
+    },
+    /// a binary32 float (C-182) — narrows at birth, formats via the f32
+    /// Dragon4 twin
+    Float32(f32),
 }
 
 /// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
@@ -240,6 +251,17 @@ impl Value {
             Value::Path(_) => "JsonPath",
             Value::Matrix(_) => "Matrix",
             Value::Time { .. } => "Time",
+            Value::Sized { bits, signed, .. } => match (bits, signed) {
+                (8, true) => "Int8",
+                (16, true) => "Int16",
+                (32, true) => "Int32",
+                (64, true) => "Int64",
+                (8, false) => "UInt8",
+                (16, false) => "UInt16",
+                (32, false) => "UInt32",
+                _ => "UInt64",
+            },
+            Value::Float32(_) => "Float32",
         }
     }
     /// number of elements a range would materialize
@@ -259,6 +281,18 @@ impl Value {
 pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
     Some(match (a, b) {
         (Value::Int(x), Value::Int(y)) => x == y,
+        (
+            Value::Sized {
+                bits: b1,
+                signed: s1,
+                v: x,
+            },
+            Value::Sized {
+                bits: b2,
+                signed: s2,
+                v: y,
+            },
+        ) if b1 == b2 && s1 == s2 => x == y,
         (Value::Float(x), Value::Float(y)) => x.0 == y.0,
         (Value::Bool(x), Value::Bool(y)) => x == y,
         (Value::Unit, Value::Unit) => true,
@@ -394,6 +428,19 @@ pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
 }
 
 /// ALS-E1: decimal, including i64::MIN.
+pub fn fmt_u64(mut v: u64) -> String {
+    if v == 0 {
+        return "0".into();
+    }
+    let mut digits = Vec::new();
+    while v > 0 {
+        digits.push(b'0' + (v % 10) as u8);
+        v /= 10;
+    }
+    digits.reverse();
+    String::from_utf8(digits).expect("ascii digits")
+}
+
 pub fn fmt_int(n: i64) -> String {
     if n == 0 {
         return "0".to_string();
@@ -534,12 +581,22 @@ pub fn render(v: &Value) -> Option<String> {
             }
         },
         Value::Dyn(d) => dyn_text(d),
+        Value::Sized { bits, signed, v } => {
+            if *signed {
+                fmt_int(*v)
+            } else if *bits == 64 {
+                fmt_u64(*v as u64)
+            } else {
+                fmt_u64((*v as u64) & (u64::MAX >> (64 - *bits as u32)))
+            }
+        }
         Value::Fn(_)
         | Value::Range(..)
         | Value::Bytes(_)
         | Value::Path(_)
         | Value::Matrix(_)
-        | Value::Time { .. } => return None,
+        | Value::Time { .. }
+        | Value::Float32(_) => return None,
     })
 }
 

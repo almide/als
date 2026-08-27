@@ -147,6 +147,11 @@ fn decompose(x: f64) -> Option<(u64, i32)> {
 /// even-mantissa closed bounds — ties-to-even round-trip).
 pub fn shortest_digits(x: f64) -> (Vec<u8>, i32) {
     let (m, e) = decompose(x).expect("finite non-zero");
+    let min_normal = m == (1u64 << 52) && e > -1074;
+    shortest_core(m, e as i64, min_normal, x)
+}
+
+fn shortest_core(m: u64, e: i64, min_normal: bool, approx: f64) -> (Vec<u8>, i32) {
     // scaled value R/S, boundaries M+ / M-
     let (mut r, mut s, mut m_plus, mut m_minus);
     if e >= 0 {
@@ -162,13 +167,13 @@ pub fn shortest_digits(x: f64) -> (Vec<u8>, i32) {
         m_minus = Big::from_u64(1);
     }
     // the lower gap is halved when m is the smallest normal significand
-    if m == (1u64 << 52) && e > -1074 {
+    if min_normal {
         r = r.shl(1);
         s = s.shl(1);
         m_plus = m_plus.shl(1);
     }
     // an EVEN significand owns its boundaries (ties round back to it)
-    let inclusive = m % 2 == 0;
+    let inclusive = m.is_multiple_of(2);
     let within_low = |a: &Big, b: &Big| {
         if inclusive {
             a.cmp(b) != std::cmp::Ordering::Greater
@@ -178,7 +183,7 @@ pub fn shortest_digits(x: f64) -> (Vec<u8>, i32) {
     };
     // estimate k = ceil(log10(x)) and fix up
     let mut k: i32 = {
-        let est = (x.abs().log10()).ceil();
+        let est = (approx.abs().log10()).ceil();
         est as i32
     };
     if k >= 0 {
