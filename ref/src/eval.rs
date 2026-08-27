@@ -849,6 +849,7 @@ impl Interp {
             Value::Dyn(_) => "value",
             Value::Bytes(_) => "bytes",
             Value::Path(_) => "json",
+            Value::Matrix(_) => "matrix",
             Value::Unit | Value::Record { .. } | Value::Variant { .. } | Value::Fn(_) => {
                 return None
             }
