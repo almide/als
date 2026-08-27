@@ -86,6 +86,17 @@ pub enum Value {
     Bytes(Rc<std::cell::RefCell<Vec<u8>>>),
     /// an opaque `JsonPath` (json.root/field/index)
     Path(Rc<Vec<PathSeg>>),
+    /// the `matrix` value — row-major f64 storage (C-161 family)
+    Matrix(Rc<Mat>),
+}
+
+/// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
+/// to 0, the 2^28 element/row ceiling enforced at construction — C-161)
+#[derive(Clone, Debug)]
+pub struct Mat {
+    pub rows: i64,
+    pub cols: i64,
+    pub data: Vec<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -217,6 +228,7 @@ impl Value {
             Value::Dyn(_) => "Value",
             Value::Bytes(_) => "Bytes",
             Value::Path(_) => "JsonPath",
+            Value::Matrix(_) => "Matrix",
         }
     }
     /// number of elements a range would materialize
@@ -511,7 +523,9 @@ pub fn render(v: &Value) -> Option<String> {
             }
         },
         Value::Dyn(d) => dyn_text(d),
-        Value::Fn(_) | Value::Range(..) | Value::Bytes(_) | Value::Path(_) => return None,
+        Value::Fn(_) | Value::Range(..) | Value::Bytes(_) | Value::Path(_) | Value::Matrix(_) => {
+            return None
+        }
     })
 }
 

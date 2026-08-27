@@ -31,6 +31,7 @@ mod parser;
 mod stdlib;
 mod stdlib_ext;
 mod stdlib_ext2;
+mod stdlib_matrix;
 mod value;
 
 use std::io::Write;
