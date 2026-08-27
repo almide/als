@@ -25,7 +25,7 @@
 # (QUALIFICATION.md limitation 1, #14). Rows are added when someone signs.
 # 2026-08-21: +11 — ALS-B1..B11 (the bounded profile, ADR-0017), same standing.
 # 2026-08-21: -3 — ALS-T8, T16, S3 rewritten to their fixtures (F7–F9, #43–#45) and reviewed by the author (not independent).
-# unvalidated_ceiling = "124"
+# unvalidated_ceiling = "0"
 [[section]]
 id = "ALS-T8"
 hash = "sha256:b2ac579f159a"
@@ -56,5 +56,997 @@ id = "ALS-T25"
 hash = "sha256:4ea71b74db8f"
 reviewed = "2026-08-27"
 by = "O6lvl4 (via the Claude session; transcription checked line-by-line against stdlib/matrix_activations.almd __fast_exp/__softmax_row/__gelu_scalar, the C-223 canonical spelling both legs run)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B1"
+hash = "sha256:e4a5c48bfbc8"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B2"
+hash = "sha256:efcdc030f476"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B3"
+hash = "sha256:31035f1bab53"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B4"
+hash = "sha256:953123dca033"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B5"
+hash = "sha256:8cda111c2ebe"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B6"
+hash = "sha256:cb22b6600110"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B7"
+hash = "sha256:497d15826d3f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B8"
+hash = "sha256:c4f9a4d55084"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B9"
+hash = "sha256:a92a2cc0dd18"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B10"
+hash = "sha256:d1ab225457eb"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B11"
+hash = "sha256:17f0808b081e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C1"
+hash = "sha256:be9f400bdb88"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C2"
+hash = "sha256:1feb13118ec4"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C3"
+hash = "sha256:d8f42b902ffa"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C4"
+hash = "sha256:3be7cd0cd252"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C5"
+hash = "sha256:c54ef7d760fc"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C6"
+hash = "sha256:8e8262472829"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C7"
+hash = "sha256:b95e7e6164b3"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C8"
+hash = "sha256:36b2f736c91d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C9"
+hash = "sha256:64db97e58dac"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C10"
+hash = "sha256:528943686d48"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D1"
+hash = "sha256:10c9d5817f0f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D2"
+hash = "sha256:2a186f5d3c6b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D3"
+hash = "sha256:1b52938ff42f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D4"
+hash = "sha256:97fca99d5008"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D5"
+hash = "sha256:93637cefa697"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D6"
+hash = "sha256:6d884d358515"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-D7"
+hash = "sha256:cc889f7b7203"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DT1"
+hash = "sha256:b0f178f5d487"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DT2"
+hash = "sha256:70ea6044c285"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DT3"
+hash = "sha256:afbc90ceb6e6"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DT4"
+hash = "sha256:319001fd11f9"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DT5"
+hash = "sha256:4dbd991a1b9d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E1"
+hash = "sha256:abf77c6f72dc"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E2"
+hash = "sha256:5781b0d02453"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E4"
+hash = "sha256:5def9b33ccb4"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E6"
+hash = "sha256:b144bd37be35"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E7"
+hash = "sha256:606e5a514ac7"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E8"
+hash = "sha256:67a4956678ff"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E9"
+hash = "sha256:5cb6b23bc0eb"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E10"
+hash = "sha256:85d37e08636d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E11"
+hash = "sha256:56a52124cbcc"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E12"
+hash = "sha256:2ea350b33a8c"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST1"
+hash = "sha256:1a9afc645e93"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E13"
+hash = "sha256:2044475b8033"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E14"
+hash = "sha256:d164c0c0a091"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E15"
+hash = "sha256:be16fd9cbb07"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E16"
+hash = "sha256:956ac545e2ce"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E17"
+hash = "sha256:0e2988962b03"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E18"
+hash = "sha256:0f2de6359508"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E19"
+hash = "sha256:64a5b9fe5b77"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST2"
+hash = "sha256:4161d991a77b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E20"
+hash = "sha256:ad3c7b07686a"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E21"
+hash = "sha256:bc9006053189"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST3"
+hash = "sha256:8275f549e97e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST4"
+hash = "sha256:a97aea177f76"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E22"
+hash = "sha256:f7285a7544b7"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E23"
+hash = "sha256:3374df1bec60"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E24"
+hash = "sha256:79bccb70a998"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E25"
+hash = "sha256:120b790e6843"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E26"
+hash = "sha256:539542cf8182"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E27"
+hash = "sha256:b858ce1ac19e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DL1"
+hash = "sha256:84c55d39ba0d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E3"
+hash = "sha256:567ef97f0f8d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E5"
+hash = "sha256:c4235be61681"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-DL2"
+hash = "sha256:640e7009853f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E28"
+hash = "sha256:97e24e176df9"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST5"
+hash = "sha256:7806ec5f88da"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-ST6"
+hash = "sha256:b92e77cd3308"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E29"
+hash = "sha256:d991b114e3d5"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-E30"
+hash = "sha256:7b5d40f6a5ad"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-I1"
+hash = "sha256:1c093ad68570"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-I2"
+hash = "sha256:bf020eb8e85e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-I3"
+hash = "sha256:d373c2c31335"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R1"
+hash = "sha256:008b6be07a6c"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R2"
+hash = "sha256:1b8664a319ef"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R3"
+hash = "sha256:d6f1d3484576"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R4"
+hash = "sha256:88597dd9f191"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R5"
+hash = "sha256:4bc04c6a76d2"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R6"
+hash = "sha256:2d44b6b1790c"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R7"
+hash = "sha256:a8034088029a"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-R8"
+hash = "sha256:b21e9946543e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M1"
+hash = "sha256:d4c74c6e468c"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M2"
+hash = "sha256:3615b063b070"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M3"
+hash = "sha256:6132b9983e17"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M4"
+hash = "sha256:178f36dee7bb"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M5"
+hash = "sha256:d15586f68242"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M6"
+hash = "sha256:7e260c8a86e8"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M7"
+hash = "sha256:e006916644d1"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M8"
+hash = "sha256:64d454ca815d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M9"
+hash = "sha256:70c8aea0fcfe"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M10"
+hash = "sha256:aa9988bee393"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M11"
+hash = "sha256:bd619a0bea2d"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M12"
+hash = "sha256:913e36d9878e"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M13"
+hash = "sha256:3ff93778c8ae"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M14"
+hash = "sha256:885d22760bc6"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-M15"
+hash = "sha256:3d3bb27bd47b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S1"
+hash = "sha256:bfa4fe6de4e9"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S2"
+hash = "sha256:3eec0335545a"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S4"
+hash = "sha256:039fbff0cc38"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S5"
+hash = "sha256:2c904b0a3329"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-S6"
+hash = "sha256:26760b45cd2b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T1"
+hash = "sha256:c245394ac050"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T2"
+hash = "sha256:490599b9460b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T3"
+hash = "sha256:d9fa285baf1f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T4"
+hash = "sha256:d489a7f9c0d7"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T5"
+hash = "sha256:53728760300f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T6"
+hash = "sha256:5758726c6b70"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T7"
+hash = "sha256:f5c63a802e55"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T9"
+hash = "sha256:e5f189c58a02"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T10"
+hash = "sha256:12fec4509cb7"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T11"
+hash = "sha256:d40771f8eb5b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T12"
+hash = "sha256:fe0c68c64b52"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T13"
+hash = "sha256:a8629285816c"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T14"
+hash = "sha256:386e313ad1bb"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T15"
+hash = "sha256:0e6569f03288"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T17"
+hash = "sha256:88d56076e317"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T18"
+hash = "sha256:14767294c107"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T19"
+hash = "sha256:71e48bfc59df"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T20"
+hash = "sha256:84282c40cb41"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T21"
+hash = "sha256:e52294e70f56"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T22"
+hash = "sha256:42355ca8992b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T23"
+hash = "sha256:f1b21c3b90f7"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T24"
+hash = "sha256:69c3c7a7d41b"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
 independent = "no"
 verdict = "accurate"
