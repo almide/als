@@ -50,3 +50,11 @@ by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a 
 independent = "no"
 verdict = "accurate"
 
+
+[[section]]
+id = "ALS-T25"
+hash = "sha256:4ea71b74db8f"
+reviewed = "2026-08-27"
+by = "O6lvl4 (via the Claude session; transcription checked line-by-line against stdlib/matrix_activations.almd __fast_exp/__softmax_row/__gelu_scalar, the C-223 canonical spelling both legs run)"
+independent = "no"
+verdict = "accurate"
