@@ -1252,7 +1252,7 @@ fn write_bytes_fn(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Valu
 }
 
 /// IEEE-754 binary16 → binary64, exact (ALS-D5: subnormals, ±inf, NaN, ±0)
-fn f16_to_f64(h: u16) -> f64 {
+pub(crate) fn f16_to_f64(h: u16) -> f64 {
     let sign = (h >> 15) as u64;
     let exp = ((h >> 10) & 0x1F) as i64;
     let frac = (h & 0x3FF) as u64;
