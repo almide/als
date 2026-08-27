@@ -1,6 +1,6 @@
 # ALS — 決定的時間（deterministic time）
 
-> Last updated: 2026-08-25
+> Last updated: 2026-08-27
 
 正規化元: [ADR-0001](../../adr/0001-deterministic-time-units.md)（S1–S8）、
 [SPEC.md §13](../../SPEC.md)。決定的時間は「charge unit × CM-1（versioned 校正定数）」
@@ -21,9 +21,21 @@ Fixtures: `spec/wasm_cross/time_negative_trap.almd`, `time_negative_scale.almd`,
 ## ALS-DT2 決定的予算（fan.bounded）
 
 `fan.bounded(c) { body }` の判定はプログラムと入力のみの関数である: 消費 charge
-unit が予算 unit（`ns / CM-1`、切り捨て）を超えたときのみ Err（台帳定数メッセージ）。
-同じプログラムはどのターゲット・どのホストでも同じ宣言ナノ秒で Ok ⇄ Err が反転する
-（unit 境界厳密）。入れ子は min-cap（EIP-150 式）。bind 文は charge 0。
+unit が予算 unit（`ns / CM-1`、切り捨て）を超えたときのみ Err（台帳定数メッセージ
+`fan.bounded: budget exhausted`）。同じプログラムはどのターゲット・どのホストでも
+同じ宣言ナノ秒で Ok ⇄ Err が反転する（unit 境界厳密）。入れ子は min-cap
+（EIP-150 式）。bind 文は charge 0。
+
+**charge 表（CM-1 v0.3 = 3ns/unit、C-207）**: charge site は (a) fn entry —
+1 unit、ただしループ無し・非再帰の callee は共有 MIR インライナで消える
+（entry charge ごと 0 unit、C-294）、(b) ループ head 判定 — 1 評価につき
+1 unit（`while` は最終の偽判定も数える: n 周 = n+1 unit）、(c) バルク文字列
+連結 — `1 + 結果バイト長/16` unit（結果キー、C-204 の T3-5）。bind 文・
+直線式・分岐は 0。判定は **check-then-charge**: site ごとに
+`spent + cost > budget` なら cut（最初の charge を踏む前に完了する式は
+0 予算でも成功する）。`heavy(1000)`（entry 1 + loop head 1001）= 1002 unit
+= 3006ns が校正例で、`spec/wasm_cross/fuel_bounded_boundary.almd` と
+`fuel_dyn_charge.almd`（252 unit、750/760ns で反転）が unit 厳密に固定する。
 
 **cut の簿記（2026-08-25 裁定、C-320）**: 予算超過による cut は、通常の脱出と
 同じメーター簿記（region exit）を実行してから脱出する。ゆえに —
