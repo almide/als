@@ -114,10 +114,14 @@ pub const EXT2_FNS: &[&str] = &[
 // small local mirrors of the arg helpers (stdlib_ext keeps its own)
 fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
     if args.len() != n {
-        return Err(Flow::Fatal(format!(
-            "{name}: expected {n} argument(s), got {}",
-            args.len()
-        )));
+        // The implementation type-checked this call, so a count the
+        // evaluator does not model is an OVERLOAD it has not implemented
+        // (bytes.set_int32's 4-argument endian form, C-213) — an abstain
+        // under the stdlib class, never a fault (totality-or-abstain).
+        return Err(Flow::Abstain {
+            class: format!("stdlib:{name}"),
+            reason: format!("{name}: expected {n} argument(s), got {} — unmodelled overload", args.len()),
+        });
     }
     Ok(())
 }

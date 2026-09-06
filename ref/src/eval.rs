@@ -1602,6 +1602,15 @@ impl Interp {
                 if PRELUDE.contains(&name.as_str()) {
                     return Ok(Value::Fn(Rc::new(Callable::Std(name.clone()))));
                 }
+                // C-322: a builtin constructor used as a FUNCTION VALUE
+                // (`xs |> list.map(some)`) — the evaluator models ctors only
+                // at call sites; an unmodelled form abstains, never faults.
+                if matches!(name.as_str(), "some" | "ok" | "err" | "none") {
+                    return self.abstain(
+                        "semantics:ctor-fn-value",
+                        format!("builtin constructor `{name}` used as a value"),
+                    );
+                }
                 Err(Flow::Fatal(format!("unbound identifier `{name}`")))
             }
             Expr::TypeName { module: _, name } if name == "LittleEndian" || name == "BigEndian" => {
