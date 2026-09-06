@@ -120,7 +120,10 @@ fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
         // under the stdlib class, never a fault (totality-or-abstain).
         return Err(Flow::Abstain {
             class: format!("stdlib:{name}"),
-            reason: format!("{name}: expected {n} argument(s), got {} — unmodelled overload", args.len()),
+            reason: format!(
+                "{name}: expected {n} argument(s), got {} — unmodelled overload",
+                args.len()
+            ),
         });
     }
     Ok(())
