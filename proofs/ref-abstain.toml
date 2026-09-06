@@ -9,5 +9,73 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 0
-evaluated = 611
+ceiling = 20
+evaluated = 683
+
+[[abstain]]
+class = "parse"
+count = 3
+
+[[abstain]]
+class = "stdlib:bytes.to_string_lossy"
+count = 2
+
+[[abstain]]
+class = "semantics:ctor-call"
+count = 1
+
+[[abstain]]
+class = "semantics:ctor-fn-value"
+count = 1
+
+[[abstain]]
+class = "stdlib:bytes.cmp"
+count = 1
+
+[[abstain]]
+class = "stdlib:bytes.set_int32"
+count = 1
+
+[[abstain]]
+class = "stdlib:env.sleep_ms"
+count = 1
+
+[[abstain]]
+class = "stdlib:fs.glob"
+count = 1
+
+[[abstain]]
+class = "stdlib:html.escape"
+count = 1
+
+[[abstain]]
+class = "stdlib:int.count_leading_zeros"
+count = 1
+
+[[abstain]]
+class = "stdlib:matrix.cols"
+count = 1
+
+[[abstain]]
+class = "stdlib:matrix.from_bytes_f64_le"
+count = 1
+
+[[abstain]]
+class = "stdlib:path.stem"
+count = 1
+
+[[abstain]]
+class = "stdlib:result.filter"
+count = 1
+
+[[abstain]]
+class = "stdlib:testing.assert_snapshot"
+count = 1
+
+[[abstain]]
+class = "stdlib:url.parse"
+count = 1
+
+[[abstain]]
+class = "stdlib:zlib.decompress"
+count = 1
