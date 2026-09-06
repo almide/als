@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 321 contracts: **requirements-first 16** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-321 contracts
+347 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -47,9 +47,9 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-010 | [Recursive / generic ADT interpolation repr keyed by instantiation](C-008-009-010-repr.md) | 0.24.0 | active | fixture | 2 |
 | C-011 | Bare-float interpolation Display drops .0; float.to_string keeps it | 0.24.0 | active | fixture | 5 |
 | C-012 | Const-folded non-finite floats emit named constants | 0.24.0 | active | fixture | 1 |
-| C-013 | Map is a compact-ordered-dict: iteration is insertion order | 0.24.0 | active | fixture | 5 |
-| C-014 | Set is insertion-ordered and deterministic | 0.24.0 | active | fixture | 2 |
-| C-015 | Structural deep equality for compound elements and heap values | 0.24.0 | active | fixture | 3 |
+| C-013 | Map is a compact-ordered-dict: iteration is insertion order | 0.24.0 | active | fixture | 8 |
+| C-014 | Set is insertion-ordered and deterministic | 0.24.0 | active | fixture | 3 |
+| C-015 | Structural deep equality for compound elements and heap values | 0.24.0 | active | fixture | 7 |
 | C-016 | UTF-8 codepoint-aware string ops are byte-identical | 0.24.0 | active | fixture | 2 |
 | C-017 | Empty-pattern count / last_index_of follow native codepoint/byte semantics | 0.24.0 | active | fixture | 1 |
 | C-018 | Unicode string predicates match Rust char methods over the full domain | 0.24.0 | active | fixture | 1 |
@@ -67,9 +67,9 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-030 | hex.encode / hex.decode are byte-identical incl. positional error detail | 0.24.0 | active | fixture | 2 |
 | C-031 | json get/set/remove_path edge cases match the infallible native oracle | 0.24.0 | active | fixture | 2 |
 | C-032 | Regex engine is byte-identical to the native engine over a fuzzed grammar | 0.24.0 | active | fuzz(220) | 2 |
-| C-033 | [Value semantics for aliased mutables (copy-on-write)](C-033-cow-truth-table.md) | 0.24.0 | active | fixture | 2 |
+| C-033 | [Value semantics for aliased mutables (copy-on-write)](C-033-cow-truth-table.md) | 0.24.0 | active | fixture | 4 |
 | C-034 | Out-of-range list ops clamp / no-op gracefully (no OOB heap access) | 0.24.0 | active | fixture | 8 |
-| C-035 | Effect-main errors terminate uniformly: Error: <msg> + exit 1 | 0.24.0 | active | fixture | 4 |
+| C-035 | Effect-main errors terminate uniformly: Error: <msg> + exit 1 | 0.24.0 | active | fixture | 6 |
 | C-036 | Records, variants, and pattern matching are byte-identical | 0.24.0 | active | fixture | 7 |
 | C-037 | bytes.read_f16_le decodes IEEE-754 half floats identically | 0.24.0 | active | fixture | 1 |
 | C-038 | Sized-integer literals narrow to the declared field width | 0.24.0 | active | fixture | 2 |
@@ -87,7 +87,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-050 | string.split(\"\") and string.run_length_encode are codepoint-granular | 0.24.0 | active | fixture | 1 |
 | C-051 | math.log_gamma is bit-identical (both targets use the vendored musl-libm log) | 0.24.0 | active | fixture | 1 |
 | C-052 | A fold over an empty collection requires the collection to carry an element type (no codegen defaulting) | 0.24.0 | active | fixture | 1 |
-| C-053 | list.min/max/sort/sort_by/unique_by are type-directed and total, native == wasm | 0.24.0 | active | fixture | 1 |
+| C-053 | list.min/max/sort/sort_by/unique_by are type-directed and total, native == wasm | 0.24.0 | active | fixture | 2 |
 | C-054 | List/string Int counts and indices are i64-clamped before narrowing — no truncation, no OOB | 0.24.0 | active | fixture | 7 |
 | C-055 | list.min/max/sort/sort_by over Float use IEEE-754 totalOrder, valid + identical on both targets | 0.24.0 | active | fixture | 2 |
 | C-056 | list.product wraps on i64 overflow, consistent with list.sum and plain `*` | 0.24.0 | active | fixture | 1 |
@@ -103,14 +103,14 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-066 | WASM heap is reclaimed by default (true Perceus) | 0.27.0 | active | fixture | 4 |
 | C-067 | The xs[i] index syntax aborts on out-of-bounds (read and write) | 0.27.4 | active | fixture | 4 |
 | C-068 | Auto-? is target-directed in construction positions | 0.27.4 | active | fixture | 2 |
-| C-069 | Effect-fn tail self-recursion loop-converts to O(1) stack on both targets | 0.27.4 | active | fixture | 2 |
-| C-070 | Nested constructor patterns match and bind identically on both targets | 0.27.6 | active | fixture | 2 |
+| C-069 | Effect-fn tail self-recursion loop-converts to O(1) stack on both targets | 0.27.4 | active | fixture | 3 |
+| C-070 | Nested constructor patterns match and bind identically on both targets | 0.27.6 | active | fixture | 4 |
 | C-071 | Single-part interpolation RC balance | 0.27.6 | active | fixture | 1 |
 | C-072 | Inferred named-record repr parity | 0.27.6 | active | fixture | 1 |
 | C-073 | Tuple pattern testing a variant constructor | 0.27.6 | active | fixture | 1 |
 | C-074 | Iterative split/replace on large inputs | 0.27.6 | active | fixture | 1 |
 | C-075 | lowmisc round-5 cluster: borrowed-param owning binding, effect-Option auto-try strip, matching-error ! passthrough | 0.27.6 | active | fixture | 1 |
-| C-076 | Producer-side in-module variant construction is target-stable | 0.27.6 | active | fixture | 1 |
+| C-076 | Producer-side in-module variant construction is target-stable | 0.27.6 | active | fixture | 3 |
 | C-077 | Cross-module heap-global init order is dependency-respecting | 0.27.6 | active | fixture | 1 |
 | C-078 | Phantom record generic param is stripped on the Rust target | 0.27.6 | active | fixture | 1 |
 | C-079 | Variant cases with distinct anonymous-record payloads are target-stable | 0.27.6 | active | fixture | 1 |
@@ -121,26 +121,26 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-084 | Codec/value decode error messages are byte-identical across targets | 0.27.6 | active | fixture | 1 |
 | C-085 | Float decode widens an integral JSON number to f64 | 0.27.6 | active | fixture | 1 |
 | C-086 | Pass-through stdlib combinators give their result its own reference | 0.27.6 | active | fixture | 1 |
-| C-087 | JSON number and \\u string decoding are byte-identical across targets | 0.27.6 | active | fixture | 2 |
+| C-087 | JSON number and \\u string decoding are byte-identical across targets | 0.27.6 | active | fixture | 4 |
 | C-088 | A Rust-keyword function name compiles on both targets | 0.27.6 | active | fixture | 1 |
 | C-089 | A default parameter referencing an earlier parameter is filled with its argument | 0.27.6 | active | fixture | 1 |
 | C-090 | bytes.from_list on a List[Int] parameter compiles on both targets | 0.27.6 | active | fixture | 1 |
 | C-091 | A nested sub-pattern in let-destructuring binds every leaf | 0.27.6 | active | fixture | 1 |
-| C-092 | A generic record field is sized by its instantiated type at construction | 0.27.6 | active | fixture | 1 |
+| C-092 | A generic record field is sized by its instantiated type at construction | 0.27.6 | active | fixture | 3 |
 | C-093 | Mutually-recursive variant types compile on both targets | 0.27.6 | active | fixture | 1 |
 | C-094 | A protocol-method UFCS call on an inferred lambda param resolves the element type | 0.27.6 | active | fixture | 1 |
 | C-095 | json.stringify_pretty is byte-identical indented output across targets | 0.27.6 | active | fixture | 1 |
 | C-096 | process.args works on WASM and matches native | 0.27.6 | active | fixture | 1 |
 | C-097 | generic + on a type parameter concatenates strings/lists identically across targets | 0.27.6 | active | fixture | 1 |
 | C-098 | cross-module derived Codec methods dispatch on WASM and match native | 0.27.6 | active | fixture | 0 |
-| C-099 | comparison/equality operators byte-match native across all operand types on the v1 wasm path | 0.27.6 | active | fixture | 9 |
+| C-099 | comparison/equality operators byte-match native across all operand types on the v1 wasm path | 0.27.6 | active | fixture | 10 |
 | C-100 | Self-hosted String classification/transform ops byte-match native on wasm | 0.27.6 | active | fixture | 4 |
-| C-101 | List ops over heap elements (String/Value) byte-match native and are leak/double-free free | 0.27.6 | active | fixture | 11 |
+| C-101 | List ops over heap elements (String/Value) byte-match native and are leak/double-free free | 0.27.6 | active | fixture | 16 |
 | C-102 | List iteration, call-result element materialization, and tail-recursive list traversal byte-match native | 0.27.6 | active | fixture | 3 |
 | C-103 | Self-hosted dynamic Value model (merge, array/as_array roundtrip, tuple TCO) byte-matches native and is leak-free in a loop | 0.27.6 | active | fixture | 5 |
 | C-104 | Tail-recursive accumulator shapes lower to bounded-stack loops byte-matching native | 0.27.6 | active | fixture | 6 |
 | C-105 | var/append accumulator loops (scalar, owned-handle, cross-dep, mutual-recursion) byte-match native on wasm | 0.27.6 | active | fixture | 5 |
-| C-106 | Heap value bound from an if/match arm byte-matches native on the v1 wasm path | 0.27.6 | active | fixture | 12 |
+| C-106 | Heap value bound from an if/match arm byte-matches native on the v1 wasm path | 0.27.6 | active | fixture | 16 |
 | C-107 | heap Result-of-tuple / Result-of-list Ok payloads round-trip and byte-match native | 0.27.6 | active | fixture | 4 |
 | C-108 | Unwrap `!` and let-unwrap desugaring byte-match native in every position | 0.27.6 | active | fixture | 6 |
 | C-109 | Self-hosted base64 encode byte-matches canonical / native on the v1 wasm path | 0.27.6 | active | fixture | 1 |
@@ -149,7 +149,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-112 | random.int draws stay in-range identically under the WASI entropy floor on v1 wasm | 0.27.6 | active | fixture | 1 |
 | C-113 | Let-bound ADT/Result variant matched by tag byte-matches native on v1 wasm | 0.27.6 | active | fixture | 1 |
 | C-114 | Matching an Option with a heap payload byte-matches native on v1 wasm | 0.27.6 | active | fixture | 1 |
-| C-115 | Pipe into a block-bodied lambda producing a value byte-matches native on v1 wasm | 0.27.6 | active | fixture | 1 |
+| C-115 | Pipe into a block-bodied lambda producing a value byte-matches native on v1 wasm | 0.27.6 | active | fixture | 2 |
 | C-116 | v1 scalar-value lowering edges byte-match native (tail Bool literal, float.parse inf/nan) | 0.27.7 | active | fixture | 2 |
 | C-117 | In-loop let-bound heap if/match is lifted to a tail helper and renders on v1 | 0.27.7 | active | fixture | 1 |
 | C-118 | env.args works on WASM and matches native (argv[0] skipped) | 0.27.8 | active | fixture | 1 |
@@ -161,19 +161,19 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-124 | Value equality is deep structural, mirroring the native PartialEq | 0.27.6 | active | fixture | 1 |
 | C-125 | bytes.set has value semantics — never observable through the input | 0.27.6 | active | fixture | 1 |
 | C-126 | Nested-lambda HOF params keep their inference link (no literal sig-generic pin) | 0.27.6 | active | fixture | 2 |
-| C-127 | unwrap_or sizes its payload from the default when the chain type is unresolved | 0.27.6 | active | fixture | 1 |
+| C-127 | unwrap_or sizes its payload from the default when the chain type is unresolved | 0.27.6 | active | fixture | 2 |
 | C-128 | datetime.format substitutes strftime specifiers identically on every backend | 0.28.1 | active | fixture | 1 |
 | C-129 | list.chunk / list.windows non-positive sizes: negative keeps the promoted norm, zero aborts in the T6 form | 0.28.4 | active | fixture | 4 |
 | C-130 | option/map combinators hand back OWNED heap results (no bare pass-through handles) | 0.28.5 | active | fixture | 2 |
 | C-131 | Loop-rebuilt buffers are O(n): COW guards only LIVE aliases, and LICM never hoists heap allocations | 0.28.6 | active | fixture | 2 |
-| C-132 | mut parameters of reallocating containers persist to the caller at every call position | 0.28.6 | active | fixture | 2 |
+| C-132 | mut parameters of reallocating containers persist to the caller at every call position | 0.28.6 | active | fixture | 5 |
 | C-133 | env.get observes the host environment identically on native and wasm | 0.29.0 | active | fixture | 1 |
 | C-134 | Vendored-libm atan / tanh are byte-identical cross-target | 0.30.0 | active | fuzz(3000) | 1 |
 | C-135 | Declared-Unit effect fn ABI agrees between def and every call site | 0.30.0 | active | fixture | 1 |
 | C-136 | In-place place mutations persist to the subsequent read on both targets | 0.30.0 | active | fixture | 1 |
 | C-137 | Relative fs paths resolve against the host CWD on wasm | 0.31.0 | active | fixture | 1 |
 | C-138 | ok/err ctor with a stdlib-call payload materializes the real value | 0.31.0 | active | fixture | 1 |
-| C-139 | Heap-Ok Result value combinators keep tag and payload | 0.31.0 | active | fixture | 1 |
+| C-139 | Heap-Ok Result value combinators keep tag and payload | 0.31.0 | active | fixture | 2 |
 | C-140 | float.round preserves the sign of a zero result | 0.31.0 | active | fixture | 1 |
 | C-141 | list.zip_with routes by element repr — String zips work, no wrong-typed link | 0.31.0 | active | fixture | 1 |
 | C-142 | result.unwrap_or_else is valid wasm at the Float instantiation on both legs | 0.31.0 | active | fixture | 1 |
@@ -183,7 +183,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-146 | A lifted closure returning a captured alias hands out a co-owned reference | 0.31.0 | active | fixture | 1 |
 | C-147 | list.unique_by routes by key repr — String keys dedupe by content | 0.31.0 | active | fixture | 1 |
 | C-148 | list.scan stores each intermediate at the accumulator's own width | 0.31.0 | active | fixture | 1 |
-| C-149 | unwrap_or_else hands back a co-owned heap Ok payload | 0.31.0 | active | fixture | 4 |
+| C-149 | unwrap_or_else hands back a co-owned heap Ok payload | 0.31.0 | active | fixture | 5 |
 | C-150 | Ctors over a heap var are value copies — the var stays live | 0.31.0 | active | fixture | 1 |
 | C-151 | Result combinators with a heap-Ok RESULT never link the scalar impl | 0.31.0 | active | fixture | 1 |
 | C-152 | An un-admitted heap call payload in a ctor walls, never zeroes | 0.31.0 | active | fixture | 1 |
@@ -192,21 +192,21 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-155 | to_fixed with out-of-domain decimals aborts in the T6 form | 0.31.0 | active | fixture | 3 |
 | C-156 | An if-merged some((String, String)) ctor is a real tracked Option | 0.32.0 | active | fixture | 1 |
 | C-157 | An unannotated generic-ctor top-let carries its solved payload type to every reader | 0.32.0 | active | fixture | 1 |
-| C-158 | A some/ok ctor over a scalar call or tuple payload materializes the real value, never a zeroed ctor | 0.32.0 | active | fixture | 1 |
+| C-158 | A some/ok ctor over a scalar call or tuple payload materializes the real value, never a zeroed ctor | 0.32.0 | active | fixture | 5 |
 | C-159 | list.binary_search returns the same index on both targets for duplicate keys | 0.32.0 | active | fixture | 1 |
 | C-160 | Pure-Almide bundled stdlib modules link and run byte-identically on wasm | 0.34.4 | active | fixture | 1 |
-| C-161 | Matrix constructor dimensions clamp negatives and abort over a shared ceiling | 0.35.0 | active | fixture | 5 |
+| C-161 | Matrix constructor dimensions clamp negatives and abort over a shared ceiling | 0.35.0 | active | fixture | 9 |
 | C-162 | io.write / io.write_bytes emit in program order, interleaved with println | 0.35.0 | active | fixture | 1 |
 | C-163 | A heap-result if/match bound to a let/var executes the taken arm on both targets | 0.35.0 | active | fixture | 1 |
 | C-164 | List modifiers and suffix copies co-own tuple / record / nested-list elements | 0.35.0 | active | fixture | 1 |
 | C-165 | fold over a String-keyed map, a String list or a String set threads a heap accumulator on both targets | 0.36.0 | active | fixture | 1 |
 | C-166 | Map interpolation renders every self-hosted key/value pairing on both targets | 0.36.0 | active | fixture | 1 |
 | C-167 | float.clamp returns its input unchanged when in range, sign bit included | 0.36.0 | active | fixture | 1 |
-| C-168 | list.flatten borrows its argument, so it composes with another borrow of the same binding | 0.36.0 | active | fixture | 1 |
+| C-168 | list.flatten borrows its argument, so it composes with another borrow of the same binding | 0.36.0 | active | fixture | 2 |
 | C-169 | list.repeat over the size ceiling aborts in the T6 form on both targets | 0.36.0 | active | fixture | 1 |
 | C-170 | Integer arithmetic wraps in every position, including a module-level let | 0.36.0 | active | fixture | 1 |
 | C-171 | Byte-offset bound checks do not overflow at the i64 boundary | 0.36.0 | active | fixture | 1 |
-| C-172 | unwrap_or over any heap payload yields the same value on both targets | 0.36.0 | active | fixture | 1 |
+| C-172 | unwrap_or over any heap payload yields the same value on both targets | 0.36.0 | active | fixture | 2 |
 | C-173 | An integer literal outside what its context can represent is a checker error on both targets, never a silent value | 0.36.0 | active | fixture | 1 |
 | C-174 | A tail-recursive Map/Set accumulator keeps its seed on both targets, non-empty seeds included | 0.36.0 | active | fixture | 1 |
 | C-175 | A List literal of a variant type builds and drops identically on both targets, in bind and heap-result-if-arm position | 0.37.0 | active | fixture | 1 |
@@ -231,7 +231,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-194 | bytes.copy_from with a mutable-global destination writes through the storage slot | 0.38.1 | active | fixture | 1 |
 | C-195 | Value-position variant match over the checked-conversion family executes | 0.38.1 | active | fixture | 1 |
 | C-196 | Call-stack exhaustion is a resource limit, not an observable-behavior promise | 0.41.0 | active | fixture | 1 |
-| C-197 | Linear-memory exhaustion is a resource limit with a defined abort | 0.41.0 | active | fixture | 3 |
+| C-197 | Linear-memory exhaustion is a resource limit with a defined abort | 0.41.0 | active | fixture | 5 |
 | C-198 | A head count below 1 is a defined abort, identically on both targets | 0.42.0 | active | fixture | 1 |
 | C-199 | A fan block joins every sibling and reports the first Err in list order | 0.42.0 | active | fixture | 1 |
 | C-200 | A trap in a fan sibling exits through the unified main-error abort, convergently | 0.42.0 | active | fixture | 1 |
@@ -247,12 +247,12 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-210 | NaN observation is canonical — the deterministic-profile conformance law | 0.53.0 | active | fixture | 2 |
 | C-211 | ! propagates in pure Result/Option-returning fns, byte-identical across targets | 0.53.5 | active | fixture | 1 |
 | C-212 | Two self-host modules with same-named private helpers link cleanly or wall — never an invalid module | 0.52.0 | active | fixture | 1 |
-| C-213 | The bytes byte-level writers encode the same buffer on both targets, out-of-range writes included | 0.53.5 | active | fixture | 1 |
+| C-213 | The bytes byte-level writers encode the same buffer on both targets, out-of-range writes included | 0.53.5 | active | fixture | 3 |
 | C-214 | process.exec_status_timeout: the fire-path error is pinned; whether it fires is the host's | 0.53.6 | active | fixture | 0 |
 | C-215 | fs content readers: absence is ok(none) via the _if_exists family, classified by the runtime | 0.53.7 | active | fixture | 1 |
 | C-216 | explicit ! on a declared-Option effect call is the implicit strip's identical twin | 0.54.1 | active | fixture | 1 |
 | C-217 | let _ = f() discards the Result — the err does not propagate | 0.55.0 | active | fixture | 1 |
-| C-218 | a heap-payload ?? returned as the fn tail yields the same value on both targets | 0.56.0 | active | fixture | 1 |
+| C-218 | a heap-payload ?? returned as the fn tail yields the same value on both targets | 0.56.0 | active | fixture | 2 |
 | C-219 | a Never-typed call in a branch arm runs on both targets and sets the exit code | 0.56.0 | active | fixture | 1 |
 | C-220 | fs streaming line walkers fold/each with read_lines line semantics | 0.56.1 | active | fixture | 0 |
 | C-221 | An effect fn-typed slot admits pure and fallible lambdas with one carrier semantics | 0.56.1 | active | fixture | 2 |
@@ -260,10 +260,10 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-223 | Matrix transcendentals compute through the vendored musl-libm, not the platform one | 0.56.1 | active | fixture | 3 |
 | C-224 | if let / guard let bind and release heap payloads identically on both targets | 0.56.1 | active | fixture | 1 |
 | C-225 | fs.read_lines materializes a file's lines identically on both targets | 0.56.2 | active | fixture | 1 |
-| C-226 | A mut parameter crossing a call boundary mutates the caller's data on both targets | 0.56.2 | active | fixture | 1 |
+| C-226 | A mut parameter crossing a call boundary mutates the caller's data on both targets | 0.56.2 | active | fixture | 2 |
 | C-227 | The fs metadata and composition family answers identically on both targets | 0.56.2 | active | fixture | 1 |
-| C-228 | The fs composition family and the matrix row selectors answer identically on both targets | 0.56.2 | active | fixture | 2 |
-| C-229 | A selected row past the byte buffer is the all-zero row on both targets | 0.57.1 | active | fixture | 4 |
+| C-228 | The fs composition family and the matrix row selectors answer identically on both targets | 0.56.2 | active | fixture | 3 |
+| C-229 | A selected row past the byte buffer is the all-zero row on both targets | 0.57.1 | active | fixture | 5 |
 | C-230 | The flight reference PID kernel runs identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-231 | Integer and boolean literal forms evaluate identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-232 | Boolean literals and their display form are identical on both targets | 0.57.1 | active | fixture | 1 |
@@ -272,19 +272,19 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-235 | Unary operators: `not` negation and prefix minus evaluate identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-236 | Tuple construction, destructuring, indexing, and structural equality are identical on both targets | 0.57.1 | active | fixture | 1 |
 | C-237 | Option/Result constructor literals build and eliminate identically on both targets | 0.57.1 | active | fixture | 1 |
-| C-238 | First-class range values iterate their true bounds on both targets | 0.57.1 | active | fixture | 4 |
+| C-238 | First-class range values iterate their true bounds on both targets | 0.57.1 | active | fixture | 5 |
 | C-239 | Collection literals, indexing, and the empty spellings behave identically on both targets | 0.57.1 | active | fixture | 1 |
-| C-240 | Map literals and empty-map reads behave identically on both targets | 0.57.1 | active | fixture | 1 |
+| C-240 | Map literals and empty-map reads behave identically on both targets | 0.57.1 | active | fixture | 2 |
 | C-241 | Binding statements: let shadowing, var reassignment, and their check-time guards are identical on both targets | 0.57.1 | active | fixture | 1 |
 | C-242 | Conditional expressions evaluate the taken arm only, identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-243 | Block expressions yield their tail value identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-244 | While loops iterate their condition-tested body identically on both targets | 0.57.1 | active | fixture | 1 |
-| C-245 | String interpolation embeds each segment's canonical display identically on both targets | 0.57.1 | active | fixture | 1 |
+| C-245 | String interpolation embeds each segment's canonical display identically on both targets | 0.57.1 | active | fixture | 2 |
 | C-246 | Identifiers resolve to their nearest binding; unresolved names are check-time E003 naming the identifier | 0.57.1 | active | fixture | 1 |
 | C-247 | Match expressions select the first matching arm identically on both targets; non-exhaustive is check-time E010 | 0.57.1 | active | fixture | 1 |
 | C-248 | for-in iterates list-family heads with optional tuple destructuring identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-249 | Tuple let-destructuring binds each component positionally, identically on both targets | 0.57.1 | active | fixture | 2 |
-| C-250 | Pipe and composition evaluate as plain application in order, identically on both targets | 0.57.1 | active | fixture | 1 |
+| C-250 | Pipe and composition evaluate as plain application in order, identically on both targets | 0.57.1 | active | fixture | 2 |
 | C-251 | if let implicitly unwraps an Option scrutinee with a bare binder, identically on both targets | 0.57.1 | active | fixture | 1 |
 | C-252 | Expression statements and comments: Unit calls execute, discards are explicit, comments are invisible | 0.57.1 | active | fixture | 1 |
 | C-253 | Place assignments and type ascription behave identically on both targets | 0.57.1 | active | fixture | 1 |
@@ -332,9 +332,9 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-295 | A checker-exhaustive match of guard-lowered box patterns still builds on native | 0.57.2 | active | fixture | 1 |
 | C-296 | The generated type x operation matrix runs byte-identical across targets | 0.57.2 | active | fixture | 70 |
 | C-297 | flat_map whose closure returns an aliased list field is drop-balanced on both targets | 0.57.2 | active | fixture | 1 |
-| C-298 | The Codec conformance corpus round-trips byte-identical across targets | 0.57.2 | active | fixture | 12 |
+| C-298 | The Codec conformance corpus round-trips byte-identical across targets | 0.57.2 | active | fixture | 15 |
 | C-299 | hash digests are byte-identical across targets | 0.58.0 | active | fixture | 1 |
-| C-300 | map literals with Option-scalar values cross targets, leak-free | 0.59.0 | active | fixture | 1 |
+| C-300 | map literals with Option-scalar values cross targets, leak-free | 0.59.0 | active | fixture | 2 |
 | C-301 | map.upsert on the all-String map crosses targets | 0.59.0 | active | fixture | 1 |
 | C-302 | Numeric determinism family head: a Float result is a function of the program alone | 0.58.0 | active | fixture | 5 |
 | C-303 | Float operations round to nearest-even once each — no contraction, no FMA | 0.58.0 | active | fixture | 1 |
@@ -353,7 +353,33 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-316 | A @bounded effect fn may only use standard output; other effect modules, host-reaching modules and fan are rejected (E076) | 0.60.0 | active | fixture | 0 |
 | C-317 | Float operations are provisionally rejected in a @bounded function (E077) | 0.60.0 | active | fixture | 0 |
 | C-318 | Early exit inside a counted loop body is rejected in a @bounded function (E078) | 0.60.0 | active | fixture | 0 |
-| C-319 | A captured-and-mutated var List is shared storage through a closure | 0.60.0 | active | fixture | 1 |
+| C-319 | A captured-and-mutated var List is shared storage through a closure | 0.60.0 | active | fixture | 2 |
 | C-320 | A budget cut performs exit bookkeeping: exhausted is always Err, regions are independent, cut placement is unobservable | 0.60.0 | active | fixture | 1 |
-| C-321 | Each test starts from re-initialized mutable module globals, on both targets | 0.57.1 | active | fixture | 0 |
+| C-321 | The fan prefetch split (start-all, await-in-arm-order, abandon-losers) is unobservable | 0.60.0 | active | fixture | 1 |
+| C-322 | Constructors are function values, the builtin trio included | 0.60.0 | active | fixture | 1 |
+| C-323 | Or-patterns: an arm's alternatives match as a union, binder-free | 0.60.0 | active | fixture | 1 |
+| C-324 | Mut-param forwarding from a branch arm: folded to value flow or refused, never silently wrong | 0.60.0 | active | fixture | 2 |
+| C-325 | bytes.push growth is amortized: linear retention, byte-identical at scale | 0.60.0 | active | fixture | 1 |
+| C-326 | Branch-selected mut-fn calls hoist their write-back out of the arm: the gzip-inflate shape lowers structurally | 0.60.0 | active | fixture | 1 |
+| C-327 | env.sleep_ms pauses and returns on every leg | 0.60.1 | active | fixture | 2 |
+| C-328 | The http string family answers identically on the native and embedded-wasm lanes | 0.61.1 | active | fixture | 0 |
+| C-329 | env.set is observed by env.get identically on every leg, and the p1 shim serves the environ/args ops | 0.62.0 | active | fixture | 1 |
+| C-330 | The http string family answers on the stock runtime through the p3 component's async-lowered exchange | 0.62.0 | active | fixture | 0 |
+| C-331 | zlib is self-hosted on wasm: decoding is byte-identical, encoding is round-trip-exact with leg-dependent bytes | 0.62.0 | active | fixture | 1 |
+| C-332 | List-rest patterns: the tail past the prefix binds as a list, identically on every leg | 0.62.0 | active | fixture | 1 |
+| C-333 | As-patterns: the whole value binds beside its own destructuring, identically on every leg | 0.62.0 | active | fixture | 1 |
+| C-334 | A closure call takes +1 on a borrowed heap argument: the RC-3 callee-owned convention holds through call_indirect | 0.62.0 | active | fixture | 1 |
+| C-335 | path.extension treats a leading dot as a hidden-file marker, not an extension, on both targets | 0.62.0 | active | fixture | 1 |
+| C-336 | Each test starts from re-initialized mutable module globals, on both targets | 0.57.1 | active | fixture | 0 |
+| C-337 | The bytes search, edit and predicate family answers identically on every leg | 0.62.0 | active | fixture | 1 |
+| C-338 | The int bit family, bits_to_f32 and the Int -> Float32 convert agree on every leg | 0.62.0 | active | fixture | 1 |
+| C-339 | testing.assert_snapshot mismatches abort in the T18 form on both targets, inside test blocks too | 0.62.0 | active | fixture | 1 |
+| C-340 | The eager *_or family — option/result.unwrap_or, list/map/bytes.get_or — evaluates its default before the selection on both targets | 0.62.0 | active | fixture | 2 |
+| C-341 | matrix.from_bytes_f32_le / _f16_le judge their offset on the buffer side, so an offset near i64::MAX is the all-zero matrix | 0.62.0 | active | fixture | 1 |
+| C-342 | bytes.copy_from with a negative length or offset copies nothing on both targets | 0.62.0 | active | fixture | 1 |
+| C-343 | A tail `!` over a declared-Result plain callee yields the payload in a lifted effect fn | 0.63.0 | active | fixture | 1 |
+| C-344 | guard-else-err inside a call-argument block after a Result bind runs on every leg | 0.63.0 | active | fixture | 1 |
+| C-345 | An effect call passed as a Result/Option parameter keeps its Result at every parameter index | 0.63.0 | active | fixture | 1 |
+| C-346 | A heap-payload ?? lowers on the incumbent leg as a call argument and as a match subject | 0.63.0 | active | fixture | 1 |
+| C-347 | Operator round trips over a known literal print that literal on both targets | 0.63.0 | active | fixture | 1 |
 
