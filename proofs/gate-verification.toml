@@ -81,7 +81,7 @@ evidence = "Landing run (2026-08-20): six fail directions demonstrated against t
 [[gate]]
 path = "scripts/edition-readiness.py"
 class = "NEGATIVE_TESTED"
-evidence = "Landing run (PR #6, 2026-08-20): --almide /nonexistent produced [FAIL] spec doctest and verdict NOT READY (exit 1); the full run with the real binary produced READY with 13 checks and the two honest WARNs (feature branch, dirty tree). FATAL direction covered by the tag-shape/tag-exists checks."
+evidence = "Re-demonstrated 2026-09-07 after the corpus-judgment leg closed #59 (v1.0.0 was tagged READY over an unwatched corpus red): (a) no --almide -> [FAIL] corpus judgment, NOT READY exit 1; (b) fan_race_mapper's @ref-allow removed -> the exact row READY could not see ('x FAIL: spec/wasm_cross/fan_race_mapper.almd: reference disagreement (native)') surfaced as [FAIL] corpus judgment, NOT READY exit 1; (c) restored -> READY with 'corpus judgment — judged 2012: passed=2009 allowed=3 stale=0 failed=0' against the v0.61.0 release binary. Lineage: landing run PR #6 2026-08-20 (--almide /nonexistent -> [FAIL] spec doctest; FATAL direction via tag-shape/tag-exists)."
 
 [[gate]]
 path = "scripts/check-ref-independence.sh"
