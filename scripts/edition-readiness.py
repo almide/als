@@ -15,6 +15,11 @@ check reports one of:
 
 Exit 0 only with zero FAIL/FATAL. The first tag is the semantics freeze;
 this instrument is how the freeze precondition list stays honest.
+
+READY includes the measurement itself: the full conformance corpus judged
+against the --almide binary (scripts/conformance.py; needs wasmtime on PATH
+and the reference evaluator built). A run without --almide cannot be READY —
+verifying the instrument is not taking the measurement (#59).
 """
 import argparse, json, re, subprocess, sys
 
@@ -38,7 +43,7 @@ def run(cmd, **kw):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tag")
-    ap.add_argument("--almide", help="binary for the doctest check; without it that check is a WARN")
+    ap.add_argument("--almide", help="binary to judge: full corpus (blocking) + doctest; without it the corpus check FAILs")
     args = ap.parse_args()
 
     # 1. configuration state
@@ -78,14 +83,39 @@ def main():
     else:
         verdict("WARN", "spec doctest", "not run — pass --almide <bin>")
 
-    # 5. freeze preconditions in the ledgers
+    # 5. the measurement — judge the binary against the full corpus (#59:
+    # verifying the instrument is not taking the measurement)
+    if args.almide:
+        try:
+            r = run(["python3", "scripts/conformance.py", "--almide", args.almide], timeout=7200)
+        except subprocess.TimeoutExpired:
+            r = None
+        if r is None:
+            verdict("FAIL", "corpus judgment", "timed out after 7200s")
+        elif r.returncode == 0:
+            tot = [0, 0, 0, 0, 0]
+            for m in re.finditer(r"^\[\w+\] total=(\d+) passed=(\d+) allowed=(\d+) stale=(\d+) failed=(\d+)",
+                                 r.stdout, re.M):
+                tot = [a + int(b) for a, b in zip(tot, m.groups())]
+            verdict("OK", "corpus judgment",
+                    f"judged {tot[0]}: passed={tot[1]} allowed={tot[2]} stale={tot[3]} failed={tot[4]}")
+        else:
+            red = [l.strip() for l in r.stdout.splitlines()
+                   if l.lstrip().startswith(("x FAIL:", "! stale:"))]
+            detail = (f"{len(red)} red row(s); first: {red[0]}" if red
+                      else ((r.stdout + r.stderr).strip().splitlines() or ["?"])[-1])
+            verdict("FAIL", "corpus judgment", detail[:200])
+    else:
+        verdict("FAIL", "corpus judgment", "not run — READY requires judging a binary; pass --almide <bin>")
+
+    # 6. freeze preconditions in the ledgers
     cov = open("proofs/als-element-coverage.toml").read()
     unwritten = cov.count('section = "UNWRITTEN"')
     verdict("OK" if unwritten == 0 else "FAIL", "element coverage UNWRITTEN = 0", str(unwritten))
     flagged = open("docs/contracts/contracts.toml").read().count('status    = "flagged-for-revision"')
     verdict("OK" if flagged == 0 else "FAIL", "flagged-for-revision = 0", str(flagged))
 
-    # 6. edition-blocking problem reports (docs/ISSUE-TAXONOMY.md)
+    # 7. edition-blocking problem reports (docs/ISSUE-TAXONOMY.md)
     blocking = 0
     try:
         for label in ["S-unsound", "S-ambiguous", "S-untestable", "S-divergence"]:
