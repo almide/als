@@ -105,6 +105,7 @@ const STRING_FNS: &[&str] = &[
     "string.starts_with",
     "string.ends_with",
     "string.slice",
+    "string.byte_slice",
     "string.pad_start",
     "string.pad_end",
     "string.to_bytes",
@@ -1235,6 +1236,23 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 start = i + pat.len();
             }
             Ok(Value::Int(n))
+        }
+        "string.byte_slice" => {
+            arity(name, &args, 3)?;
+            let text = want_str(name, &args[0])?;
+            let start = want_int(name, &args[1])?;
+            let end = want_int(name, &args[2])?;
+            let bytes = text.as_bytes();
+            if start < 0 || end < start || end as u64 > bytes.len() as u64 {
+                return Ok(Value::None);
+            }
+            let (a, b) = (start as usize, end as usize);
+            // UTF-8 continuation bytes cannot start or end a codepoint range.
+            let boundary = |i: usize| i == bytes.len() || bytes[i] & 0xc0 != 0x80;
+            if !boundary(a) || !boundary(b) {
+                return Ok(Value::None);
+            }
+            Ok(Value::Some(Rc::new(Value::str(&text[a..b]))))
         }
         "string.slice" => {
             if args.len() != 2 && args.len() != 3 {
