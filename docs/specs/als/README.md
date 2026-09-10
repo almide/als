@@ -147,7 +147,7 @@
 | [ALS-S1](./strings.md#als-s1-コードポイント意味論) | コードポイント意味論 | C-016, C-065 |
 | [ALS-S2](./strings.md#als-s2-空パターンの検索規則) | 空パターンの検索規則 | C-017 |
 | [ALS-S3](./strings.md#als-s3-文字種述語) | 文字種述語 | C-018, C-019 |
-| [ALS-S4](./strings.md#als-s4-バイト列との相互変換) | バイト列との相互変換 | C-022 |
+| [ALS-S4](./strings.md#als-s4-バイト列との相互変換) | バイト列との相互変換 | C-022, C-348 |
 | [ALS-S5](./strings.md#als-s5-split-の区切り規範) | split の区切り規範 | C-050 |
 | [ALS-S6](./strings.md#als-s6-規模不変性) | 規模不変性 | C-074 |
 

@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 347 contracts: **requirements-first 36** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 138** (shrink-only ceiling 138), unmeasured 17.
 
-347 contracts
+348 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -382,4 +382,5 @@ contemporaneous 156, **retroactive 138** (shrink-only ceiling 138), unmeasured 1
 | C-345 | An effect call passed as a Result/Option parameter keeps its Result at every parameter index | 0.63.0 | active | fixture | 1 |
 | C-346 | A heap-payload ?? lowers on the incumbent leg as a call argument and as a match subject | 0.63.0 | active | fixture | 1 |
 | C-347 | Operator round trips over a known literal print that literal on both targets | 0.63.0 | active | fixture | 1 |
+| C-348 | Byte-indexed string slices validate UTF-8 boundaries | 0.63.0 | active | fixture | 1 |
 

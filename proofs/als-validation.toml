@@ -837,11 +837,12 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-S1"
-hash = "sha256:bfa4fe6de4e9"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:fa20119d4418"
+reviewed = "2026-09-10"
+by = "Codex agent (same author; codepoint operations scoped separately from C-348 byte operations)"
 independent = "no"
 verdict = "accurate"
+# verdict: accurate | revise (revise requires issue = "#N"); independent: yes only for a reviewer who is not the author
 
 [[section]]
 id = "ALS-S2"
@@ -853,11 +854,12 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-S4"
-hash = "sha256:039fbff0cc38"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:9cc9a2e21061"
+reviewed = "2026-09-10"
+by = "Codex agent (same author; C-348 boundary matrix and independent source evaluator checked)"
 independent = "no"
 verdict = "accurate"
+# verdict: accurate | revise (revise requires issue = "#N"); independent: yes only for a reviewer who is not the author
 
 [[section]]
 id = "ALS-S5"
