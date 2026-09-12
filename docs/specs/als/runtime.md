@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-08-20
+> Last updated: 2026-09-12
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -71,7 +71,17 @@ wasm レグは WASI サンドボックス（`wasi` / `/tmp`）を返す。両タ
 temp_dir は非空かつ posix ホストでは絶対パス）が証明対象となる。除外は現在
 3 関数(env.os・env.temp_dir・fs.temp_dir — C-189)。第四の関数を
 除外に加えるには C-189 の statement とその fixture の改訂を要する。
-Contracts: C-096, C-112, C-118, C-133, C-189。
+
+`process.exec_status` と `process.exec_status_timeout` の起動失敗は、
+操作名とコマンド名を含む err とする。接頭辞はそれぞれ
+`process.exec_status(<quoted cmd>): ` と
+`process.exec_status_timeout(<quoted cmd>, <timeout_ms>): ` とし、
+続けてホストのエラー説明を付ける。コマンド名は二重引用符で囲み、内部の
+引用符・バックスラッシュ・制御文字をエスケープする。引数列は含めない。
+存在しない実行ファイルは起動失敗であり、タイムアウトと報告してはならない。
+期限が発火した場合の err は従来どおり `exec timed out after <ms>ms` とする。
+テスト: `spec/stdlib/process_timeout_test.almd`
+Contracts: C-096, C-112, C-118, C-133, C-189, C-214。
 
 ## ALS-R6 ファイルシステムのパス解決
 

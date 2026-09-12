@@ -685,9 +685,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:4bc04c6a76d2"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:8833f49781f6"
+reviewed = "2026-09-12"
+by = "Codex /root session (C-214 requirement and fixture consistency review; implementation update follows judge merge)"
 independent = "no"
 verdict = "accurate"
 
