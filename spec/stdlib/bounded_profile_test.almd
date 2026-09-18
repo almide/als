@@ -68,11 +68,17 @@ fn simulate(accel: Int) -> State = {
 fn classify(n: Int) -> Shape = if n > 0 then Circle(n) else Dot
 
 @bounded
+fn radius(s: Shape) -> Int = match s {
+  Circle(r) => r,
+  Dot => -1,
+}
+
+@bounded
 fn count_circles() -> Int = {
   var circles = 0
   for i in 0..<6 {
     let s = if i % 2 == 0 then Circle(i) else Dot
-    circles = circles + (match s { Circle(_) => 1, Dot => 0 })
+    circles = circles + (if radius(s) >= 0 then 1 else 0)
   }
   circles
 }
@@ -106,7 +112,7 @@ test "B11: defaulting inside the loop is admissible; records flow through" {
 }
 
 test "B7: a variant constructor is a value, not a call, inside and outside a counted loop" {
-  assert_eq(match classify(2) { Circle(r) => r, Dot => 0 }, 2)
-  assert_eq(match classify(0) { Circle(r) => r, Dot => -1 }, -1)
+  assert_eq(radius(classify(2)), 2)
+  assert_eq(radius(classify(0)), -1)
   assert_eq(count_circles(), 3)
 }

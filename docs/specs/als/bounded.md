@@ -224,9 +224,15 @@ type Shape = | Circle(Int) | Dot
 @bounded
 fn classify(n: Int) -> Shape = if n > 0 then Circle(n) else Dot
 
+@bounded
+fn radius(s: Shape) -> Int = match s {
+  Circle(r) => r,
+  Dot => -1,
+}
+
 test "a @bounded function builds variant values" {
-  assert_eq(match classify(2) { Circle(r) => r, Dot => 0 }, 2)
-  assert_eq(match classify(0) { Circle(r) => r, Dot => -1 }, -1)
+  assert_eq(radius(classify(2)), 2)
+  assert_eq(radius(classify(0)), -1)
 }
 ```
 
