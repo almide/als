@@ -109,9 +109,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-B7"
-hash = "sha256:930fc836eeae"
+hash = "sha256:23766739dc80"
 reviewed = "2026-09-18"
-by = "O6lvl4 (via the Claude session; amended for almide#2297 — the constructor clause checked against almide's bounded.rs classification, the section's own example and spec/stdlib/bounded_profile_test.almd, run on the fixed checker (7/7 pass) and on almide 0.63.0-rc1 (E074 at every constructor, as the issue reports))"
+by = "O6lvl4 (via the Claude session; amended for almide#2297 — the constructor clause checked against almide's bounded.rs classification, the section's own example and spec/stdlib/bounded_profile_test.almd, run on the fixed checker (7/7 pass, native and wasm, fmt-clean) and on almide 0.63.0-rc1 (E074 at every constructor, as the issue reports))"
 independent = "no"
 verdict = "accurate"
 
