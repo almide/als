@@ -1055,8 +1055,8 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R9"
-hash = "sha256:67170f0e1051"
+hash = "sha256:f7e93a1fe08a"
 reviewed = "2026-09-19"
-by = "O6lvl4 (via the Claude session; every row of the layer table measured on almide 0.63.0-rc1 — POSIX truncation at 256, a stock wasmtime 47 host trap at 126 and above, and the component model's exit-with-code(u8) at 255 — plus a survey of seven neighbouring languages' exit surfaces before choosing the bound)"
+by = "Codex (literal-domain matrix across five call forms and twenty literals; computed and shadowed-call controls; existing runtime evidence retained)"
 independent = "no"
 verdict = "accurate"
