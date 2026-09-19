@@ -4275,6 +4275,8 @@ since     = "0.64.0"
 status    = "active"
 evidence  = [
   { path = "tests/diagnostics/e084-exit-code-domain/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e084-exit-code-signed/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e084-exit-code-pipe/broken.almd", class = "fixture" },
   { path = "tests/exit_literal_check_test.rs", name = "literal_exit_codes_follow_the_portable_domain", class = "fixture" },
   { path = "tests/exit_literal_check_test.rs", name = "computed_codes_and_local_functions_remain_checkable", class = "fixture" },
 ]
