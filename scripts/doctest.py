@@ -106,7 +106,9 @@ def judge_single(almide, body, mode):
         path = os.path.join(d, "example.almd")
         open(path, "w", encoding="utf-8").write(body)
         if mode == "check":
-            rc, out = run([almide, "test", path])
+            # Complete examples may define functions without test blocks.
+            # Still compile them and execute every test block that exists.
+            rc, out = run([almide, "test", "--allow-no-tests", path])
             m = FAILED_RE.search(out)
             failed = int(m.group(1)) if m else None
             if rc != 0 or failed is None or failed > 0:
@@ -181,7 +183,7 @@ def judge_project(almide, body, mode):
             rc, out = run([almide, "check", os.path.join(d, rel)])
             if rc != 0:
                 return f"project file `{rel}` does not compile\n  {first_line(out)}"
-        rc, out = run([almide, "test", d])
+        rc, out = run([almide, "test", "--allow-no-tests", d])
         m = FAILED_RE.search(out)
         failed = int(m.group(1)) if m else None
         if rc != 0 or failed is None or failed > 0:
@@ -239,6 +241,10 @@ def judge(root, almide, fragment_ceiling, untagged_ceiling):
 
 # ── self-test: every verdict class must turn red for its reason ──────────
 SELFTEST_CASES = [
+    ("a complete example without test blocks is checked",
+     "almide", 'fn answer() -> Int = 42\n', False, None),
+    ("a type error without test blocks is red",
+     "almide", 'fn answer() -> Int = "wrong"\n', True, "does not hold"),
     # (name, fence info, body, expect_red, must_mention)
     ("clean almide block holds",
      "almide", 'fn add(a: Int, b: Int) -> Int = a + b\ntest "adds" {\n  assert_eq(add(1, 2), 3)\n}\n', False, None),
