@@ -461,12 +461,13 @@ evidence  = [
 id        = "C-032"
 spec      = "ALS-D4"
 title     = "Regex engine is byte-identical to the native engine over a fuzzed grammar"
-statement = "The regex engine produces byte-identical results native == wasm for alternation, escape atoms, class escapes, captures (incl. optional-miss), multibyte `.`/class on CJK, anchors, quantifiers (incl. {n}/{n,}/{n,m} braces; malformed braces stay literal), replace, split edges, full_match, find_all, empty alternation arms, end-of-string empty-match replace, and the backtracking set (#1927): backtracking into groups and alternations, `\\b`/`\\B`, the `(?m)` flag, `(?:` non-capturing groups, and lazy quantifiers. Native runtime/rs/src/regex.rs is the oracle; a deterministic differential fuzz over the regex grammar certifies the input space beyond the headline corpus."
+statement = "The regex engine produces byte-identical results native == wasm for alternation, escape atoms, class escapes, captures (incl. optional-miss), multibyte `.`/class on CJK, anchors, quantifiers (incl. {n}/{n,}/{n,m} braces; malformed braces stay literal), replace, split edges, full_match, find_all, empty alternation arms, end-of-string empty-match replace, and the backtracking set (#1927): backtracking into groups and alternations, `\\b`/`\\B`, the `(?m)` flag, `(?:` non-capturing groups, and lazy quantifiers. Native runtime/rs/src/regex.rs is the oracle; a deterministic differential fuzz over the regex grammar certifies the input space beyond the headline corpus. A repetition's depth is the INPUT's length, never the call stack's: both engines walk their backtracking state on the heap, so 200,000 characters of `a*` and 100,000 group repetitions answer identically on both targets. They used to recurse once per matched repetition and ran out at different sizes — native aborted from about 30,000 characters on, and a repeated GROUP exhausted the wasm stack at about 5,000 repetitions while native still answered, so between those thresholds the two targets disagreed on output AND exit code (#2307)."
 since     = "0.24.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/regex_engine.almd", class = "fixture" },
   { path = "spec/wasm_cross/regex_fuzz_batch.almd", class = "fixture" },
+  { path = "spec/wasm_cross/regex_repetition_depth.almd", class = "fixture" },
   { path = "tests/regex_fuzz_test.rs", name = "regex_differential_fuzz", class = "fuzz", n = 220 },
 ]
 
