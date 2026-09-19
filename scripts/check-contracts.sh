@@ -70,6 +70,22 @@ CLASS_FILE="scripts/lib/contract-classes.txt"
 [ -d "$FIXTURE_DIR" ] || { echo "::error::$FIXTURE_DIR not found"; exit 2; }
 [ -f "$CLASS_FILE" ]  || { echo "::error::$CLASS_FILE not found"; exit 2; }
 
+# The line scans below check traceability, not TOML string syntax. In
+# particular, an escaped apostrophe is invalid inside a double-quoted string.
+if ! python3 - "$LEDGER" <<'PY_TOML'
+import sys, tomllib
+try:
+    with open(sys.argv[1], "rb") as ledger:
+        tomllib.load(ledger)
+except tomllib.TOMLDecodeError as error:
+    print(f"::error::{sys.argv[1]} is not valid TOML: {error}")
+    sys.exit(1)
+PY_TOML
+then
+  echo "::error::contract-ledger must parse as TOML before traceability is checked"
+  exit 1
+fi
+
 # ── IMPLEMENTATION ROOT (two-repo mode, see header) ─────────────────────────
 IMPL_ROOT="${ALS_IMPL_ROOT:-}"
 while [ $# -gt 0 ]; do
