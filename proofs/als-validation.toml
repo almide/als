@@ -1052,3 +1052,11 @@ reviewed = "2026-08-27"
 by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
 independent = "no"
 verdict = "accurate"
+
+[[section]]
+id = "ALS-R9"
+hash = "sha256:67170f0e1051"
+reviewed = "2026-09-19"
+by = "O6lvl4 (via the Claude session; every row of the layer table measured on almide 0.63.0-rc1 — POSIX truncation at 256, a stock wasmtime 47 host trap at 126 and above, and the component model's exit-with-code(u8) at 255 — plus a survey of seven neighbouring languages' exit surfaces before choosing the bound)"
+independent = "no"
+verdict = "accurate"
