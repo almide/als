@@ -159,7 +159,7 @@ Contracts: C-275。
 
 `process.exit(code)` が受理する code は **0..=125** である。この範囲の値は
 native・埋め込みホスト・stock WASI ランタイムのいずれでも**その値で**終了する。
-範囲外の code は定義済みの領域エラーであり、stderr に
+計算された引数が範囲外の code になった場合は定義済みの領域エラーであり、stderr に
 `Error: exit code must be in 0..=125` を1行出力して **exit 1** で終了する
 （全ターゲットで同一バイト）。
 
@@ -180,6 +180,25 @@ native・埋め込みホスト・stock WASI ランタイムのいずれでも**�
 経由しなくなれば 0..=255 が届けられるようになり、範囲は広げられる（拡大は
 後方互換であり、逆向きは破壊的である）。
 
+直接呼び出す `process.exit` の引数が範囲外の整数リテラルなら、checker は
+引数を指す **E084** で拒否する。括弧・単項マイナス・各基数のリテラルを含み、
+モジュールの別名・選択的 import・パイプ経由でも同じ規則を適用する。
+`-0` は 0、二重の単項マイナスは正の値として判定する。
+
+```almide check-fail=E084
+import process
+effect fn main() -> Unit = process.exit(200)
+```
+
+変数や算術式などの計算された引数は、このリテラル診断では拒否しない。
+関数値を格納した変数への呼び出しも、この診断では追跡しない。
+実行時の範囲チェックは引き続き適用される。
+同名のユーザ関数やローカル関数値は標準ライブラリの `process.exit` ではなく、
+この診断の対象外である。
+
 テスト: `spec/wasm_cross/exit_code_out_of_range.almd`,
-`spec/wasm_cross/exit_code_upper_bound.almd`。
-Contracts: C-350。
+`spec/wasm_cross/exit_code_upper_bound.almd`,
+`tests/diagnostics/e084-exit-code-domain/broken.almd`,
+`tests/diagnostics/e084-exit-code-domain/fixed.almd`,
+`tests/exit_literal_check_test.rs`。
+Contracts: C-350, C-351。
