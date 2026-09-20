@@ -28,8 +28,8 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 351 contracts: **requirements-first 40** (two-repo regime, since 2026-08-20),
-contemporaneous 156, **retroactive 138** (shrink-only ceiling 138), unmeasured 17.
+the `since` release was tagged). Of 351 contracts: **requirements-first 46** (two-repo regime, since 2026-08-20),
+contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
 351 contracts
 
@@ -385,5 +385,5 @@ contemporaneous 156, **retroactive 138** (shrink-only ceiling 138), unmeasured 1
 | C-348 | Byte-indexed string slices validate UTF-8 boundaries | 0.63.0 | active | fixture | 1 |
 | C-349 | A `??` inside a fan arm keeps its default on both targets | 0.63.0 | active | fixture | 1 |
 | C-350 | process.exit accepts 0..=125 on every target, and any other code is a defined abort | 0.63.0 | active | fixture | 2 |
-| C-351 | literal process exit codes are checked against the portable domain | 0.64.0 | active | fixture | 0 |
+| C-351 | literal process exit codes are checked against the portable domain | 0.63.0 | active | fixture | 0 |
 
