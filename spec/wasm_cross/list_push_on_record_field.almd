@@ -1,5 +1,4 @@
-// @contract: C-226
-// @contract: C-033
+// @contract: C-226, C-033
 // `list.push(h.f, v)` and `list.clear(h.f)` where `h` is a record var or a
 // `mut` record parameter: the builder idiom — accumulate into a list field
 // inside a loop — builds and runs on the wasm leg, and the caller's data is
