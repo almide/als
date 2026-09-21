@@ -40,7 +40,7 @@ effect fn main() -> Unit = {
   let plus1 = matrix.from_q1_0_bytes(q1, 0, 1, 129)
   println("cols=129   r0=${head3(plus1, 0)} tail=${sgn(list.get(list.get(matrix.to_lists(plus1), 0) ?? [], 128) ?? 9.9)}")
   let far = matrix.from_q1_0_bytes(q1, 0, 2, 1000000)
-  println("cols=1e6   r0=${head3(far, 0)} r1=${head3(far, 1)} dims=${matrix.rows(far)}x${matrix.cols(far)}")
+  println("cols=1e6   r0=${head3(far, 0)} r1=${head3(far, 1)} rows=${matrix.rows(far)}")
   let sel = matrix.select_rows_q1_0(q1, 0, 1000000, [0, 1])
   println("select 1e6 r0=${head3(sel, 0)} r1=${head3(sel, 1)}")
 }
