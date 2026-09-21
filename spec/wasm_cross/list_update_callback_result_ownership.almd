@@ -51,64 +51,59 @@
 // which builds and runs both legs directly and is not subject to the brick's
 // subset. They are omitted here rather than bought by raising the two
 // determinism wall ceilings and the walled-real baseline — the same trade
-// C-1063's `EXTENDED (#2133)` clause records for the same reason.
+// C-076's `EXTENDED (#2133)` clause records for the same reason.
 fn main() -> Unit = {
   // ---- axis 2 = BORROWED tail: `(t) => rN`. Each was freed before #2398. ----
-
   // The lead cell: the tag itself flipped, err("boom") -> ok(145).
   let r_res: Result[Int, String] = err("boom")
   let d_res = list.filter(list.update([ok(9), err("e")], 0, ((t) => r_res)), ((y) => false))
   println("borrow res    = ${r_res} / ${int.to_string(list.len(d_res))}")
-
   let r_str: String = int.to_string(2)
   let d_str = list.filter(list.update(["a", "b"], 0, ((t) => r_str)), ((y) => false))
   println("borrow str    = ${r_str} / ${int.to_string(list.len(d_str))}")
-
   let r_li: List[Int] = [1, 2]
-  let d_li = list.filter(list.update([[9], [8]], 0, ((t) => r_li)), ((y) => false))
+  let d_li = list.filter(list.update([
+    [9],
+    [8]
+  ], 0, ((t) => r_li)), ((y) => false))
   println("borrow li     = ${r_li} / ${int.to_string(list.len(d_li))}")
-
   let r_ls: List[String] = ["x", "y"]
-  let d_ls = list.filter(list.update([["p"], ["q"]], 0, ((t) => r_ls)), ((y) => false))
+  let d_ls = list.filter(list.update([
+    ["p"],
+    ["q"]
+  ], 0, ((t) => r_ls)), ((y) => false))
   println("borrow ls     = ${r_ls} / ${int.to_string(list.len(d_ls))}")
-
   // (String,Int) and Option[String] BORROWED are the two declared omissions —
   // see the COMPLETENESS RULE above. Their FRESH twins are below, and both
   // borrowed cells are carried by the differential test.
-
   // A scalar payload under a heap carrier diverged too: the Option BLOCK is
   // the freed value, whatever it holds.
-  let r_oi: Option[Int] = some(2)
+  let r_oi: Int? = some(2)
   let d_oi = list.filter(list.update([some(9), none], 0, ((t) => r_oi)), ((y) => false))
   println("borrow opt_i  = ${r_oi} / ${int.to_string(list.len(d_oi))}")
-
   // ---- axis 2 = FRESH tail: a constructor. Identical on BOTH sides. ----
-
   let f_str: String = int.to_string(3)
   let e_res = list.filter(list.update([ok(9), err("e")], 0, ((t) => err(f_str))), ((y) => false))
   println("fresh res     = ${f_str} / ${int.to_string(list.len(e_res))}")
-
   let f_interp: String = int.to_string(4)
   let e_str = list.filter(list.update(["a", "b"], 0, ((t) => "${f_interp}!")), ((y) => false))
   println("fresh str     = ${f_interp} / ${int.to_string(list.len(e_str))}")
-
   let f_i: Int = 5
-  let e_li = list.filter(list.update([[9], [8]], 0, ((t) => [f_i])), ((y) => false))
+  let e_li = list.filter(list.update([
+    [9],
+    [8]
+  ], 0, ((t) => [f_i])), ((y) => false))
   println("fresh li      = ${int.to_string(f_i)} / ${int.to_string(list.len(e_li))}")
-
   let f_tup: String = int.to_string(6)
   let e_tup = list.filter(list.update([("a", 1), ("b", 2)], 0, ((t) => (f_tup, 1))), ((y) => false))
   println("fresh tup     = ${f_tup} / ${int.to_string(list.len(e_tup))}")
-
   let f_os: String = int.to_string(7)
   let e_os = list.filter(list.update([some("p"), none], 0, ((t) => some(f_os))), ((y) => false))
   println("fresh opt_s   = ${f_os} / ${int.to_string(list.len(e_os))}")
-
   // ---- the scalar control: no block, no guard, value untouched ----
   let r_int: Int = 7
   let d_int = list.filter(list.update([1, 2], 0, ((t) => r_int)), ((y) => false))
   println("scalar int    = ${int.to_string(r_int)} / ${int.to_string(list.len(d_int))}")
-
   // The KEPT half of the same shape: `filter` retains the element instead of
   // dropping it, so the guard's +1 must not leave the binding over-counted.
   let k_str: String = int.to_string(8)
