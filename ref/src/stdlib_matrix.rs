@@ -436,19 +436,44 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(rids.len() as i64, cols, data))
         }
-        "matrix.select_rows_q8_0_dq" | "matrix.select_rows_q1_0" => {
+        "matrix.select_rows_q8_0_dq" => {
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
             let off = want_int(name, &args[1])?.max(0);
             let cols = want_int(name, &args[2])?.max(0);
             let rids = want_rids(name, &args[3])?;
-            let q8 = name == "matrix.select_rows_q8_0_dq";
             let mut data = vec![0.0f64; rids.len() * cols as usize];
             for (i, rid) in rids.iter().enumerate() {
                 let rid = (*rid).max(0);
                 for c in 0..cols {
                     let k = rid as i128 * cols as i128 + c as i128;
-                    data[i * cols as usize + c as usize] = q_element(&b, off, k, q8);
+                    data[i * cols as usize + c as usize] = q_element(&b, off, k, true);
+                }
+            }
+            Ok(mat(rids.len() as i64, cols, data))
+        }
+        "matrix.select_rows_q1_0" => {
+            // C-229 (#1787): a selected row is `cols / 128` WHOLE blocks on the
+            // ROW schedule (`row_off = off + rid * n_blocks * 18`), the trailing
+            // `cols mod 128` elements are 0.0, and a row whose blocks would fall
+            // outside the buffer is the all-zero row — a ROW-level bound. The
+            // full loader `from_q1_0_bytes` below keeps the global-k, per-element
+            // rule (C-229 #2419): the two entry points are deliberately different.
+            arity(name, &args, 4)?;
+            let b = want_bytes(name, &args[0])?;
+            let off = want_int(name, &args[1])?.max(0) as i128;
+            let cols = want_int(name, &args[2])?.max(0);
+            let rids = want_rids(name, &args[3])?;
+            let n_blocks = cols as i128 / 128;
+            let mut data = vec![0.0f64; rids.len() * cols as usize];
+            for (i, rid) in rids.iter().enumerate() {
+                let rid = (*rid).max(0) as i128;
+                let row_off = off + rid * n_blocks * 18;
+                if row_off + n_blocks * 18 > b.len() as i128 {
+                    continue; // the all-zero row
+                }
+                for c in 0..n_blocks * 128 {
+                    data[i * cols as usize + c as usize] = q_element(&b, row_off as i64, c, false);
                 }
             }
             Ok(mat(rids.len() as i64, cols, data))
