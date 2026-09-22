@@ -44,7 +44,7 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.from_q1_0_bytes",
     "matrix.from_bytes_f32_le",
     "matrix.from_bytes_f16_le",
-    // C-358 / C-359 / C-360: the shape-precondition, row-range and
+    // C-353 / C-354 / C-355: the shape-precondition, row-range and
     // signed-zero rules, and the exact-arithmetic kernels they govern.
     "matrix.cols",
     "matrix.transpose",
@@ -154,7 +154,7 @@ fn observable_cols(m: &Mat) -> i64 {
     }
 }
 
-/// C-358: two extents a kernel indexes against each other must be EQUAL,
+/// C-353: two extents a kernel indexes against each other must be EQUAL,
 /// or the call aborts in the unified T6 form.
 fn shape_eq(a: i64, b: i64) -> Result<(), Flow> {
     if a == b {
@@ -247,7 +247,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 if cols < 0 {
                     cols = cells.len() as i64;
                 } else if cols != cells.len() as i64 {
-                    // C-358: a ragged list is not a matrix — every row must
+                    // C-353: a ragged list is not a matrix — every row must
                     // have the FIRST row's width, and the constructor aborts
                     // rather than inventing a shape. This is what makes
                     // C-282's "no public constructor builds a ragged matrix"
@@ -332,7 +332,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(m.cols, m.rows, data))
         }
-        // C-360: negation is a SIGN FLIP, so neg(+0.0) is -0.0 — `0.0 - x`
+        // C-355: negation is a SIGN FLIP, so neg(+0.0) is -0.0 — `0.0 - x`
         // would answer +0.0 for a zero element (ALS-T23).
         "matrix.neg" => {
             arity(name, &args, 1)?;
@@ -364,7 +364,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(m.rows, m.cols, data))
         }
-        // The ELEMENTWISE pair family (C-358's stated exception): rows and
+        // The ELEMENTWISE pair family (C-353's stated exception): rows and
         // cols ZIP-truncate to the shorter operand on every leg.
         "matrix.add" | "matrix.sub" | "matrix.div" => {
             arity(name, &args, 2)?;
@@ -401,7 +401,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(m.rows, cols, data))
         }
-        // C-358: the inner dimension is a PRECONDITION. The empty
+        // C-353: the inner dimension is a PRECONDITION. The empty
         // short-circuit answers first (C-278's empty-operand rule).
         "matrix.mul" => {
             arity(name, &args, 2)?;
@@ -426,7 +426,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(m, n, data))
         }
-        // C-358: y[i][j] = sum_k x[i][k]*w[j][k] (+ bias[j]), k ascending,
+        // C-353: y[i][j] = sum_k x[i][k]*w[j][k] (+ bias[j]), k ascending,
         // bias added last; cols(x) == cols(w) and len(bias) == rows(w).
         "matrix.linear_row" | "matrix.linear_row_no_bias" => {
             let with_bias = name == "matrix.linear_row";
@@ -462,7 +462,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(r, n_out, data))
         }
-        // C-359: `list.slice` over the rows — a negative start is EMPTY, a
+        // C-354: `list.slice` over the rows — a negative start is EMPTY, a
         // negative or past-the-end end is rows(m), start >= end is EMPTY.
         "matrix.slice_rows" => {
             arity(name, &args, 3)?;
@@ -476,7 +476,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let data = m.data[(start * m.cols) as usize..(e * m.cols) as usize].to_vec();
             Ok(mat(e - start, m.cols, data))
         }
-        // C-359: a part count of 0 or less is the EMPTY list; each part is
+        // C-354: a part count of 0 or less is the EMPTY list; each part is
         // the `cols / n` column slice of every row.
         "matrix.split_cols_even" => {
             arity(name, &args, 2)?;
@@ -499,7 +499,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::List(Rc::new(parts)))
         }
-        // C-358: every NON-EMPTY member carries the first member's row
+        // C-353: every NON-EMPTY member carries the first member's row
         // count; an empty member contributes no columns and no shape.
         "matrix.concat_cols" | "matrix.concat_cols_many" => {
             arity(name, &args, 1)?;
@@ -541,7 +541,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(rows0, total, data))
         }
-        // C-359 counts + C-358 shapes: stride is a positive STEP, kernel and
+        // C-354 counts + C-353 shapes: stride is a positive STEP, kernel and
         // padding are widths that clamp at 0, the weight row is
         // `in_ch * kernel` taps and the bias one entry per output channel.
         "matrix.conv1d" => {
@@ -622,7 +622,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // y[i][j] = x[i][j] * (1/sqrt(mean(x[i,:]^2) + eps)) * gamma[j], the
         // output truncated to the shorter of the row and gamma (the zip rule
-        // C-358 keeps outside the shape-mismatch abort).
+        // C-353 keeps outside the shape-mismatch abort).
         "matrix.rms_norm_rows" => {
             arity(name, &args, 3)?;
             let m = want_mat(name, &args[0])?;
@@ -702,7 +702,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(mat(rows, cols, data))
         }
         // ALS-T25: the sigmoid rides the CANONICAL fast-exp, over the clamped
-        // negation; the dots accumulate ascending from 0.0. C-358: both
+        // negation; the dots accumulate ascending from 0.0. C-353: both
         // weights are (d_out, d_in) against cols(x).
         "matrix.swiglu_gate" => {
             arity(name, &args, 3)?;

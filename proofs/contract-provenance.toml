@@ -2662,21 +2662,21 @@ entry_commit = "6731935"
 class = "requirements-first"
 
 [[contract]]
-id = "C-358"
+id = "C-353"
 since = "0.63.0"
 entry = "2026-09-22T16:36:02+09:00"
 entry_commit = "61d9e08"
 class = "requirements-first"
 
 [[contract]]
-id = "C-359"
+id = "C-354"
 since = "0.63.0"
 entry = "2026-09-22T16:36:02+09:00"
 entry_commit = "61d9e08"
 class = "requirements-first"
 
 [[contract]]
-id = "C-360"
+id = "C-355"
 since = "0.63.0"
 entry = "2026-09-22T16:36:02+09:00"
 entry_commit = "61d9e08"
