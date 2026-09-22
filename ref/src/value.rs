@@ -144,6 +144,17 @@ pub enum Dyn {
 /// ALS-D2: a Value's string form is its JSON text — compact, keys in
 /// insertion order, numbers in the canonical display form (integral floats
 /// drop the fraction: value_repr pins `fltint=3`).
+/// A Float leaf of a Value in its JSON text (C-356): the Display form when it
+/// is finite, `null` for NaN and +-infinity — JSON has no spelling for those,
+/// and the text a stringify produces must parse back.
+pub fn dyn_float_text(f: f64) -> String {
+    if f.is_finite() {
+        crate::fmtfloat::display_form(F64(f))
+    } else {
+        "null".into()
+    }
+}
+
 pub fn dyn_text(d: &Dyn) -> String {
     match d {
         Dyn::Null => "null".into(),
@@ -155,7 +166,7 @@ pub fn dyn_text(d: &Dyn) -> String {
             }
         }
         Dyn::I(n) => fmt_int(*n),
-        Dyn::F(f) => crate::fmtfloat::display_form(F64(*f)),
+        Dyn::F(f) => dyn_float_text(*f),
         Dyn::S(s) => json_quote(s),
         Dyn::A(items) => {
             let mut out = String::from("[");

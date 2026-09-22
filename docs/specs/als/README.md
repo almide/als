@@ -39,11 +39,11 @@
 | ID | Section | Contracts |
 |----|---------|-----------|
 | [ALS-D1](./data-formats.md#als-d1-json-パス操作) | JSON パス操作 | C-031 |
-| [ALS-D2](./data-formats.md#als-d2-value-の-json-テキスト表現) | Value の JSON テキスト表現 | C-060 |
+| [ALS-D2](./data-formats.md#als-d2-value-の-json-テキスト表現) | Value の JSON テキスト表現 | C-060, C-356 |
 | [ALS-D3](./data-formats.md#als-d3-異種ネスト文書の走査) | 異種ネスト文書の走査 | C-063 |
 | [ALS-D4](./data-formats.md#als-d4-正規表現エンジン) | 正規表現エンジン | C-032, C-160, C-285, C-347 |
 | [ALS-D5](./data-formats.md#als-d5-半精度浮動小数のデコード) | 半精度浮動小数のデコード | C-037 |
-| [ALS-D6](./data-formats.md#als-d6-codec-と-json-デコード) | Codec と JSON デコード | C-084, C-085, C-095, C-098, C-103, C-209, C-211, C-216, C-217 |
+| [ALS-D6](./data-formats.md#als-d6-codec-と-json-デコード) | Codec と JSON デコード | C-084, C-085, C-095, C-098, C-103, C-209, C-211, C-216, C-217, C-357 |
 | [ALS-D7](./data-formats.md#als-d7-バイト列ブリッジ) | バイト列ブリッジ | C-062, C-090 |
 
 ## deterministic-time.md — 5 section(s)
@@ -174,7 +174,7 @@
 | [ALS-T16](./text-and-numbers.md#als-t16-個数・添字の-i64-クランプ) | 個数・添字の i64 クランプ | C-054, C-056 |
 | [ALS-T17](./text-and-numbers.md#als-t17-datetimeformat-の指定子置換) | datetime.format の指定子置換 | C-128 |
 | [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153, C-339 |
-| [ALS-T19](./text-and-numbers.md#als-t19-数値決定性ファミリー) | 数値決定性ファミリー | C-302 |
+| [ALS-T19](./text-and-numbers.md#als-t19-数値決定性ファミリー) | 数値決定性ファミリー | C-302, C-358 |
 | [ALS-T20](./text-and-numbers.md#als-t20-丸めと縮約の禁止) | 丸めと縮約の禁止 | C-303 |
 | [ALS-T21](./text-and-numbers.md#als-t21-非正規数の保存) | 非正規数の保存 | C-304 |
 | [ALS-T22](./text-and-numbers.md#als-t22-超越関数の誤差上限) | 超越関数の誤差上限 | C-305 |
