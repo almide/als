@@ -26,7 +26,7 @@
 | [ALS-C1](./collections.md#als-c1-map-の順序規範) | Map の順序規範 | C-013 |
 | [ALS-C2](./collections.md#als-c2-set-の順序規範) | Set の順序規範 | C-014 |
 | [ALS-C3](./collections.md#als-c3-構造的等価) | 構造的等価 | C-015, C-124, C-185 |
-| [ALS-C4](./collections.md#als-c4-範囲外アクセスの縮退規則) | 範囲外アクセスの縮退規則 | C-034 |
+| [ALS-C4](./collections.md#als-c4-範囲外アクセスの縮退規則) | 範囲外アクセスの縮退規則 | C-034, C-359 |
 | [ALS-C5](./collections.md#als-c5-値意味論（copy-on-write）) | 値意味論（copy-on-write） | C-033, C-125, C-131, C-150, C-213, C-337, C-340, C-342, C-343, C-344, C-345, C-346 |
 | [ALS-C6](./collections.md#als-c6-型変換コンビネータ) | 型変換コンビネータ | C-039 |
 | [ALS-C7](./collections.md#als-c7-レコード・変種・パターンマッチ) | レコード・変種・パターンマッチ | C-036, C-224, C-226 |
@@ -161,7 +161,7 @@
 | [ALS-T3](./text-and-numbers.md#als-t3-jsonparse) | `json.parse` | C-087, C-298, C-299 |
 | [ALS-T4](./text-and-numbers.md#als-t4-listchunk--listwindows) | `list.chunk` / `list.windows` | C-129, C-171 |
 | [ALS-T5](./text-and-numbers.md#als-t5-stringto_upper--stringto_lower) | `string.to_upper` / `string.to_lower` | C-020, C-162 |
-| [ALS-T6](./text-and-numbers.md#als-t6-整数演算の終了規約（termination-convention）) | 整数演算の終了規約（termination convention） | C-001, C-002, C-047, C-067, C-154, C-155, C-161, C-169, C-184, C-196, C-197, C-198, C-200, C-219 |
+| [ALS-T6](./text-and-numbers.md#als-t6-整数演算の終了規約（termination-convention）) | 整数演算の終了規約（termination convention） | C-001, C-002, C-047, C-067, C-154, C-155, C-161, C-169, C-184, C-196, C-197, C-198, C-200, C-219, C-358 |
 | [ALS-T7](./text-and-numbers.md#als-t7-トップレベル-let-の評価時機) | トップレベル let の評価時機 | C-007, C-077, C-111 |
 | [ALS-T8](./text-and-numbers.md#als-t8-整数パースの文法とエラー規範) | 整数パースの文法とエラー規範 | C-028, C-029 |
 | [ALS-T9](./text-and-numbers.md#als-t9-固定小数表示) | 固定小数表示 | C-025 |
@@ -178,7 +178,7 @@
 | [ALS-T20](./text-and-numbers.md#als-t20-丸めと縮約の禁止) | 丸めと縮約の禁止 | C-303 |
 | [ALS-T21](./text-and-numbers.md#als-t21-非正規数の保存) | 非正規数の保存 | C-304 |
 | [ALS-T22](./text-and-numbers.md#als-t22-超越関数の誤差上限) | 超越関数の誤差上限 | C-305 |
-| [ALS-T23](./text-and-numbers.md#als-t23-符号付きゼロ) | 符号付きゼロ | C-306 |
+| [ALS-T23](./text-and-numbers.md#als-t23-符号付きゼロ) | 符号付きゼロ | C-306, C-360 |
 | [ALS-T24](./text-and-numbers.md#als-t24-float-→-int-変換) | Float → Int 変換 | C-307, C-338, C-341 |
 | [ALS-T25](./text-and-numbers.md#als-t25-正準-fast-exp) | 正準 fast-exp | C-223 |
 

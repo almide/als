@@ -10,7 +10,7 @@
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
 ceiling = 19
-evaluated = 699
+evaluated = 703
 
 [[abstain]]
 class = "parse"
@@ -18,6 +18,10 @@ count = 2
 
 [[abstain]]
 class = "stdlib:bytes.to_string_lossy"
+count = 2
+
+[[abstain]]
+class = "stdlib:matrix.from_bytes_f64_le"
 count = 2
 
 [[abstain]]
@@ -50,14 +54,6 @@ count = 1
 
 [[abstain]]
 class = "stdlib:int.count_leading_zeros"
-count = 1
-
-[[abstain]]
-class = "stdlib:matrix.cols"
-count = 1
-
-[[abstain]]
-class = "stdlib:matrix.from_bytes_f64_le"
 count = 1
 
 [[abstain]]
