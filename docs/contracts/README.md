@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 352 contracts: **requirements-first 47** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-352 contracts
+355 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -387,4 +387,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-350 | process.exit accepts 0..=125 on every target, and any other code is a defined abort | 0.63.0 | active | fixture | 2 |
 | C-351 | literal process exit codes are checked against the portable domain | 0.63.0 | active | fixture | 0 |
 | C-352 | Or-pattern guards are evaluated once per matching alternative, in source order | 0.63.0 | active | fixture | 2 |
+| C-358 | A matrix kernel's shape precondition is a defined abort on both targets | 0.63.0 | active | fixture | 1 |
+| C-359 | A matrix row range clamps like list.slice and a part count of 0 or less is the empty result | 0.63.0 | active | fixture | 1 |
+| C-360 | matrix.neg is IEEE negation, so the sign of a zero flips on both targets | 0.63.0 | active | fixture | 1 |
 
