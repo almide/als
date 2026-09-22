@@ -463,7 +463,7 @@ where
 // ── string primitives (code-point units, ALS-S1) ────────────────────────
 
 /// ALS-T1: the 25 Unicode White_Space code points, spelled out.
-fn is_als_whitespace(c: char) -> bool {
+pub(crate) fn is_als_whitespace(c: char) -> bool {
     matches!(c as u32,
         0x0009..=0x000D | 0x0020 | 0x0085 | 0x00A0 | 0x1680 | 0x2000..=0x200A | 0x2028 | 0x2029 | 0x202F | 0x205F | 0x3000)
 }

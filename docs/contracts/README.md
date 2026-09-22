@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 358 contracts: **requirements-first 53** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-358 contracts
+361 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -393,4 +393,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-356 | A non-finite Float in a Value stringifies as the JSON null on every leg | 0.63.0 | active | fixture | 1 |
 | C-357 | json.get_int is Int-only: a Float field is none, never truncated | 0.63.0 | active | fixture | 1 |
 | C-358 | float.round, math.choose, int.rotate_* and math.log_gamma are exact over their whole domain on every leg | 0.63.0 | active | fixture | 4 |
+| C-359 | Pre-epoch timestamps floor to the day they belong to, and %Y renders any year | 0.63.0 | active | fixture | 1 |
+| C-360 | datetime.parse_iso applies the UTC offset and refuses an out-of-range field by name | 0.63.0 | active | fixture | 1 |
+| C-361 | url.parse validates the host after the host:port split, and refuses the out-of-scope authorities by name | 0.63.0 | active | fixture | 1 |
 

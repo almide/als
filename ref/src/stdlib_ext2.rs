@@ -36,6 +36,9 @@ pub const EXT2_FNS: &[&str] = &[
     "datetime.from_parts",
     "datetime.to_iso",
     "datetime.format",
+    "datetime.parse_iso",
+    "url.parse",
+    "url.to_string",
     "hash.fnv1a32",
     "hash.fnv1a32_bytes",
     "hash.sha256",
@@ -330,7 +333,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "datetime.weekday" => {
             arity(name, &args, 1)?;
             let ts = want_int(name, &args[0])?;
-            let idx = ((ts / 86400 % 7) + 7) % 7;
+            let idx = days_from_epoch(ts).rem_euclid(7);
             const WD: [&str; 7] = [
                 "Thursday",
                 "Friday",
@@ -384,12 +387,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 .wrapping_add(86400)
                 .wrapping_rem(86400);
             let (h, mi, s) = (sod / 3600, sod % 3600 / 60, sod % 60);
-            let neg = y < 0;
-            let mag = if neg { 0i64.wrapping_sub(y) } else { y };
-            let mut ystr = pad_num(mag, dt_digits(mag).max(4));
-            if neg {
-                ystr.insert(0, '-');
-            }
+            let ystr = iso_year(y);
             Ok(Value::str(&format!(
                 "{ystr}-{}-{}T{}:{}:{}Z",
                 pad_num(mo, 2),
@@ -398,6 +396,45 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 pad_num(mi, 2),
                 pad_num(s, 2)
             )))
+        }
+        // ALS-T26: date "T" time zone?, every field ASCII digits of any width,
+        // the offset APPLIED, each range refusal naming its field. Written from
+        // the chapter, not from the implementation (ADR-0015).
+        "datetime.parse_iso" => {
+            arity(name, &args, 1)?;
+            let raw = want_str(name, &args[0])?.to_string();
+            Ok(match iso_parse(&raw) {
+                Ok(ts) => Value::Ok(Rc::new(Value::Int(ts))),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
+        }
+        // ALS-T27: the host is checked AFTER the host:port split; userinfo and
+        // IPv6 literals are refused by name; the port is ASCII digits 0..=65535.
+        "url.parse" => {
+            arity(name, &args, 1)?;
+            let raw = want_str(name, &args[0])?.to_string();
+            Ok(match url_parse(&raw) {
+                Ok(v) => Value::Ok(Rc::new(v)),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
+        }
+        "url.to_string" => {
+            arity(name, &args, 1)?;
+            let (scheme, host, port, path, query, fragment) = url_parts(name, &args[0])?;
+            let mut out = format!("{scheme}://{host}");
+            if let Some(p) = port {
+                out.push_str(&format!(":{p}"));
+            }
+            out.push_str(&path);
+            if !query.is_empty() {
+                out.push('?');
+                out.push_str(&query);
+            }
+            if !fragment.is_empty() {
+                out.push('#');
+                out.push_str(&fragment);
+            }
+            Ok(Value::str(&out))
         }
         "datetime.format" => {
             // stdlib/datetime_format.almd: six sequential string.replace calls;
@@ -410,8 +447,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 .wrapping_rem(86400)
                 .wrapping_add(86400)
                 .wrapping_rem(86400);
+            // %Y is the same variable-width year to_iso renders (ALS-T17,
+            // C-359): four columns minimum, zero-padded, the sign taking one.
             let out = pattern
-                .replace("%Y", &pad_num(y, 4))
+                .replace("%Y", &iso_year(y))
                 .replace("%m", &pad_num(mo, 2))
                 .replace("%d", &pad_num(d, 2))
                 .replace("%H", &pad_num(sod / 3600, 2))
@@ -1073,10 +1112,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
     })
 }
 
+/// The day number of a timestamp, FLOORED (ALS-T26, C-359): a pre-epoch second
+/// off a day boundary belongs to the day BEFORE the one truncation names.
+fn days_from_epoch(ts: i64) -> i64 {
+    ts.div_euclid(86400)
+}
+
 /// civil_from_days translated from stdlib/datetime_calendar.almd
-/// (truncating division, wrapping arithmetic) → (year, month, day)
+/// (floor division for the day number, wrapping arithmetic) → (year, month, day)
 fn civ(ts: i64) -> (i64, i64, i64) {
-    let z = ts / 86400 + 719468;
+    let z = days_from_epoch(ts) + 719468;
     let zadj = if z >= 0 { z } else { z.wrapping_sub(146096) };
     let era = zadj / 146097;
     let doe = z.wrapping_sub(era.wrapping_mul(146097));
@@ -1092,6 +1137,323 @@ fn civ(ts: i64) -> (i64, i64, i64) {
 
 /// __iso_pad translated literally: right-to-left digits via n%10 / n/10
 /// (truncating — replicates the negative-input behavior byte for byte)
+/// ASCII digits only, non-empty — `string.is_digit`'s rule (ALS-T26/T27).
+/// Written over chars: ADR-0015 clause 5 forbids leaning on Rust's own
+/// splitting / parsing / trimming, so agreement with a target measures the
+/// ALS text rather than a shared std.
+fn all_digits(cs: &[char]) -> bool {
+    !cs.is_empty() && cs.iter().all(|c| c.is_ascii_digit())
+}
+
+/// `sign? digit+` over chars, in the ALS-T8 grammar's digit-accumulating shape.
+fn digits_to_i64(cs: &[char]) -> Option<i64> {
+    if !all_digits(cs) {
+        return None;
+    }
+    let mut acc: i64 = 0;
+    for c in cs {
+        let d = (*c as i64) - ('0' as i64);
+        acc = acc.checked_mul(10)?.checked_add(d)?;
+    }
+    Some(acc)
+}
+
+/// Split on a single char, every field kept (the `string.split` shape).
+fn split_char(cs: &[char], sep: char) -> Vec<Vec<char>> {
+    let mut out: Vec<Vec<char>> = vec![Vec::new()];
+    for c in cs {
+        if *c == sep {
+            out.push(Vec::new());
+        } else {
+            out.last_mut().expect("one field always exists").push(*c);
+        }
+    }
+    out
+}
+
+/// Split at the FIRST occurrence of `sep`: (before, after, found).
+fn split_once_char(cs: &[char], sep: char) -> (Vec<char>, Vec<char>, bool) {
+    match cs.iter().position(|c| *c == sep) {
+        Some(i) => (cs[..i].to_vec(), cs[i + 1..].to_vec(), true),
+        None => (cs.to_vec(), Vec::new(), false),
+    }
+}
+
+fn str_of(cs: &[char]) -> String {
+    cs.iter().collect()
+}
+
+/// Every field of `half` as a number, or None at the first refused field.
+fn iso_fields(half: &[char], sep: char) -> Option<Vec<i64>> {
+    split_char(half, sep)
+        .iter()
+        .map(|p| digits_to_i64(p))
+        .collect()
+}
+
+fn iso_days_in_month(y: i64, m: i64) -> i64 {
+    let leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
+    match m {
+        2 => {
+            if leap {
+                29
+            } else {
+                28
+            }
+        }
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    }
+}
+
+/// epoch_from_civil — the inverse of `civ`, the shape datetime.from_parts has.
+fn iso_epoch(y: i64, m: i64, d: i64, h: i64, mi: i64, s: i64) -> i64 {
+    let ya = if m <= 2 { y - 1 } else { y };
+    let era = if ya >= 0 { ya } else { ya - 399 } / 400;
+    let yoe = ya - era * 400;
+    let mp = if m > 2 { m - 3 } else { m + 9 };
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    (era * 146097 + doe - 719468) * 86400 + h * 3600 + mi * 60 + s
+}
+
+/// ALS-T26's grammar, over chars. The ALS whitespace set does the trimming.
+fn iso_parse(raw: &str) -> Result<i64, String> {
+    let all: Vec<char> = raw.chars().collect();
+    let mut lo = 0;
+    let mut hi = all.len();
+    while lo < hi && crate::stdlib::is_als_whitespace(all[lo]) {
+        lo += 1;
+    }
+    while hi > lo && crate::stdlib::is_als_whitespace(all[hi - 1]) {
+        hi -= 1;
+    }
+    let t = &all[lo..hi];
+    let halves = split_char(t, 'T');
+    if halves.len() != 2 {
+        return Err("expected YYYY-MM-DDTHH:MM:SSZ".to_string());
+    }
+    let date = &halves[0];
+    let time_raw = &halves[1];
+    let had_z = time_raw.last() == Some(&'Z');
+    let time_z: Vec<char> = if had_z {
+        time_raw[..time_raw.len() - 1].to_vec()
+    } else {
+        time_raw.clone()
+    };
+    let sign_at = time_z.iter().position(|c| *c == '+' || *c == '-');
+    if had_z && sign_at.is_some() {
+        return Err("invalid datetime format".to_string());
+    }
+    let hms: Vec<char> = match sign_at {
+        Some(i) => time_z[..i].to_vec(),
+        None => time_z.clone(),
+    };
+    let (Some(d), Some(tm)) = (iso_fields(date, '-'), iso_fields(&hms, ':')) else {
+        return Err("invalid datetime format".to_string());
+    };
+    if d.len() != 3 || tm.len() != 3 {
+        return Err("invalid datetime format".to_string());
+    }
+    let offset = match sign_at {
+        None => 0,
+        Some(i) => {
+            let raw_off = str_of(&time_z[i..]);
+            match iso_fields(&time_z[i + 1..], ':').as_deref() {
+                Some([oh, om]) if (0..=23).contains(oh) && (0..=59).contains(om) => {
+                    let secs = oh * 3600 + om * 60;
+                    if time_z[i] == '-' {
+                        -secs
+                    } else {
+                        secs
+                    }
+                }
+                _ => return Err(format!("invalid offset: {raw_off}")),
+            }
+        }
+    };
+    let (y, mo, dd) = (d[0], d[1], d[2]);
+    let (h, mi, sec) = (tm[0], tm[1], tm[2]);
+    if !(1..=12).contains(&mo) {
+        return Err(format!("month out of range: {mo}"));
+    }
+    if dd < 1 || dd > iso_days_in_month(y, mo) {
+        return Err(format!("day out of range: {dd}"));
+    }
+    if !(0..=23).contains(&h) {
+        return Err(format!("hour out of range: {h}"));
+    }
+    if !(0..=59).contains(&mi) {
+        return Err(format!("minute out of range: {mi}"));
+    }
+    if !(0..=59).contains(&sec) {
+        return Err(format!("second out of range: {sec}"));
+    }
+    Ok(iso_epoch(y, mo, dd, h, mi, sec) - offset)
+}
+
+/// RFC 3986 reg-name: unreserved / sub-delims / `%` (ALS-T27).
+fn url_host_char(c: char) -> bool {
+    c.is_ascii_alphanumeric()
+        || matches!(
+            c,
+            '-' | '.'
+                | '_'
+                | '~'
+                | '%'
+                | '!'
+                | '$'
+                | '&'
+                | '\''
+                | '('
+                | ')'
+                | '*'
+                | '+'
+                | ','
+                | ';'
+                | '='
+        )
+}
+
+fn url_record(
+    scheme: &str,
+    host: &str,
+    port: Option<i64>,
+    path: &str,
+    query: &str,
+    fragment: &str,
+) -> Value {
+    Value::Record {
+        type_name: Some(Rc::from("Url")),
+        fields: Rc::new(vec![
+            (Rc::from("scheme"), Value::str(scheme)),
+            (Rc::from("host"), Value::str(host)),
+            (
+                Rc::from("port"),
+                match port {
+                    Some(p) => Value::Some(Rc::new(Value::Int(p))),
+                    None => Value::None,
+                },
+            ),
+            (Rc::from("path"), Value::str(path)),
+            (Rc::from("query"), Value::str(query)),
+            (Rc::from("fragment"), Value::str(fragment)),
+        ]),
+    }
+}
+
+type UrlParts = (String, String, Option<i64>, String, String, String);
+
+fn url_parts(name: &str, v: &Value) -> Result<UrlParts, Flow> {
+    match v {
+        Value::Record {
+            type_name: Some(tn),
+            fields,
+        } if &**tn == "Url" => {
+            let mut out: UrlParts = (
+                String::new(),
+                String::new(),
+                None,
+                String::new(),
+                String::new(),
+                String::new(),
+            );
+            for (k, val) in fields.iter() {
+                match (&**k, val) {
+                    ("scheme", Value::Str(s)) => out.0 = s.to_string(),
+                    ("host", Value::Str(s)) => out.1 = s.to_string(),
+                    ("port", Value::Some(p)) => {
+                        if let Value::Int(n) = &**p {
+                            out.2 = Some(*n);
+                        }
+                    }
+                    ("port", Value::None) => out.2 = None,
+                    ("path", Value::Str(s)) => out.3 = s.to_string(),
+                    ("query", Value::Str(s)) => out.4 = s.to_string(),
+                    ("fragment", Value::Str(s)) => out.5 = s.to_string(),
+                    _ => {}
+                }
+            }
+            Ok(out)
+        }
+        _ => Err(Flow::Fatal(format!("{name}: expected a Url record"))),
+    }
+}
+
+/// ALS-T27, over chars.
+fn url_parse(raw: &str) -> Result<Value, String> {
+    let cs: Vec<char> = raw.chars().collect();
+    let sep: Vec<char> = "://".chars().collect();
+    let Some(i) = (0..cs.len()).find(|&i| i + 3 <= cs.len() && cs[i..i + 3] == sep[..]) else {
+        return Err("url.parse: missing '://' scheme separator".to_string());
+    };
+    if i == 0 {
+        return Err("url.parse: empty scheme".to_string());
+    }
+    let scheme = str_of(&cs[..i]);
+    let rest = cs[i + 3..].to_vec();
+    let (before_frag, fragment, _) = split_once_char(&rest, '#');
+    let (before_query, query, _) = split_once_char(&before_frag, '?');
+    let (authority, after_slash, had_slash) = split_once_char(&before_query, '/');
+    let path = if had_slash {
+        format!("/{}", str_of(&after_slash))
+    } else {
+        String::new()
+    };
+    let auth_text = str_of(&authority);
+    if authority.contains(&'@') {
+        return Err(format!("url.parse: userinfo is not supported: {auth_text}"));
+    }
+    if authority.first() == Some(&'[') {
+        return Err(format!(
+            "url.parse: IPv6 hosts are not supported: {auth_text}"
+        ));
+    }
+    let (host, port_field, had_port) = split_once_char(&authority, ':');
+    let host_text = str_of(&host);
+    if host.is_empty() {
+        return Err("url.parse: empty host".to_string());
+    }
+    if !host.iter().all(|c| url_host_char(*c)) {
+        return Err(format!("url.parse: invalid host: {host_text}"));
+    }
+    let port_text = str_of(&port_field);
+    let port = if had_port {
+        match digits_to_i64(&port_field) {
+            None => return Err(format!("url.parse: invalid port: {port_text}")),
+            Some(p) if p <= 65535 => Some(p),
+            Some(_) => return Err(format!("url.parse: port out of range: {port_text}")),
+        }
+    } else {
+        None
+    };
+    Ok(url_record(
+        &scheme,
+        &host_text,
+        port,
+        &path,
+        &str_of(&query),
+        &str_of(&fragment),
+    ))
+}
+
+/// Rust's `{:04}` for a year: at least four columns, zero-padded, the sign
+/// occupying one of them. Shared by to_iso and format's %Y (ALS-T17).
+fn iso_year(y: i64) -> String {
+    let neg = y < 0;
+    let mag = if neg { 0i64.wrapping_sub(y) } else { y };
+    let width = if neg {
+        dt_digits(mag).max(3)
+    } else {
+        dt_digits(mag).max(4)
+    };
+    let mut ystr = pad_num(mag, width);
+    if neg {
+        ystr.insert(0, '-');
+    }
+    ystr
+}
+
 fn pad_num(n: i64, width: usize) -> String {
     let mut buf = vec![b'0'; width];
     let mut v = n;
