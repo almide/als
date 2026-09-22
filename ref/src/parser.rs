@@ -210,6 +210,11 @@ impl P {
                 return true;
             }
         }
+        // ALS-E31: a `scoped fn` head ends the previous braceless body, the
+        // same as a bare `fn` head. Contextual, so `scoped` alone does not.
+        if self.at_kw("scoped") && (self.at_kw_n(1, "fn") || self.at_kw_n(1, "effect")) {
+            return true;
+        }
         false
     }
 
@@ -348,6 +353,15 @@ impl P {
         let attrs = self.attrs()?;
         let vis = self.vis();
         if self.at_kw("effect") || self.at_kw("fn") {
+            return self.fn_decl(attrs, vis, line);
+        }
+        // ALS-E31: `scoped fn` — an eligibility obligation on the body that a
+        // checker enforces, never a change of behaviour (C-363), so the
+        // reference reads the declaration as the same function. Contextual:
+        // only `fn` or `effect` may follow, so a value named `scoped` is
+        // untouched.
+        if self.at_kw("scoped") && (self.at_kw_n(1, "fn") || self.at_kw_n(1, "effect")) {
+            self.bump();
             return self.fn_decl(attrs, vis, line);
         }
         if self.at_kw("type") {
@@ -1520,6 +1534,15 @@ impl P {
             Tok::Sym("(") => self.paren_or_lambda(),
             Tok::Sym("[") => self.list_or_map(),
             Tok::Sym("{") => self.block_or_record(),
+            // ALS-E31: `scoped { body }` is a reclamation boundary, and the
+            // boundary is NOT observable (C-362) — the reference value of the
+            // form is the block's own value, so the qualifier is consumed and
+            // the block parsed as any other. `scoped` stays an ordinary
+            // identifier everywhere else: only a `{` may follow it here.
+            Tok::Ident(ref k) if k == "scoped" && matches!(self.peek_at(1), Tok::Sym("{")) => {
+                self.bump();
+                self.block_or_record()
+            }
             Tok::TypeName(t) => {
                 self.bump();
                 let e = Expr::TypeName {
