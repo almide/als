@@ -1923,6 +1923,17 @@ impl P {
                 break;
             }
             let pat = self.pattern()?;
+            // ALS-E18 / C-323: or-pattern alternatives `a | b | c => body`.
+            let pat = if self.at_sym("|") {
+                let mut alts = vec![pat];
+                while self.eat_sym("|") {
+                    self.skip_nl();
+                    alts.push(self.pattern()?);
+                }
+                Pattern::Or(alts)
+            } else {
+                pat
+            };
             let guard = if self.eat_kw("if") {
                 Some(self.expr()?)
             } else {

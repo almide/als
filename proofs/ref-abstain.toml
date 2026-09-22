@@ -9,12 +9,12 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 20
-evaluated = 683
+ceiling = 19
+evaluated = 700
 
 [[abstain]]
 class = "parse"
-count = 3
+count = 2
 
 [[abstain]]
 class = "stdlib:bytes.to_string_lossy"
