@@ -991,9 +991,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T17"
-hash = "sha256:88d56076e317"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:63183d774d83"
+reviewed = "2026-09-22"
+by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
 independent = "no"
 verdict = "accurate"
 
@@ -1058,5 +1058,21 @@ id = "ALS-R9"
 hash = "sha256:f7e93a1fe08a"
 reviewed = "2026-09-19"
 by = "Codex (literal-domain matrix across five call forms and twenty literals; computed and shadowed-call controls; existing runtime evidence retained)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T26"
+hash = "sha256:331460bf8605"
+reviewed = "2026-09-22"
+by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T27"
+hash = "sha256:1f090626839d"
+reviewed = "2026-09-22"
+by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
 independent = "no"
 verdict = "accurate"

@@ -9,7 +9,7 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 19
+ceiling = 18
 evaluated = 703
 
 [[abstain]]
@@ -66,10 +66,6 @@ count = 1
 
 [[abstain]]
 class = "stdlib:testing.assert_snapshot"
-count = 1
-
-[[abstain]]
-class = "stdlib:url.parse"
 count = 1
 
 [[abstain]]
