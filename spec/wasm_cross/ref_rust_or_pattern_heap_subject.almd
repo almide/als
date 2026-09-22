@@ -10,9 +10,10 @@
 // matched through string-literal alternatives and REUSED after the match — the
 // desugared per-alternative arms must not consume or free the subject.
 type Test = | Foo | Bar | Baz | Qux
+
 type Tok = | Word(String) | Num(Int) | Eof
 
-fn switch(x: Option[Test]) -> Bool = match x {
+fn switch(x: Test?) -> Bool = match x {
   some(Bar) | some(Qux) => true,
   some(_) => false,
   none => false,

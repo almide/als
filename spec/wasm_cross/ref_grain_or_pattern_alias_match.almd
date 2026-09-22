@@ -8,18 +8,18 @@
 // trailing `_` after `Some(_) | None` is dropped — here that arm is E014
 // (unreachable), where grain only warns. Observable: which arm the union
 // selects for Some(5) / Some(3) / Some(4) / None / Some(9).
-fn alias4(x: Option[Int]) -> Int = match x {
+fn alias4(x: Int?) -> Int = match x {
   some(3) | some(4) => x ?? 0,
   some(_) | none => 5,
 }
 
-fn alias5(x: Option[Int]) -> Option[Int] = match x {
+fn alias5(x: Int?) -> Int? = match x {
   some(3) | some(4) => x,
   some(5) | none => x,
   _ => none,
 }
 
-fn show(o: Option[Int]) -> String = match o {
+fn show(o: Int?) -> String = match o {
   some(v) => "some(" + int.to_string(v) + ")",
   none => "none",
 }
