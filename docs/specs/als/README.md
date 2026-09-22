@@ -56,7 +56,7 @@
 | [ALS-DT4](./deterministic-time.md#als-dt4-settle-の-tuple-契約) | settle の tuple 契約 | C-206 |
 | [ALS-DT5](./deterministic-time.md#als-dt5-壁時計期限（fantimeout、oracle-層）) | 壁時計期限（fan.timeout、oracle 層） | C-208 |
 
-## expressions.md — 38 section(s)
+## expressions.md — 39 section(s)
 
 | ID | Section | Contracts |
 |----|---------|-----------|
@@ -98,6 +98,7 @@
 | [ALS-ST6](./expressions.md#als-st6-guard-let-文stmtguardlet) | guard let 文(`Stmt::GuardLet`) | C-266 |
 | [ALS-E29](./expressions.md#als-e29-二項演算子exprkindbinary) | 二項演算子(`ExprKind::Binary`) | C-267 |
 | [ALS-E30](./expressions.md#als-e30-ホールと未実装マーカーexprkindhole--todo--placeholder) | ホールと未実装マーカー(`ExprKind::Hole` / `Todo` / `Placeholder`) | C-268 |
+| [ALS-E31](./expressions.md#als-e31-スコープ付き領域exprkindscoped--scoped-fn) | スコープ付き領域(`ExprKind::Scoped` / `scoped fn`) | C-362, C-363, C-364 |
 
 ## implementation.md — 3 section(s)
 
@@ -184,4 +185,4 @@
 | [ALS-T26](./text-and-numbers.md#als-t26-datetime-の暦フィールドと-parse_iso-の文法) | datetime の暦フィールドと parse_iso の文法 | C-359, C-360 |
 | [ALS-T27](./text-and-numbers.md#als-t27-urlparse-の-authority-規範) | url.parse の authority 規範 | C-361 |
 
-131 sections across 11 chapters.
+132 sections across 11 chapters.
