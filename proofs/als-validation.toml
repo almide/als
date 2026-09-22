@@ -991,12 +991,11 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T17"
-hash = "sha256:63183d774d83"
+hash = "sha256:b9f69c84810d"
 reviewed = "2026-09-22"
-by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
+by = "O6lvl4 (via the Claude session; re-reviewed 2026-09-22 after the batch renumbering: the text now states the variable-width %Y that datetime.format shares with to_iso, and the T26/T27 calendar, parse_iso and url.parse rules, each checked against the fixture output recorded on native, structural wasm and incumbent wasm)"
 independent = "no"
 verdict = "accurate"
-
 [[section]]
 id = "ALS-T18"
 hash = "sha256:14767294c107"
@@ -1063,16 +1062,15 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T26"
-hash = "sha256:331460bf8605"
+hash = "sha256:55d8b5c79a51"
 reviewed = "2026-09-22"
-by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
+by = "O6lvl4 (via the Claude session; re-reviewed 2026-09-22 after the batch renumbering: the text now states the variable-width %Y that datetime.format shares with to_iso, and the T26/T27 calendar, parse_iso and url.parse rules, each checked against the fixture output recorded on native, structural wasm and incumbent wasm)"
 independent = "no"
 verdict = "accurate"
-
 [[section]]
 id = "ALS-T27"
-hash = "sha256:1f090626839d"
+hash = "sha256:be7520120410"
 reviewed = "2026-09-22"
-by = "O6lvl4 (via the Claude session; written against probes on all three legs of almide 0.63.0-dev — native, structural wasm, incumbent wasm — and the named fixtures, whose recorded output is the text under review)"
+by = "O6lvl4 (via the Claude session; re-reviewed 2026-09-22 after the batch renumbering: the text now states the variable-width %Y that datetime.format shares with to_iso, and the T26/T27 calendar, parse_iso and url.parse rules, each checked against the fixture output recorded on native, structural wasm and incumbent wasm)"
 independent = "no"
 verdict = "accurate"
