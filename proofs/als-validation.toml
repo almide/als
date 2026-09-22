@@ -628,6 +628,14 @@ independent = "no"
 verdict = "accurate"
 
 [[section]]
+id = "ALS-E31"
+hash = "sha256:e38ffba8574f"
+reviewed = "2026-09-22"
+by = "O6lvl4 (via the Claude session; every sentence checked against a live probe on almide 0.63.0 — the two cross-target fixtures run byte-identically on both legs, the nine refusal families checked under both `almide check` and `almide check --target wasm`, and the admitted/refused boundary walked case by case; what the section declines to promise is stated where the implementation cannot yet honour it)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
 id = "ALS-I1"
 hash = "sha256:1c093ad68570"
 reviewed = "2026-08-27"
