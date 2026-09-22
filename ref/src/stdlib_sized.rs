@@ -59,6 +59,26 @@ pub const SIZED_FNS: &[&str] = &[
     "float.to_float32_checked",
     "float32.to_string",
     "float.from_float32",
+    "int.to_float32",
+    "int.to_float32_checked",
+    "int.max_value",
+    "int.min_value",
+    "int8.max_value",
+    "int8.min_value",
+    "int16.max_value",
+    "int16.min_value",
+    "int32.max_value",
+    "int32.min_value",
+    "int64.max_value",
+    "int64.min_value",
+    "uint8.max_value",
+    "uint8.min_value",
+    "uint16.max_value",
+    "uint16.min_value",
+    "uint32.max_value",
+    "uint32.min_value",
+    "uint64.max_value",
+    "uint64.min_value",
 ];
 
 fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
@@ -220,6 +240,26 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             return Ok(Value::Int(n));
         }
     }
+    // <sized>.min_value / max_value — the carrier's own declared bounds
+    for (module, bits, signed) in SIZED_MODULES {
+        for (suffix, want_max) in [("min_value", false), ("max_value", true)] {
+            if name == format!("{module}.{suffix}") {
+                arity(name, &args, 0)?;
+                let v: i64 = if *signed {
+                    if want_max {
+                        (1i64 << (*bits as u32 - 1)) - 1
+                    } else {
+                        -(1i64 << (*bits as u32 - 1))
+                    }
+                } else if want_max {
+                    (u64::MAX >> (64 - *bits as u32)) as i64
+                } else {
+                    0
+                };
+                return Ok(sized(*bits, *signed, v));
+            }
+        }
+    }
     match name {
         "int.to_int64" | "float.from_float64" => {
             // Int64 rides the Int carrier; Float64 rides Float — identities
@@ -297,6 +337,39 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                     other.type_name()
                 ))),
             }
+        }
+        "int.to_float32" => {
+            // the DIRECT `n as f32` — a single rounding (C-338)
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            Ok(Value::Float32(n as f32))
+        }
+        "int.to_float32_checked" => {
+            // some() exactly when the f32 holds n's value. NOT a round trip
+            // through the SATURATING Float -> Int: 2^63 - 1 rounds to 2^63 as
+            // an f32 and the saturated read-back equals max_value (C-338/#2487).
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            let g = n as f32;
+            let back = g as f64;
+            Ok(if back.is_finite() && (back as i128) == (n as i128) {
+                some(Value::Float32(g))
+            } else {
+                Value::None
+            })
+        }
+        "int.max_value" | "int.min_value" | "int64.max_value" | "int64.min_value" => {
+            arity(name, &args, 0)?;
+            let v = if name.ends_with("max_value") {
+                i64::MAX
+            } else {
+                i64::MIN
+            };
+            Ok(if name.starts_with("int.") {
+                Value::Int(v)
+            } else {
+                sized(64, true, v)
+            })
         }
         "float32.to_string" => {
             arity(name, &args, 1)?;

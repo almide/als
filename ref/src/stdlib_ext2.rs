@@ -230,46 +230,63 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "math.log_gamma" => {
             // translated from stdlib/math_lgamma.almd: Lanczos g=7 n=9 with
-            // exact bit constants, ln routed through the vendored libm log
+            // exact bit constants, ln routed through the vendored libm log.
+            // Below 0.5 the series is invalid (its log arguments cross zero),
+            // so the REFLECTION formula ln|G(x)| = ln(pi / |sin(pi x)|) - ln G(1 - x)
+            // carries the work to 1 - x, with |sin(pi x)| on the reduced
+            // fraction; the non-positive integers and +-inf are poles (C-358).
             arity(name, &args, 1)?;
-            let x = want_float(name, &args[0])? - 1.0;
-            let c: [f64; 9] = [
-                f64::from_bits(4607182418800015696),
-                f64::from_bits(4649161951908399877),
-                f64::from_bits((-4570119468569323749i64) as u64),
-                f64::from_bits(4649995848448718040),
-                f64::from_bits((-4582953931388014755i64) as u64),
-                f64::from_bits(4623230626370919553),
-                f64::from_bits((-4629211466700216235i64) as u64),
-                f64::from_bits(4532011357038326351),
-                f64::from_bits(4504784147394309871),
-            ];
-            let mut ag = c[0];
-            for (i, ci) in c.iter().enumerate().skip(1) {
-                ag += ci / (x + i as f64);
+            let x0 = want_float(name, &args[0])?;
+            if x0 < 0.5 {
+                let y = if x0 < 0.0 { -x0 } else { x0 };
+                let f0 = y - y.floor();
+                let f = if f0 > 0.5 { 1.0 - f0 } else { f0 };
+                let sn = libm::almide_rt_libm_sin(std::f64::consts::PI * f);
+                // a pole (sn == 0) or -inf (its fraction is NaN, so sn is NaN)
+                if sn == 0.0 || sn.is_nan() {
+                    return Ok(Ok(Value::Float(F64(f64::INFINITY))));
+                }
+                let refl = libm::almide_rt_libm_log(std::f64::consts::PI / sn);
+                return Ok(Ok(Value::Float(F64(refl - lanczos_log_gamma(1.0 - x0)))));
             }
-            let t = x + 7.5;
-            let half_ln_2pi = f64::from_bits(4606452282016710324);
-            let lt = libm::almide_rt_libm_log(t);
-            let lag = libm::almide_rt_libm_log(ag);
-            fl(half_ln_2pi + (x + 0.5) * lt - t + lag)
+            if x0 == f64::INFINITY {
+                return Ok(Ok(Value::Float(F64(f64::INFINITY))));
+            }
+            return Ok(Ok(Value::Float(F64(lanczos_log_gamma(x0)))));
         }
         "math.choose" => {
-            // runtime/rs/src/math.rs almide_rt_math_choose: wrapping mul,
-            // truncating div per step (value_domain_arith ch_max)
+            // C(n, k) EXACTLY whenever it fits in an Int, its wrap mod 2^64
+            // otherwise (C-358): each factor's power of two is counted and its
+            // odd part multiplied in, and the odd denominator is divided out at
+            // the end by its Newton inverse mod 2^64 — a wrapped product cannot
+            // be divided, which is what made the old multiply-before-divide
+            // running product answer -284401161134521734 for choose(62, 31).
             arity(name, &args, 2)?;
             let (n, k) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
             if k < 0 || k > n {
                 return Ok(Ok(Value::Int(0)));
             }
             let k = k.min(n.wrapping_sub(k));
-            let mut result: i64 = 1;
+            let (mut odd_num, mut odd_den): (u64, u64) = (1, 1);
+            let mut twos: u32 = 0;
             let mut i: i64 = 0;
             while i < k {
-                result = result.wrapping_mul(n.wrapping_sub(i)) / (i + 1);
+                let a = (n - i) as u64;
+                let b = (i + 1) as u64;
+                let (ta, tb) = (a.trailing_zeros(), b.trailing_zeros());
+                odd_num = odd_num.wrapping_mul(a >> ta);
+                odd_den = odd_den.wrapping_mul(b >> tb);
+                twos = twos + ta - tb;
                 i += 1;
             }
-            Ok(Value::Int(result))
+            let mut inv = odd_den;
+            for _ in 0..5 {
+                inv = inv.wrapping_mul(2u64.wrapping_sub(odd_den.wrapping_mul(inv)));
+            }
+            let odd = odd_num.wrapping_mul(inv);
+            Ok(Value::Int(
+                (if twos >= 64 { 0 } else { odd << twos }) as i64,
+            ))
         }
         "math.factorial" => {
             arity(name, &args, 1)?;
@@ -1342,4 +1359,31 @@ fn sha256(data: &[u8]) -> [u8; 32] {
         out[i * 4..i * 4 + 4].copy_from_slice(&word.to_be_bytes());
     }
     out
+}
+
+/// The Lanczos core of `math.log_gamma` (g=7, n=9), valid for x >= 0.5:
+/// stdlib/math_lgamma.almd's `__lgamma_lanczos` op for op, with the exact bit
+/// constants and both `ln`s through the vendored libm log.
+fn lanczos_log_gamma(x0: f64) -> f64 {
+    let x = x0 - 1.0;
+    let c: [f64; 9] = [
+        f64::from_bits(4607182418800015696),
+        f64::from_bits(4649161951908399877),
+        f64::from_bits((-4570119468569323749i64) as u64),
+        f64::from_bits(4649995848448718040),
+        f64::from_bits((-4582953931388014755i64) as u64),
+        f64::from_bits(4623230626370919553),
+        f64::from_bits((-4629211466700216235i64) as u64),
+        f64::from_bits(4532011357038326351),
+        f64::from_bits(4504784147394309871),
+    ];
+    let mut ag = c[0];
+    for (i, ci) in c.iter().enumerate().skip(1) {
+        ag += ci / (x + i as f64);
+    }
+    let t = x + 7.5;
+    let half_ln_2pi = f64::from_bits(4606452282016710324);
+    let lt = libm::almide_rt_libm_log(t);
+    let lag = libm::almide_rt_libm_log(ag);
+    half_ln_2pi + (x + 0.5) * lt - t + lag
 }
