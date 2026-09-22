@@ -392,4 +392,9 @@ pub enum Pattern {
     },
     Tuple(Vec<Pattern>),
     List(Vec<Pattern>),
+    /// ALS-E18 / C-323: a match arm's or-pattern alternatives `a | b | c`.
+    /// Only an arm's top-level pattern carries alternatives (built in
+    /// `match_arms`), they are binder-free by C-323, and the arm is
+    /// evaluated as one arm PER alternative (C-352).
+    Or(Vec<Pattern>),
 }

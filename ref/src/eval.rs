@@ -858,27 +858,8 @@ impl Interp {
             }
             Expr::Match { subject, arms } => {
                 let v = self.eval(env, subject)?;
-                for arm in arms {
-                    let inner = Env::new(Some(env.clone()));
-                    if self.matches(&arm.pat, &v, &inner)? {
-                        if let Some(g) = &arm.guard {
-                            match self.eval(&inner, g)? {
-                                Value::Bool(true) => {}
-                                Value::Bool(false) => continue,
-                                other => {
-                                    return Err(Flow::Fatal(format!(
-                                        "match guard is a {}",
-                                        other.type_name()
-                                    )))
-                                }
-                            }
-                        }
-                        return self.eval_tail(&inner, &arm.body, me);
-                    }
-                }
-                Err(Flow::Fatal(
-                    "no match arm matched (non-exhaustive match reached at run time)".into(),
-                ))
+                let (inner, arm) = self.select_arm(env, &v, arms)?;
+                self.eval_tail(&inner, &arm.body, me)
             }
             _ => Ok(Tail::Value(self.eval(env, e)?)),
         }
@@ -2489,9 +2470,31 @@ impl Interp {
     }
 
     fn eval_match(&mut self, env: &Rc<Env>, v: Value, arms: &[MatchArm]) -> R {
+        let (inner, arm) = self.select_arm(env, &v, arms)?;
+        self.eval(&inner, &arm.body)
+    }
+
+    /// ALS-E18: first-arm-wins arm selection, returning the arm and the
+    /// scope its pattern bound. C-323 / C-352: an or-pattern arm is tried as
+    /// one arm PER alternative in source order — the guard is evaluated once
+    /// for every alternative that matches, and a false guard falls through
+    /// to the NEXT alternative before the next arm.
+    fn select_arm<'a>(
+        &mut self,
+        env: &Rc<Env>,
+        v: &Value,
+        arms: &'a [MatchArm],
+    ) -> Result<(Rc<Env>, &'a MatchArm), Flow> {
         for arm in arms {
-            let inner = Env::new(Some(env.clone()));
-            if self.matches(&arm.pat, &v, &inner)? {
+            let alts: Vec<&Pattern> = match &arm.pat {
+                Pattern::Or(alts) => alts.iter().collect(),
+                p => vec![p],
+            };
+            for alt in alts {
+                let inner = Env::new(Some(env.clone()));
+                if !self.matches(alt, v, &inner)? {
+                    continue;
+                }
                 if let Some(g) = &arm.guard {
                     match self.eval(&inner, g)? {
                         Value::Bool(true) => {}
@@ -2504,7 +2507,7 @@ impl Interp {
                         }
                     }
                 }
-                return self.eval(&inner, &arm.body);
+                return Ok((inner, arm));
             }
         }
         Err(Flow::Fatal(
@@ -2515,6 +2518,16 @@ impl Interp {
     fn matches(&mut self, pat: &Pattern, v: &Value, env: &Rc<Env>) -> Result<bool, Flow> {
         Ok(match pat {
             Pattern::Wild => true,
+            // Only an arm's top-level pattern carries alternatives, and the
+            // arm loop expands those itself (C-352); this is the fallback.
+            Pattern::Or(alts) => {
+                for a in alts {
+                    if self.matches(a, v, env)? {
+                        return Ok(true);
+                    }
+                }
+                false
+            }
             Pattern::Bind(n) => {
                 env.define(n, v.clone());
                 true
