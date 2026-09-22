@@ -44,6 +44,28 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.from_q1_0_bytes",
     "matrix.from_bytes_f32_le",
     "matrix.from_bytes_f16_le",
+    // C-358 / C-359 / C-360: the shape-precondition, row-range and
+    // signed-zero rules, and the exact-arithmetic kernels they govern.
+    "matrix.cols",
+    "matrix.transpose",
+    "matrix.neg",
+    "matrix.scale",
+    "matrix.map",
+    "matrix.add",
+    "matrix.sub",
+    "matrix.div",
+    "matrix.broadcast_add_row",
+    "matrix.mul",
+    "matrix.linear_row",
+    "matrix.linear_row_no_bias",
+    "matrix.slice_rows",
+    "matrix.split_cols_even",
+    "matrix.concat_cols",
+    "matrix.concat_cols_many",
+    "matrix.conv1d",
+    "matrix.silu_mul",
+    "matrix.swiglu_gate",
+    "matrix.layer_norm_rows",
 ];
 
 /// C-161: 2^28 elements (2 GiB of f64, inside wasm32's address space), and
@@ -120,6 +142,45 @@ fn mat(rows: i64, cols: i64, data: Vec<f64>) -> Value {
     Value::Matrix(Rc::new(Mat { rows, cols, data }))
 }
 
+/// `matrix.cols` / `matrix.shape` answer ROW 0's width, which is 0 when the
+/// matrix has no rows — both implementations read the first row rather than
+/// a stored width, so a 0-row result of `mul(empty, 2x2)` answers 0 columns
+/// however wide the multiplication would have been.
+fn observable_cols(m: &Mat) -> i64 {
+    if m.rows == 0 {
+        0
+    } else {
+        m.cols
+    }
+}
+
+/// C-358: two extents a kernel indexes against each other must be EQUAL,
+/// or the call aborts in the unified T6 form.
+fn shape_eq(a: i64, b: i64) -> Result<(), Flow> {
+    if a == b {
+        Ok(())
+    } else {
+        Err(Flow::Abort("matrix shape mismatch".into()))
+    }
+}
+
+fn want_floats(name: &str, v: &Value) -> Result<Vec<f64>, Flow> {
+    match v {
+        Value::List(xs) => xs.iter().map(|x| want_float(name, x)).collect(),
+        other => Err(Flow::Fatal(format!(
+            "{name}: expected List[Float], got {}",
+            other.type_name()
+        ))),
+    }
+}
+
+fn mismatch_mat(name: &str, other: &Value) -> Result<Value, Flow> {
+    Err(Flow::Fatal(format!(
+        "{name}: expected List[Matrix], got {}",
+        other.type_name()
+    )))
+}
+
 fn scale_at(data: &[u8], start: usize) -> f64 {
     f16_to_f64(u16::from_le_bytes([data[start], data[start + 1]]))
 }
@@ -144,7 +205,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let m = want_mat(name, &args[0])?;
             Ok(Value::Tuple(Rc::new(vec![
                 Value::Int(m.rows),
-                Value::Int(m.cols),
+                Value::Int(observable_cols(&m)),
             ])))
         }
         "matrix.rows" => {
@@ -186,10 +247,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 if cols < 0 {
                     cols = cells.len() as i64;
                 } else if cols != cells.len() as i64 {
-                    return it.abstain_pub(
-                        "stdlib:matrix.from_lists",
-                        "jagged rows in matrix.from_lists",
-                    );
+                    // C-358: a ragged list is not a matrix — every row must
+                    // have the FIRST row's width, and the constructor aborts
+                    // rather than inventing a shape. This is what makes
+                    // C-282's "no public constructor builds a ragged matrix"
+                    // true (almide/almide#2482).
+                    return Err(Flow::Abort("matrix rows must have equal length".into()));
                 }
                 for cell in cells.iter() {
                     match cell {
@@ -250,6 +313,285 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Float(F64(acc)))
         }
+        "matrix.cols" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            Ok(Value::Int(observable_cols(&m)))
+        }
+        "matrix.transpose" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            if m.rows == 0 || m.cols == 0 {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            let mut data = Vec::with_capacity(m.data.len());
+            for c in 0..m.cols {
+                for r in 0..m.rows {
+                    data.push(m.data[(r * m.cols + c) as usize]);
+                }
+            }
+            Ok(mat(m.cols, m.rows, data))
+        }
+        // C-360: negation is a SIGN FLIP, so neg(+0.0) is -0.0 — `0.0 - x`
+        // would answer +0.0 for a zero element (ALS-T23).
+        "matrix.neg" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            Ok(mat(m.rows, m.cols, m.data.iter().map(|x| -x).collect()))
+        }
+        "matrix.scale" => {
+            arity(name, &args, 2)?;
+            let m = want_mat(name, &args[0])?;
+            let s = want_float(name, &args[1])?;
+            Ok(mat(m.rows, m.cols, m.data.iter().map(|x| x * s).collect()))
+        }
+        "matrix.map" => {
+            arity(name, &args, 2)?;
+            let m = want_mat(name, &args[0])?;
+            let c = match &args[1] {
+                Value::Fn(c) => c.clone(),
+                other => {
+                    return Err(Flow::Fatal(format!(
+                        "{name}: expected a function, got {}",
+                        other.type_name()
+                    )))
+                }
+            };
+            let mut data = Vec::with_capacity(m.data.len());
+            for x in m.data.iter() {
+                let v = it.call_value(&c, vec![Value::Float(F64(*x))])?;
+                data.push(want_float(name, &v)?);
+            }
+            Ok(mat(m.rows, m.cols, data))
+        }
+        // The ELEMENTWISE pair family (C-358's stated exception): rows and
+        // cols ZIP-truncate to the shorter operand on every leg.
+        "matrix.add" | "matrix.sub" | "matrix.div" => {
+            arity(name, &args, 2)?;
+            let a = want_mat(name, &args[0])?;
+            let b = want_mat(name, &args[1])?;
+            let rows = a.rows.min(b.rows);
+            let cols = a.cols.min(b.cols);
+            let mut data = Vec::with_capacity((rows * cols) as usize);
+            for r in 0..rows {
+                for c in 0..cols {
+                    let (x, y) = (
+                        a.data[(r * a.cols + c) as usize],
+                        b.data[(r * b.cols + c) as usize],
+                    );
+                    data.push(match name {
+                        "matrix.add" => x + y,
+                        "matrix.sub" => x - y,
+                        _ => x / y,
+                    });
+                }
+            }
+            Ok(mat(rows, cols, data))
+        }
+        "matrix.broadcast_add_row" => {
+            arity(name, &args, 2)?;
+            let m = want_mat(name, &args[0])?;
+            let bias = want_floats(name, &args[1])?;
+            let cols = m.cols.min(bias.len() as i64);
+            let mut data = Vec::with_capacity((m.rows * cols) as usize);
+            for r in 0..m.rows {
+                for c in 0..cols {
+                    data.push(m.data[(r * m.cols + c) as usize] + bias[c as usize]);
+                }
+            }
+            Ok(mat(m.rows, cols, data))
+        }
+        // C-358: the inner dimension is a PRECONDITION. The empty
+        // short-circuit answers first (C-278's empty-operand rule).
+        "matrix.mul" => {
+            arity(name, &args, 2)?;
+            let a = want_mat(name, &args[0])?;
+            let b = want_mat(name, &args[1])?;
+            let (m, k, n) = (a.rows, a.cols, b.cols);
+            if m == 0 || k == 0 || n == 0 {
+                return Ok(mat(m, n, vec![0.0; (m * n) as usize]));
+            }
+            shape_eq(k, b.rows)?;
+            let mut data = vec![0.0f64; (m * n) as usize];
+            for i in 0..m {
+                for j in 0..n {
+                    // k ASCENDING from 0.0 — the accumulation order both
+                    // implementations spell (matmul_naive reduces to it).
+                    let mut acc = 0.0f64;
+                    for kk in 0..k {
+                        acc += a.data[(i * k + kk) as usize] * b.data[(kk * n + j) as usize];
+                    }
+                    data[(i * n + j) as usize] = acc;
+                }
+            }
+            Ok(mat(m, n, data))
+        }
+        // C-358: y[i][j] = sum_k x[i][k]*w[j][k] (+ bias[j]), k ascending,
+        // bias added last; cols(x) == cols(w) and len(bias) == rows(w).
+        "matrix.linear_row" | "matrix.linear_row_no_bias" => {
+            let with_bias = name == "matrix.linear_row";
+            arity(name, &args, if with_bias { 3 } else { 2 })?;
+            let x = want_mat(name, &args[0])?;
+            let w = want_mat(name, &args[1])?;
+            let bias = if with_bias {
+                want_floats(name, &args[2])?
+            } else {
+                Vec::new()
+            };
+            if x.rows == 0 || w.rows == 0 {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            shape_eq(w.cols, x.cols)?;
+            if with_bias {
+                shape_eq(bias.len() as i64, w.rows)?;
+            }
+            let (r, n_in, n_out) = (x.rows, x.cols, w.rows);
+            let mut data = Vec::with_capacity((r * n_out) as usize);
+            for i in 0..r {
+                for j in 0..n_out {
+                    let mut acc = 0.0f64;
+                    for kk in 0..n_in {
+                        acc += x.data[(i * n_in + kk) as usize] * w.data[(j * n_in + kk) as usize];
+                    }
+                    data.push(if with_bias {
+                        acc + bias[j as usize]
+                    } else {
+                        acc
+                    });
+                }
+            }
+            Ok(mat(r, n_out, data))
+        }
+        // C-359: `list.slice` over the rows — a negative start is EMPTY, a
+        // negative or past-the-end end is rows(m), start >= end is EMPTY.
+        "matrix.slice_rows" => {
+            arity(name, &args, 3)?;
+            let m = want_mat(name, &args[0])?;
+            let start = want_int(name, &args[1])?;
+            let end = want_int(name, &args[2])?;
+            let e = if end < 0 || end > m.rows { m.rows } else { end };
+            if start < 0 || start >= e {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            let data = m.data[(start * m.cols) as usize..(e * m.cols) as usize].to_vec();
+            Ok(mat(e - start, m.cols, data))
+        }
+        // C-359: a part count of 0 or less is the EMPTY list; each part is
+        // the `cols / n` column slice of every row.
+        "matrix.split_cols_even" => {
+            arity(name, &args, 2)?;
+            let m = want_mat(name, &args[0])?;
+            let n = want_int(name, &args[1])?;
+            if m.rows == 0 || n <= 0 {
+                return Ok(Value::List(Rc::new(Vec::new())));
+            }
+            let chunk = m.cols / n;
+            let mut parts = Vec::with_capacity(n as usize);
+            for h in 0..n {
+                let start = h * chunk;
+                let mut data = Vec::with_capacity((m.rows * chunk) as usize);
+                for r in 0..m.rows {
+                    for c in 0..chunk {
+                        data.push(m.data[(r * m.cols + start + c) as usize]);
+                    }
+                }
+                parts.push(mat(m.rows, chunk, data));
+            }
+            Ok(Value::List(Rc::new(parts)))
+        }
+        // C-358: every NON-EMPTY member carries the first member's row
+        // count; an empty member contributes no columns and no shape.
+        "matrix.concat_cols" | "matrix.concat_cols_many" => {
+            arity(name, &args, 1)?;
+            let members = match &args[0] {
+                Value::List(xs) => xs.clone(),
+                other => return mismatch_mat(name, other),
+            };
+            let mats: Vec<Rc<Mat>> = members
+                .iter()
+                .map(|v| want_mat(name, v))
+                .collect::<Result<_, Flow>>()?;
+            if mats.is_empty() {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            let rows0 = mats[0].rows;
+            if rows0 == 0 {
+                // v0's `vec![vec![]]`: ONE empty row.
+                return Ok(mat(1, 0, Vec::new()));
+            }
+            for m in mats.iter() {
+                if m.rows != 0 {
+                    shape_eq(m.rows, rows0)?;
+                }
+            }
+            let total: i64 = mats
+                .iter()
+                .map(|m| if m.rows == 0 { 0 } else { m.cols })
+                .sum();
+            let mut data = Vec::with_capacity((rows0 * total) as usize);
+            for r in 0..rows0 {
+                for m in mats.iter() {
+                    if m.rows == 0 {
+                        continue;
+                    }
+                    for c in 0..m.cols {
+                        data.push(m.data[(r * m.cols + c) as usize]);
+                    }
+                }
+            }
+            Ok(mat(rows0, total, data))
+        }
+        // C-359 counts + C-358 shapes: stride is a positive STEP, kernel and
+        // padding are widths that clamp at 0, the weight row is
+        // `in_ch * kernel` taps and the bias one entry per output channel.
+        "matrix.conv1d" => {
+            arity(name, &args, 6)?;
+            let input = want_mat(name, &args[0])?;
+            let weight = want_mat(name, &args[1])?;
+            let bias = want_floats(name, &args[2])?;
+            let kernel = want_int(name, &args[3])?;
+            let stride = want_int(name, &args[4])?;
+            let padding = want_int(name, &args[5])?;
+            let (t_in, out_ch) = (input.rows, weight.rows);
+            if t_in == 0 || out_ch == 0 {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            if stride < 1 {
+                return Err(Flow::Abort("stride must be positive".into()));
+            }
+            let in_ch = input.cols;
+            let k = kernel.max(0);
+            let p = padding.max(0);
+            if p > DIM_CEILING {
+                return Err(Flow::Abort("matrix dimensions too large".into()));
+            }
+            shape_eq(weight.cols, in_ch.saturating_mul(k))?;
+            shape_eq(bias.len() as i64, out_ch)?;
+            let t_padded = t_in + 2 * p;
+            if t_padded < k {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            let (t_out, out_ch) = norm_dims((t_padded - k) / stride + 1, out_ch)?;
+            let mut data = Vec::with_capacity((t_out * out_ch) as usize);
+            for t in 0..t_out {
+                let base = t * stride;
+                for o in 0..out_ch {
+                    let mut sum = bias[o as usize];
+                    for c in 0..in_ch {
+                        for ki in 0..k {
+                            let tp = base + ki;
+                            if tp >= p && tp < p + t_in {
+                                let tc = tp - p;
+                                sum += weight.data[(o * weight.cols + c * k + ki) as usize]
+                                    * input.data[(tc * in_ch + c) as usize];
+                            }
+                        }
+                    }
+                    data.push(sum);
+                }
+            }
+            Ok(mat(t_out, out_ch, data))
+        }
         "matrix.pow" => {
             arity(name, &args, 2)?;
             let m = want_mat(name, &args[0])?;
@@ -278,18 +620,123 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(m.rows, m.cols, data))
         }
+        // y[i][j] = x[i][j] * (1/sqrt(mean(x[i,:]^2) + eps)) * gamma[j], the
+        // output truncated to the shorter of the row and gamma (the zip rule
+        // C-358 keeps outside the shape-mismatch abort).
         "matrix.rms_norm_rows" => {
             arity(name, &args, 3)?;
             let m = want_mat(name, &args[0])?;
+            let gamma = want_floats(name, &args[1])?;
+            let eps = want_float(name, &args[2])?;
             if m.rows == 0 {
-                // the empty matrix normalizes to itself (matrix_dims_guard);
-                // the non-empty kernel is not implemented yet
-                return Ok(mat(m.rows, m.cols, Vec::new()));
+                return Ok(mat(m.rows, 0, Vec::new()));
             }
-            it.abstain_pub(
-                "stdlib:matrix.rms_norm_rows",
-                "rms_norm_rows over a non-empty matrix is not implemented yet",
-            )
+            let outn = m.cols.min(gamma.len() as i64);
+            let mut data = Vec::with_capacity((m.rows * outn) as usize);
+            for r in 0..m.rows {
+                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
+                let mut sq = 0.0f64;
+                for x in row {
+                    sq += x * x;
+                }
+                let inv = 1.0 / (sq / m.cols as f64 + eps).sqrt();
+                for j in 0..outn {
+                    data.push(row[j as usize] * inv * gamma[j as usize]);
+                }
+            }
+            Ok(mat(m.rows, outn, data))
+        }
+        // mean / variance per row, then (x - mean) * inv * gamma + beta over
+        // the shorter of the row, gamma and beta.
+        "matrix.layer_norm_rows" => {
+            arity(name, &args, 4)?;
+            let m = want_mat(name, &args[0])?;
+            let gamma = want_floats(name, &args[1])?;
+            let beta = want_floats(name, &args[2])?;
+            let eps = want_float(name, &args[3])?;
+            if m.rows == 0 {
+                return Ok(mat(m.rows, 0, Vec::new()));
+            }
+            let gb = (gamma.len() as i64).min(beta.len() as i64);
+            let outn = m.cols.min(gb);
+            let mut data = Vec::with_capacity((m.rows * outn) as usize);
+            for r in 0..m.rows {
+                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
+                let n = m.cols as f64;
+                let mut sum = 0.0f64;
+                for x in row {
+                    sum += x;
+                }
+                let mean = sum / n;
+                let mut var = 0.0f64;
+                for x in row {
+                    let d = x - mean;
+                    var += d * d;
+                }
+                let inv = 1.0 / (var / n + eps).sqrt();
+                for j in 0..outn {
+                    data.push(
+                        (row[j as usize] - mean) * inv * gamma[j as usize] + beta[j as usize],
+                    );
+                }
+            }
+            Ok(mat(m.rows, outn, data))
+        }
+        // silu(a) * b elementwise, zip-truncated; the sigmoid runs through
+        // the vendored libm exp (both implementations spell it that way).
+        "matrix.silu_mul" => {
+            arity(name, &args, 2)?;
+            let a = want_mat(name, &args[0])?;
+            let b = want_mat(name, &args[1])?;
+            let rows = a.rows.min(b.rows);
+            let cols = a.cols.min(b.cols);
+            let mut data = Vec::with_capacity((rows * cols) as usize);
+            for r in 0..rows {
+                for c in 0..cols {
+                    let x = a.data[(r * a.cols + c) as usize];
+                    let y = b.data[(r * b.cols + c) as usize];
+                    let sig = 1.0 / (1.0 + crate::libm::almide_rt_libm_exp(0.0 - x));
+                    data.push(x * sig * y);
+                }
+            }
+            Ok(mat(rows, cols, data))
+        }
+        // ALS-T25: the sigmoid rides the CANONICAL fast-exp, over the clamped
+        // negation; the dots accumulate ascending from 0.0. C-358: both
+        // weights are (d_out, d_in) against cols(x).
+        "matrix.swiglu_gate" => {
+            arity(name, &args, 3)?;
+            let x = want_mat(name, &args[0])?;
+            let wg = want_mat(name, &args[1])?;
+            let wu = want_mat(name, &args[2])?;
+            if x.rows == 0 || wg.rows == 0 || wu.rows == 0 {
+                return Ok(mat(0, 0, Vec::new()));
+            }
+            let (r, d_in, d_out) = (x.rows, x.cols, wg.rows);
+            shape_eq(wg.cols, d_in)?;
+            shape_eq(wu.cols, d_in)?;
+            shape_eq(wu.rows, d_out)?;
+            let mut data = Vec::with_capacity((r * d_out) as usize);
+            for i in 0..r {
+                for j in 0..d_out {
+                    let mut g = 0.0f64;
+                    let mut u = 0.0f64;
+                    for k in 0..d_in {
+                        let xv = x.data[(i * d_in + k) as usize];
+                        g += xv * wg.data[(j * d_in + k) as usize];
+                        u += xv * wu.data[(j * d_in + k) as usize];
+                    }
+                    // `min` then `max`, in the self-host's order — spelled
+                    // as the pair rather than `clamp` because the NaN
+                    // behaviour of the two differs and the pair is what the
+                    // implementations run.
+                    #[allow(clippy::manual_clamp)]
+                    let negg = (0.0 - g).min(40.0).max(-40.0);
+                    let sig = 1.0 / (1.0 + fast_exp(negg));
+                    data.push((g * sig) * u);
+                }
+            }
+            Ok(mat(r, d_out, data))
         }
         "matrix.rope_rotate" | "matrix.rope_rotate_at" | "matrix.rope_rotate_neox_at" => {
             // RoPE (rope_at_family / rope_geometry_family): per row p at
