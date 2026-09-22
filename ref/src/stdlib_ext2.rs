@@ -731,21 +731,34 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(Value::List(Rc::new(out)))
         }
         "bytes.copy_within" => {
-            // in-place, (src, count, dst); a window that does not FIT is a
-            // no-op, never a clamp (bytes_writer_family: copy_within_no_fit)
+            // in-place, `(b, src_start, src_end, dst)` — the third argument is
+            // the source END, not a count. C-213: `src_end` CLAMPS to the
+            // length, and the move happens only when the source range is
+            // non-empty AND the destination window fits; any other window —
+            // past the end or a NEGATIVE offset — is a no-op, never a clamp
+            // (bytes_writer_family: copy_within_no_fit).
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
-            let (src, count, dst) = (
+            let (src_start, src_end, dst) = (
                 want_int(name, &args[1])?,
                 want_int(name, &args[2])?,
                 want_int(name, &args[3])?,
             );
             let mut v = b.borrow_mut();
-            if src >= 0 && dst >= 0 && count >= 0 {
-                let (src, count, dst) = (src as usize, count as usize, dst as usize);
-                if src + count <= v.len() && dst + count <= v.len() {
-                    v.copy_within(src..src + count, dst);
-                }
+            let len = v.len() as i64;
+            // A negative `src_end` is enormous as the implementations'
+            // `as usize` and saturates to the length, so it means "to the end".
+            let end = if src_end < 0 || src_end > len {
+                len
+            } else {
+                src_end
+            };
+            // Under the two tests before it, `end - src_start` is in
+            // `[1, len]`, so `len - (end - src_start)` is in `[0, len)` and the
+            // subtraction cannot wrap the way `dst + count <= len` did.
+            if src_start >= 0 && src_start < end && dst >= 0 && dst <= len - (end - src_start) {
+                let (s, e, d) = (src_start as usize, end as usize, dst as usize);
+                v.copy_within(s..e, d);
             }
             Ok(Value::Unit)
         }
