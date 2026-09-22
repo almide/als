@@ -10,8 +10,16 @@
 // alternative and only then to the next arm. A dummy `_ | _ | _` triples the
 // count, exactly as rustc's `search_with_dummy` asserts (1 / 3 / 5 / 7).
 var hits = 0
-effect fn stop_at(n: Int) -> Bool = { hits = hits + 1; hits == n }
-effect fn hit_false() -> Bool = { hits = hits + 1; false }
+
+effect fn stop_at(n: Int) -> Bool = {
+  hits = hits + 1
+  hits == n
+}
+
+effect fn hit_false() -> Bool = {
+  hits = hits + 1
+  false
+}
 
 // `search`: four alternatives all match the subject 1; the guard is tried in
 // order until the target alternative is reached, and the count is the result —

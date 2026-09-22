@@ -11,7 +11,11 @@
 // alternative matches each input, so the guard runs once for `[1]` and
 // `[2, 1]` and never for `[1, 2]` / `[]`.
 var hits = 0
-effect fn seen() -> Bool = { hits = hits + 1; true }
+
+effect fn seen() -> Bool = {
+  hits = hits + 1
+  true
+}
 
 fn one_or_two(x: Int) -> Int = match x {
   1 | 2 => 0,
@@ -44,7 +48,7 @@ fn shadow(x: Int) -> Int = {
 }
 
 fn wild_alt(mt: Int) -> Result[Int, String] = match mt {
-  1 | _ => ok(1),
+  1 | _ => ok(1)
 }
 
 effect fn main() -> Unit = {
@@ -60,5 +64,8 @@ effect fn main() -> Unit = {
   println(int.to_string(guarded([])!))
   println(int.to_string(shadow(2)))
   println(int.to_string(shadow(3)))
-  println(match wild_alt(9) { ok(v) => int.to_string(v), err(e) => e })
+  println(match wild_alt(9) {
+    ok(v) => int.to_string(v),
+    err(e) => e,
+  })
 }
