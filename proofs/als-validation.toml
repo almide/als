@@ -757,9 +757,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-M5"
-hash = "sha256:d15586f68242"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:2955e6207f0a"
+reviewed = "2026-09-24"
+by = "O6lvl4 (via the Claude session; the generic-protocol sentence added for C-365 (#1589), checked against spec/wasm_cross/generic_protocol_conformance.almd on the implementation branch native, wasm and the reference evaluator; the rest of the section is the 2026-08-27 four-agent reviewed text, unchanged)"
 independent = "no"
 verdict = "accurate"
 

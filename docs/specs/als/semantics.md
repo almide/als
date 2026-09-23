@@ -64,8 +64,12 @@ Contracts: C-064, C-068, C-069, C-119, C-135。
 実型（文字列/リスト/数値）の規範に従う。先行パラメータを参照する
 デフォルト引数は呼び出しごとに評価される。`unwrap_or` の payload 型は
 デフォルト側からも解決される。コンビネータは Float instantiation でも
-両ターゲットで有効なコードに落ちる。
-Contracts: C-080, C-081, C-082, C-089, C-094, C-097, C-126, C-127, C-142, C-145, C-151。
+両ターゲットで有効なコードに落ちる。型パラメータを持つ protocol
+（`protocol Repository[K, V]`）は、引数を明記した conformance
+（`type Users: Repository[Int, User]`）と適用済み bound
+（`[R: Repository[Int, User]]`）で使われ、bound 越しのメソッド呼び出しは
+その型が宣言した唯一の実装に解決される（他所の実装は探さない）。
+Contracts: C-080, C-081, C-082, C-089, C-094, C-097, C-126, C-127, C-142, C-145, C-151, C-365。
 
 ## ALS-M6 蓄積ループの規範
 

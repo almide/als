@@ -558,9 +558,9 @@ impl P {
                     if self.at_sym("{") {
                         let _ = self.ty()?;
                     } else {
-                        let _ = self.type_name()?;
+                        self.protocol_ref()?;
                         while self.eat_sym("+") {
-                            let _ = self.type_name()?;
+                            self.protocol_ref()?;
                         }
                     }
                 }
@@ -576,15 +576,40 @@ impl P {
         Ok(out)
     }
 
+    /// A protocol reference in a bound or a conformance list (ALS-M5, C-365):
+    /// `[module.]*Name[TypeArgs]?`. The evaluator dispatches a method by the
+    /// receiver's own type, so only the bare name is kept; the qualifier and
+    /// the type arguments are static information it does not need.
+    fn protocol_ref(&mut self) -> PResult<String> {
+        while matches!(self.peek(), Tok::Ident(_)) && matches!(self.peek_at(1), Tok::Sym(".")) {
+            self.bump();
+            self.bump();
+        }
+        let name = self.type_name()?;
+        if self.at_sym("[") && !self.tok().spaced {
+            self.bump();
+            loop {
+                self.skip_nl();
+                let _ = self.ty()?;
+                self.skip_nl();
+                if !self.eat_sym(",") {
+                    break;
+                }
+            }
+            self.expect_sym("]")?;
+        }
+        Ok(name)
+    }
+
     fn type_decl(&mut self, vis: Vis, line: usize) -> PResult<Decl> {
         self.expect_kw("type")?;
         let name = self.type_name()?;
         let generics = self.generic_params()?;
         let mut conventions = Vec::new();
         if self.eat_sym(":") {
-            conventions.push(self.type_name()?);
+            conventions.push(self.protocol_ref()?);
             while self.eat_sym(",") {
-                conventions.push(self.type_name()?);
+                conventions.push(self.protocol_ref()?);
             }
         }
         self.expect_sym("=")?;
