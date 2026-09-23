@@ -1400,6 +1400,22 @@ impl Interp {
                     if let Some(f) = self.methods.get(&(t.clone(), name.clone())).cloned() {
                         let (mut pos, named) = self.eval_args(env, args)?;
                         pos.insert(0, recv);
+                        if f.sig.params.iter().any(|p| p.mutable) {
+                            // C-226 at the method-call position: a `mut self`
+                            // (param 0, the receiver place) or a later `mut`
+                            // parameter writes its final value back through
+                            // the caller's place, as a named call does
+                            let mut finals = Vec::new();
+                            let r = self.call_fn_muts(&f, pos, named, Some(&mut finals));
+                            for (i, v) in finals {
+                                if i == 0 {
+                                    let _ = self.assign_place(env, obj, v);
+                                } else if let Some(Arg::Pos(pe)) = args.get(i - 1) {
+                                    let _ = self.assign_place(env, pe, v);
+                                }
+                            }
+                            return r;
+                        }
                         return self.call_fn(&f, pos, named);
                     }
                 }
