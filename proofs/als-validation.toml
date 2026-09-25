@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:8833f49781f6"
-reviewed = "2026-09-12"
-by = "Codex /root session (C-214 requirement and fixture consistency review; implementation update follows judge merge)"
+hash = "sha256:16e4016b1d1d"
+reviewed = "2026-09-25"
+by = "O6lvl4 (via the Claude session; C-366 http call handle paragraph checked against spec/stdlib/http_call_test.almd and the loopback-server test of almide#2631, run on that branch's build; implementation update follows judge merge)"
 independent = "no"
 verdict = "accurate"
 
