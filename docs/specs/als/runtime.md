@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-09-25
+> Last updated: 2026-09-26
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -98,7 +98,35 @@ err `request cancelled` で終わらせて接続を閉じる。以後 `read_new`
 ターゲットはこの族を提供せず、`almide check --target wasm` が拒否する。
 テスト: `spec/stdlib/http_call_test.almd`
 
-Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366。
+`http.serve(port, f)` は埋め込み wasm レーン（`almide run --target wasm`）でも
+native と同じ意味で動く。1 回の実行のすべての要求を 1 つのインスタンスが、受理順に
+1 件ずつ処理する。main は 1 回だけ走り、native と同じく `http.serve` を呼ぶ。
+ホストは `0.0.0.0:<port>` に bind し、解析済みの要求を 1 件ずつゲストに渡す。
+ハンドラは main と同じインスタンス・同じヒープで走る。したがって main が `serve`
+の前に計算してハンドラが捕捉した値（乱数・時刻）は、その実行のどの要求でも同じで
+あり、`serve` の前の main の効果は 1 回だけ起こる。要求ごとにインスタンスを作る
+`wasi:http` proxy ホストの形ではない。要求の読み取りと応答の書き出しは両レグで同じ
+コードが行う。要求行のメソッドとターゲット、最初のコロンで分けて前後の空白を除いた
+ヘッダ行（到着順）、Content-Length の本文（UTF-8、不正バイトは置換文字）を読む。
+応答は `HTTP/1.1 <status> <reason>`（固定の理由句表、表にない status は `OK`）、
+応答のヘッダ（その順）、`Content-Length`、本文の順に書き、接続を閉じる。
+よって status 行・ヘッダ・本文は両レグでバイト一致する。`req_method`・`req_path`・
+`req_body`・`req_header`（最初の一致、ASCII 大小無視）・`query_params`（最初の
+`?` 以降を `&` で分け、各組を最初の `=` で分け、`=` の無い組は捨て、`+` と `%XX`
+を復号し、後のキーが勝つ）は同じ値を返す。ハンドラの `err(m)` は本文
+`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。bind の失敗は
+`err("bind failed: <os message>")` である。サーバーが走る間もレーンは native の
+ストリーム規則を保つ。stderr はバッファしないので、stderr の記録は native と行ごとに
+一致する。stdout は端末なら書き込みごとに flush し、それ以外は 64 KiB でバッファする。
+対象外: 標準の p1 成果物（`almide build --target wasm`）は待ち受けソケットを持たず、
+`http.serve` は check 時に拒否される（E081）。`wasi:http/incoming-handler`
+コンポーネントの export は別の形であり、この規範は記述しない。
+テスト: `spec/serve_cross/http_serve_replay.almd`（終了しないサーバー fixture で、
+汎用ランナーは実行しない。実装側のドライバが両レグで起動し、同じ要求列を再生して
+応答の生バイトと stderr の記録を比べ、1 回の実行の 2 つの要求で捕捉した乱数が同じで
+あることを確かめる）
+
+Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367。
 
 ## ALS-R6 ファイルシステムのパス解決
 
