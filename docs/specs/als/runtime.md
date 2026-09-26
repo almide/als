@@ -209,7 +209,40 @@ Contracts: C-274。
 
 テスト: `spec/wasm_cross/http_response_headers.almd`,
 `spec/stdlib/http_response_test.almd`。
-Contracts: C-275。
+
+ハンドラは `HttpRequest` を受けて `HttpResponse` を返す関数
+（`HttpHandler = effect (HttpRequest) -> HttpResponse`）であり、ルーターと
+ミドルウェアを掛けたアプリもまたハンドラである。`http.new_request(method,
+target, body, headers)` はソケットなしでリクエストを作り、読み取り族
+（`req_method` / `req_path` / `req_body` / `req_header` / `query_params` /
+`param`）はそれに対して両ターゲットで同じ値を返す。`req_path` は target を
+クエリ文字列ごと返す。ルーティングは両ターゲットで同じ結果になる:
+
+- ルートは `"METHOD /path"`（メソッド省略は全メソッド）で、`{name}` は 1
+  セグメントを束縛し、最後の `{name...}` は残りのパス（空でもよい）を束縛する。
+  束縛値はパーセントデコードされ、`+` は `+` のまま残る。照合はクエリ文字列を
+  除いたパスで行い、空のセグメントは数えない。
+- 一致したルートのうち**最も具体的なもの**が応答し、登録順は結果に影響しない。
+  ルート A が一致するパスをすべて B も一致するとき A は B 以上に具体的であり、
+  メソッドを持つルートは同じパスのメソッドなしルートより具体的である。
+- `http.router(routes)` は、あるリクエストに共に一致しどちらも他方より具体的で
+  ないルートの組（同じパターンの二度書きを含む）、最後でない `{name...}`、二度
+  束縛される名前、大文字英字でないメソッド、`/` で始まらないパスを持つ表を、
+  問題をすべて名指す `err` で拒否する。拒否された表は応答しない。
+- どのルートもパスに一致しなければ `404 Not Found`、パスに一致するルートが別の
+  メソッドにしかなければ `405 Method Not Allowed` と `Allow` ヘッダ（メソッドを
+  整列し `, ` で連結、GET があれば HEAD を含む）を返す。HEAD は GET のルートに
+  落ち、本文を空にして返す。target が `/` で始まらない、またはパス中の `%` の
+  後に 16 進 2 桁が続かないリクエストは `400 Bad Request` である。
+- `http.mount(prefix, sub)` は prefix 以降のパスとクエリを `sub` に渡し、prefix
+  が束縛した名前は `sub` からも読める。`http.wrap(h, [a, b])` は `a(b(h))` で
+  あり、リストの先頭が最も外側になる。
+- `http.decode_json(req, decode)` は本文を JSON として読み decode に渡す。
+  失敗の `err` は理由を本文に持つ `400 Bad Request` のレスポンスである。
+  ハンドラの `err` は `err` のまま呼び出し側に返る。
+
+テスト: `spec/stdlib/http_router_test.almd`。
+Contracts: C-275, C-368。
 
 ## ALS-R9 プロセス終了コードの値域
 
