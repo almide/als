@@ -120,17 +120,22 @@ native と同じ意味で動く。1 回の実行のすべての要求を 1 つ�
 `req_body`・`req_header`（最初の一致、ASCII 大小無視）・`query_params`（最初の
 `?` 以降を `&` で分け、各組を最初の `=` で分け、`=` の無い組は捨て、`+` と `%XX`
 を復号し、後のキーが勝つ）は同じ値を返す。ハンドラの `err(m)` は本文
-`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。bind の失敗は
-`err("bind failed: <os message>")` である。サーバーが走る間もレーンは native の
+`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。bind の失敗は、
+呼び出しがどの位置にあっても実行を中断し、stderr に
+`Error: bind failed: <os message>` を書いて終了コード 1 で終わる。`http.serve` は
+err を返さない型なので、呼び出し側の `!` は何もしない（この規範以前、native
+ランタイムが返す err が現れるのは呼び出しが関数の末尾にあるときだけで、それ以外の
+位置ではプログラムはサーバー無しで先へ進んでいた）。サーバーが走る間もレーンは native の
 ストリーム規則を保つ。stderr はバッファしないので、stderr の記録は native と行ごとに
 一致する。stdout は端末なら書き込みごとに flush し、それ以外は 64 KiB でバッファする。
 対象外: 標準の p1 成果物（`almide build --target wasm`）は待ち受けソケットを持たず、
 `http.serve` は check 時に拒否される（E081）。`wasi:http/incoming-handler`
-コンポーネントの export は別の形であり、この規範は記述しない。
+コンポーネントの export は別の形であり、この規範は記述しない（どちらも
+almide/almide#2659）。
 テスト: `spec/serve_cross/http_serve_replay.almd`（終了しないサーバー fixture で、
 汎用ランナーは実行しない。実装側のドライバが両レグで起動し、同じ要求列を再生して
 応答の生バイトと stderr の記録を比べ、1 回の実行の 2 つの要求で捕捉した乱数が同じで
-あることを確かめる）
+あることを確かめ、使用中のポートで起動して中断を比べる）
 
 Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367。
 
