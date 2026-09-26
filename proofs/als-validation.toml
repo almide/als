@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:b21e9946543e"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:83b29ea69b49"
+reviewed = "2026-09-26"
+by = "O6lvl4 (via the Claude session; C-368 router paragraph checked against spec/stdlib/http_router_test.almd, run on native and on wasm with the almide#2588 branch build; implementation update follows judge merge)"
 independent = "no"
 verdict = "accurate"
 
