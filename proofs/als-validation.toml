@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:16e4016b1d1d"
-reviewed = "2026-09-25"
-by = "O6lvl4 (via the Claude session; C-366 http call handle paragraph checked against spec/stdlib/http_call_test.almd and the loopback-server test of almide#2631, run on that branch's build; implementation update follows judge merge)"
+hash = "sha256:069b1abaf9c6"
+reviewed = "2026-09-26"
+by = "O6lvl4 (via the Claude session; C-367 http.serve embedded-lane paragraph checked against the C-367 statement and spec/serve_cross/http_serve_replay.almd, whose replay driver is tests/http_serve_cross_test.rs of almide#2650; implementation update follows judge merge)"
 independent = "no"
 verdict = "accurate"
 
