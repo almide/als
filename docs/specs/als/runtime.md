@@ -296,6 +296,7 @@ effect fn main() -> Unit = process.exit(256)
 テスト: `spec/wasm_cross/exit_code_out_of_range.almd`,
 `spec/wasm_cross/exit_code_upper_bound.almd`,
 `spec/wasm_cross/exit_code_passthrough.almd`,
+`spec/embedded_cross/exit_status_passthrough.almd`,
 `tests/diagnostics/e084-exit-code-domain/broken.almd`,
 `tests/diagnostics/e084-exit-code-domain/fixed.almd`,
 `tests/exit_literal_check_test.rs`。
