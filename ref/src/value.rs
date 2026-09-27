@@ -195,9 +195,14 @@ pub fn dyn_text(d: &Dyn) -> String {
     }
 }
 
-/// the canonical 5-escape rule (stdlib value_core __json_quote): backslash,
-/// quote, \n, \r, \t — every other byte, control chars included, is RAW
+/// JSON string quoting, RFC 8259 §7 (C-095, #2802): backslash and quote as
+/// `\\` and `\"`, U+000A / U+000D / U+0009 as `\n` / `\r` / `\t`, every OTHER
+/// U+0000..U+001F as `\u00xx` (lowercase hex, no `\b` / `\f`), everything
+/// else — U+007F included — raw
 pub fn json_quote(s: &str) -> String {
+    const HEX: [char; 16] = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+    ];
     let mut out = String::from("\"");
     for c in s.chars() {
         match c {
@@ -206,6 +211,12 @@ pub fn json_quote(s: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => {
+                let b = c as usize;
+                out.push_str("\\u00");
+                out.push(HEX[b >> 4]);
+                out.push(HEX[b & 15]);
+            }
             c => out.push(c),
         }
     }
