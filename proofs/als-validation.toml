@@ -1062,9 +1062,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R9"
-hash = "sha256:f7e93a1fe08a"
-reviewed = "2026-09-19"
-by = "Codex (literal-domain matrix across five call forms and twenty literals; computed and shadowed-call controls; existing runtime evidence retained)"
+hash = "sha256:3c009d4d639f"
+reviewed = "2026-09-27"
+by = "Claude, the author (#2780: exit 125/126/127/130/137/255/256/-1 measured on native, the embedded host and stock wasmtime 47, against 0.62 and 0.64 binaries and Rust/Go/Python/Node; not independent)"
 independent = "no"
 verdict = "accurate"
 
