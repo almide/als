@@ -623,6 +623,41 @@ impl Interp {
         matches!(ret, TypeExpr::Named { name, .. } if name == "Result")
     }
 
+    /// ALS-M11 (C-369): the fn's failure channel carries `String` — `T!`,
+    /// `T!String`, `Result[T, String]`, or an effect fn with a plain return.
+    fn string_channel(f: &FnDecl) -> bool {
+        let is_string = |t: &TypeExpr| matches!(t, TypeExpr::Named { name, args, .. } if name == "String" && args.is_empty());
+        match &f.sig.ret {
+            TypeExpr::Fallible(_, None) => true,
+            TypeExpr::Fallible(_, Some(e)) => is_string(e),
+            TypeExpr::Named { name, args, .. } if name == "Result" => {
+                args.get(1).is_some_and(is_string)
+            }
+            _ => f.sig.effect,
+        }
+    }
+
+    /// ALS-M11 (C-369): a typed error reaching a `String` channel is carried
+    /// as its ALS-R2 interpolation text (`"${e}"`); a `String` stays itself.
+    /// A list payload is not judged: `List[String]` joins with `", "` while
+    /// another element type renders, and a value alone cannot tell which.
+    fn err_as_text(&self, e: Value) -> Result<Value, Flow> {
+        match &e {
+            Value::Str(_) => Ok(e),
+            Value::List(_) => self.abstain(
+                "semantics:string-channel-list",
+                "a list error reaching a String channel (joined or rendered by its static type)",
+            ),
+            other => match render(other) {
+                Some(text) => Ok(Value::str(&text)),
+                None => self.abstain(
+                    &format!("render:{}", other.type_name()),
+                    "the error's interpolation text is not rendered yet",
+                ),
+            },
+        }
+    }
+
     fn ret_is_option(ret: &TypeExpr) -> bool {
         matches!(ret, TypeExpr::Option(_))
             || matches!(ret, TypeExpr::Named { name, .. } if name == "Option")
@@ -692,6 +727,9 @@ impl Interp {
                 )
             }
         };
+        // ALS-M11 (C-369): read off the CALLED fn, before a tail call may
+        // switch the frame to a callee with a typed channel
+        let string_channel = Self::string_channel(f);
         // trampoline: a tail call to this fn (or to another fn of the same
         // channel class) rebinds the parameters and loops — O(1) stack
         let mut f: Rc<FnDecl> = f.clone();
@@ -735,6 +773,12 @@ impl Interp {
         }
         let r = match r {
             Err(Flow::Return(v)) => Ok(v),
+            Err(Flow::Propagate(Prop::Err(e))) if string_channel => {
+                Err(Flow::Propagate(Prop::Err(self.err_as_text(e)?)))
+            }
+            Ok(Value::Err(e)) if string_channel => {
+                Ok(Value::Err(Rc::new(self.err_as_text((*e).clone())?)))
+            }
             other => other,
         };
         let f = &f;
