@@ -1,6 +1,6 @@
 # ALS — 言語意味論（Semantics）
 
-> Last updated: 2026-08-13
+> Last updated: 2026-09-27
 
 パターン・レコード・変種・effect-fn・ジェネリクス・ループ蓄積の観測規範。
 各節は契約台帳（`spec` キー）から参照され、検証テストは各契約の evidence
@@ -111,7 +111,17 @@ Contracts: C-106, C-115。
 
 `!`（unwrap）と let-unwrap は全ての位置（let / tail / 引数 / ネスト）で
 「Ok payload を取り出し、Err なら関数の Err として伝播」の単一規則。
-Contracts: C-108。
+
+lambda 内の `!` はその lambda 自身の失敗チャネルへ伝搬し、チャネルの error 型は
+`!` operand が一致した型になる(ADR-0021)。全 operand が同じ型付き error `E` で
+失敗する callback(波括弧・分岐・途中の `let`・型付き slot)を渡した可謬 HOF は、
+その `E` の値を無変換で失敗させる。チャネルが `String` に落ちたとき(operand が
+食い違う lambda、または `-> T!` fn)、型付き error はその補間表示 — `"${e}"` の
+印字(ALS-R2): `Neg(-2)`、文字列を引用・escape した `Bad("x")`、
+`At(Pt { x: 1, y: 2.5 })`、`Opt(some(2))` — として運ばれ、`String` operand の
+メッセージは変わらない。stdout は native と wasm でバイト一致する。
+テスト: `spec/wasm_cross/lambda_failure_channel.almd`。
+Contracts: C-108, C-369。
 
 ## ALS-M12 heap 要素リスト操作の一般性
 

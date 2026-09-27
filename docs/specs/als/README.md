@@ -136,7 +136,7 @@
 | [ALS-M8](./semantics.md#als-m8-演算子の全域規範) | 演算子の全域規範 | C-083, C-099, C-167, C-170, C-181 |
 | [ALS-M9](./semantics.md#als-m9-静的検査（unit-変異子）) | 静的検査（Unit 変異子） | C-057 |
 | [ALS-M10](./semantics.md#als-m10-分岐からの-heap-束縛) | 分岐からの heap 束縛 | C-106, C-115, C-163, C-165, C-166, C-287, C-288, C-289, C-291 |
-| [ALS-M11](./semantics.md#als-m11-unwrap-の脱糖) | unwrap の脱糖 | C-108 |
+| [ALS-M11](./semantics.md#als-m11-unwrap-の脱糖) | unwrap の脱糖 | C-108, C-369 |
 | [ALS-M12](./semantics.md#als-m12-heap-要素リスト操作の一般性) | heap 要素リスト操作の一般性 | C-045, C-100, C-101, C-147, C-148, C-141, C-164, C-168, C-172, C-218 |
 | [ALS-M13](./semantics.md#als-m13-mut-パラメータの-in-place-変異) | mut パラメータの in-place 変異 | C-061, C-110, C-132, C-136, C-324, C-325, C-326 |
 | [ALS-M14](./semantics.md#als-m14-整数リテラルの型域（静的規範）) | 整数リテラルの型域（静的規範） | C-173, C-179, C-180 |

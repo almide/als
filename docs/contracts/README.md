@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 368 contracts: **requirements-first 63** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-368 contracts
+369 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -403,4 +403,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-366 | http call handle: per-call limits name themselves when they fire, cancel closes the connection, poll never blocks | 0.64.0 | active | fixture | 0 |
 | C-367 | http.serve runs on the embedded wasm lane with native's one-instance, sequential semantics and byte-identical responses | 0.64.0 | active | fixture | 0 |
 | C-368 | http router: a handler is a function, the most specific route answers, a broken table is refused, 404/405/400 come from the router, identically on both targets | 0.64.0 | active | fixture | 0 |
+| C-369 | a lambda's failure channel carries the error type its ! operands agree on; a String channel carries a typed error as its interpolation text, identically on both targets | 0.65.0 | active | fixture | 1 |
 
