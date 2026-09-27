@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:231d5efabf44"
+hash = "sha256:875d6cc33e29"
 reviewed = "2026-09-28"
-by = "O6lvl4 (via the Claude session; C-367 http.serve paragraph rewritten from raw-byte identity to status code, header set and de-framed body with the reason phrase excluded and stderr as a line multiset, checked against the C-367 statement, ADR-0020 §7.1 in almide/almide and the replay driver tests/http_serve_cross_test.rs)"
+by = "O6lvl4 (via the Claude session; C-367 http.serve paragraph extended with the shutdown rule of almide/almide#2692 (first SIGTERM/SIGINT drains the request in flight, flushes stdout and returns from serve; a second signal or the 30 s drain bound flushes and exits 1, never 128+signal), checked against the C-367 statement, ADR-0020 §5.6 in almide/almide and spec/serve_cross/http_serve_shutdown.almd, whose driver is tests/http_serve_cross_test.rs of almide/almide#2692)"
 independent = "no"
 verdict = "accurate"
 
