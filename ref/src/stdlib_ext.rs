@@ -1357,10 +1357,9 @@ pub fn split_lines(s: &str) -> Vec<String> {
             cur.push(c);
         }
     }
+    // The final UNTERMINATED line keeps a trailing '\r': the '\r' goes only with
+    // the '\n' it precedes (native pops a '\n', and only then a '\r').
     if !cur.is_empty() {
-        if cur.ends_with('\r') {
-            cur.pop();
-        }
         out.push(cur);
     }
     out

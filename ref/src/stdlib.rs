@@ -1428,10 +1428,9 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                     cur.push(c);
                 }
             }
+            // The final UNTERMINATED line keeps a trailing '\r': only a "\r\n"
+            // pair is a line ending, a bare '\r' is content (`str::lines`).
             if !cur.is_empty() {
-                if cur.ends_with('\r') {
-                    cur.pop();
-                }
                 out.push(Value::str(&cur));
             }
             Ok(Value::List(Rc::new(out)))
