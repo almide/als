@@ -677,9 +677,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R3"
-hash = "sha256:d6f1d3484576"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:45ff6fa8a0bb"
+reviewed = "2026-09-30"
+by = "O6lvl4 (via the Claude session; the ADR-0024 paragraph — sequential run-every-element observation for fan.map / fan.settle, lowest-index Err, trap in element k observed as the sequential evaluation — checked against the amended C-004, C-005 and C-200 statements, C-199, ADR-0024 D1/D6 in almide/almide, and the reference evaluator on spec/wasm_cross/fan_map_err_runs_every_element.almd and fan_trap_waits_for_elements_below.almd)"
 independent = "no"
 verdict = "accurate"
 

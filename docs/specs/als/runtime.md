@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-09-28
+> Last updated: 2026-09-30
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -38,6 +38,16 @@ auto-wrap、map の mapper はしない)。`fan.settle { a; b }` の返りは
 `fan.any`・`fan.map`・`fan.settle` の結果は**リスト順で決定的**(最初に
 完了したものではなく、引数リストの先頭から評価した最初の該当)。エラーは
 ALS-R1 の統一 abort 形で表面化する。
+
+`fan.map` と `fan.settle` の観測(stdout・stderr・終了コード・返り値)は、
+**全要素をリスト順に一つずつ評価した逐次評価**の観測と同一でなければならない。
+実行基盤(逐次・スレッド・非同期 subtask)の選択はこの観測を変えてはならない
+(C-004)。`fan.map` はある要素が Err を返した後も**残りの全要素を評価し**、
+Err が複数あれば**最小 index の Err** を結果とする — ブロック形 `fan { }`
+と同じ規則(C-005、C-199、`spec/wasm_cross/fan_map_err_runs_every_element.almd`)。
+要素 k の trap は、要素 0..k-1 が完了して出力がリスト順に現れ、要素 k の
+trap までの出力の後に abort する観測となり、k より後の要素の出力は現れない
+(C-200、`spec/wasm_cross/fan_trap_waits_for_elements_below.almd`)。
 
 `fan.race` と `fan.timeout` は 0.42.0 / 0.29.0 でいったん削除された後、
 **決定的意味論を得て 0.47.0 で復活した**: race は (spend, index) 辞書式
