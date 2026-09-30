@@ -2786,3 +2786,17 @@ since = "0.66.0"
 entry = "2026-09-28T14:56:42+09:00"
 entry_commit = "e854238"
 class = "requirements-first"
+
+[[contract]]
+id = "C-371"
+since = "0.66.0"
+entry = "2026-09-30T16:15:25+09:00"
+entry_commit = "6b3956e"
+class = "requirements-first"
+
+[[contract]]
+id = "C-372"
+since = "0.66.0"
+entry = "2026-09-30T16:15:25+09:00"
+entry_commit = "6b3956e"
+class = "requirements-first"
