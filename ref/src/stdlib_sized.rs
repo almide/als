@@ -59,6 +59,8 @@ pub const SIZED_FNS: &[&str] = &[
     "float.to_float32_checked",
     "float32.to_string",
     "float.from_float32",
+    "float.to_float32",
+    "float32.to_float64",
     "int.to_float32",
     "int.to_float32_checked",
     "int.max_value",
@@ -328,6 +330,22 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 Value::None
             })
         }
+        "float.to_float32" => {
+            // C-371: one rounding to binary32 (round-to-nearest-even)
+            arity(name, &args, 1)?;
+            let f = want_float(name, &args[0])?;
+            Ok(Value::Float32(f as f32))
+        }
+        "float32.to_float64" => {
+            arity(name, &args, 1)?;
+            match &args[0] {
+                Value::Float32(g) => Ok(Value::Float(F64(*g as f64))),
+                other => Err(Flow::Fatal(format!(
+                    "{name}: expected Float32, got {}",
+                    other.type_name()
+                ))),
+            }
+        }
         "float.from_float32" => {
             arity(name, &args, 1)?;
             match &args[0] {
@@ -374,9 +392,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "float32.to_string" => {
             arity(name, &args, 1)?;
             match &args[0] {
-                // measured on 0.59.1: the spelling is the f64 shortest form
-                // of the WIDENED value (0.1f32 prints 0.10000000149011612)
-                Value::Float32(g) => Ok(Value::str(&fmtfloat::to_string_form(F64(*g as f64)))),
+                // C-372: the binary32's own shortest digits (0.1f32 -> "0.1"),
+                // `.0` kept on an integral value like float.to_string
+                Value::Float32(g) => Ok(Value::str(&fmtfloat::to_string_form_f32(*g))),
                 other => Err(Flow::Fatal(format!(
                     "{name}: expected Float32, got {}",
                     other.type_name()

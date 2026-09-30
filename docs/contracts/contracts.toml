@@ -4527,3 +4527,23 @@ status    = "active"
 evidence  = [
   { path = "spec/embedded_cross/http_header_refusal.almd", class = "fixture" },
 ]
+[[contract]]
+id        = "C-371"
+spec      = "ALS-T28"
+title     = "Float32 arithmetic rounds every result to binary32 on every leg"
+statement = "Each Float32 `+`, `-`, `*`, `/`, `%`, `**` and unary `-` result is rounded to IEEE-754 binary32 (round-to-nearest-even) after that one operation, so every leg holds the value native's `f32` arithmetic computes: `1/3` widens to 0.3333333432674408, `2^24 + 1` is `2^24`, and ten additions of `0.1` give 1.0000001192092896. A leg that carries Float32 in an f64 slot rounds after every operation; before this, the wasm leg and the interpreter kept the unrounded f64 quotient (0.3333333333333333), which widening, a comparison or any later operation then observed. A conversion into Float32 (`float.to_float32`, `int.to_float32` and the sized `to_float32` twins) rounds once, a comparison reads the rounded values, and a bare float literal in a Float32 position narrows at birth (C-182). `a ** b` on Float32 is the f64 `**` of the widened operands (the vendored libm pow, C-026's one implementation) rounded once to binary32; before this, native did not build it at all (the f32 operands met the f64 pow, almide#3082). No `math.*` function takes a Float32; one reaches them only through an explicit `float32.to_float64`. spec/wasm_cross/float32_arithmetic_rounds.almd observes each operation through `float32.to_float64` and `float.to_string`, which show every bit of the binary32 value, and through comparisons whose answer flips when a leg does not round."
+since     = "0.66.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float32_arithmetic_rounds.almd", class = "fixture" },
+]
+[[contract]]
+id        = "C-372"
+spec      = "ALS-T29"
+title     = "A Float32 displays as the shortest decimal that round-trips to the same binary32"
+statement = "A Float32 prints as Rust `f32` Display does: the shortest positional decimal that parses back to the SAME binary32, so `0.1` prints `0.1`, not the widened f64's `0.10000000149011612`, and the f32 maximum prints 340282350000000000000000000000000000000. An exact tie between the two shortest candidates rounds the magnitude up (`2^-12` prints 0.00024414063, `2^20 + 0.25` prints 1048576.3). In interpolation and inside a list, record, option, tuple or variant payload an integral value drops its `.0` (C-011's rule: `${2.0f32}` is `2`), and `float32.to_string` keeps it (`2.0`); `-0` keeps its sign, and the non-finite values are `inf`, `-inf` and `NaN`. Before this, `float32.to_string` printed the widened f64's digits on every leg, and the wasm leg and the interpreter did the same for interpolation where native printed the f32 digits. spec/wasm_cross/float32_display_shortest.almd pins the value matrix (0.1, 1/3, a whole value, ±0, ±inf, NaN, the f32 maximum, the least normal, the least subnormal, a subnormal, both tie shapes) top-level in both forms and nested in each container."
+since     = "0.66.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/float32_display_shortest.almd", class = "fixture" },
+]

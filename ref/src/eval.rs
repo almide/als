@@ -196,6 +196,16 @@ fn snapshot_bytes(v: Value) -> Value {
 
 /// canonicalize NaN results: every float operation that produces a NaN
 /// observes as the single canonical quiet NaN (nan_canonical_observation)
+/// The binary32 value of a Float32, or of a Float literal narrowed to one
+/// (C-182: a literal takes its Float32 context).
+fn f32_of(v: &Value) -> f32 {
+    match v {
+        Value::Float32(g) => *g,
+        Value::Float(F64(f)) => *f as f32,
+        _ => f32::NAN,
+    }
+}
+
 pub fn fnan(x: f64) -> f64 {
     if x.is_nan() {
         f64::from_bits(0x7FF8000000000000)
@@ -2446,6 +2456,7 @@ impl Interp {
                 match (op, v) {
                     (UnOp::Neg, Value::Int(n)) => Ok(Value::Int(n.wrapping_neg())),
                     (UnOp::Neg, Value::Float(f)) => Ok(Value::Float(F64(fnan(-f.0)))),
+                    (UnOp::Neg, Value::Float32(g)) => Ok(Value::Float32(-g)),
                     (UnOp::Not, Value::Bool(b)) => Ok(Value::Bool(!b)),
                     (op, v) => Err(Flow::Fatal(format!("unary {op:?} on a {}", v.type_name()))),
                 }
@@ -2753,6 +2764,26 @@ impl Interp {
                     a.0, b.0,
                 )))))
             }
+            // C-371: Float32 arithmetic is IEEE-754 binary32 — every + - * / % **
+            // result is rounded to f32 (round-to-nearest-even), never carried
+            // at f64 width. A bare float literal in a Float32 operation takes
+            // the Float32 type (it narrows at birth, C-182).
+            (Add | Sub | Mul | Div | Rem | Pow, Value::Float32(_), Value::Float(F64(f))) => {
+                self.binop(op, l.clone(), Value::Float32(*f as f32))
+            }
+            (Add | Sub | Mul | Div | Rem | Pow, Value::Float(F64(f)), Value::Float32(_)) => {
+                self.binop(op, Value::Float32(*f as f32), r.clone())
+            }
+            (Add, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(a + b)),
+            (Sub, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(a - b)),
+            (Mul, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(a * b)),
+            (Div, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(a / b)),
+            (Rem, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(a % b)),
+            // `**` on Float32: the vendored libm pow (ALS-T10) of the widened
+            // operands, rounded once to binary32
+            (Pow, Value::Float32(a), Value::Float32(b)) => Ok(Value::Float32(
+                crate::libm::almide_rt_libm_pow(*a as f64, *b as f64) as f32,
+            )),
             // C-180: sized-integer arithmetic wraps at the declared width;
             // / and % are total per width (zero divisor and signed MIN/-1
             // abort in the T6 form); unsigned widths divide/compare unsigned
@@ -2949,6 +2980,16 @@ impl Interp {
                         Some(o) => o,
                         None => return Ok(Value::Bool(false)),
                     },
+                    // C-371: a Float32 compares its binary32 value; a literal
+                    // operand narrows to Float32 first
+                    (Value::Float32(_), Value::Float32(_))
+                    | (Value::Float32(_), Value::Float(_))
+                    | (Value::Float(_), Value::Float32(_)) => {
+                        match f32_of(&l).partial_cmp(&f32_of(&r)) {
+                            Some(o) => o,
+                            None => return Ok(Value::Bool(false)),
+                        }
+                    }
                     (Value::Str(a), Value::Str(b)) => char_cmp(a, b),
                     // C-099: false < true
                     (Value::Bool(a), Value::Bool(b)) => a.cmp(b),

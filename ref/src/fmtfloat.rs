@@ -151,6 +151,23 @@ pub fn shortest_digits(x: f64) -> (Vec<u8>, i32) {
     shortest_core(m, e as i64, min_normal, x)
 }
 
+/// Shortest digits that round-trip to the same BINARY32 (C-372): the same
+/// free-format core over the f32 significand and exponent — the rounding
+/// interval is the f32's, so `0.1f32` gives "1" at k = 0, not the widened
+/// f64's seventeen digits.
+pub fn shortest_digits_f32(g: f32) -> (Vec<u8>, i32) {
+    let bits = g.abs().to_bits();
+    let raw_exp = (bits >> 23) as i32;
+    let frac = (bits & ((1u32 << 23) - 1)) as u64;
+    let (m, e) = if raw_exp == 0 {
+        (frac, -149)
+    } else {
+        (frac | (1u64 << 23), raw_exp - 150)
+    };
+    let min_normal = m == (1u64 << 23) && e > -149;
+    shortest_core(m, e as i64, min_normal, g as f64)
+}
+
 fn shortest_core(m: u64, e: i64, min_normal: bool, approx: f64) -> (Vec<u8>, i32) {
     // scaled value R/S, boundaries M+ / M-
     let (mut r, mut s, mut m_plus, mut m_minus);
@@ -258,13 +275,13 @@ fn shortest_core(m: u64, e: i64, min_normal: bool, approx: f64) -> (Vec<u8>, i32
                 break;
             }
             (true, true) => {
-                // closest boundary decides; tie → even-ish: round up when 2r >= s
+                // closest candidate decides; an EXACT tie rounds the magnitude
+                // UP (2r >= s) — Rust Display's shortest mode, for binary64
+                // (1669760939663944.25 prints ...944.3) and binary32 alike
+                // (2^-12 prints 0.00024414063). An even-digit rule here read
+                // ...944.2 / 0.00024414062, which no implementation prints.
                 let two_r = r.shl(1);
-                let up = match two_r.cmp(&s) {
-                    std::cmp::Ordering::Greater => true,
-                    std::cmp::Ordering::Less => false,
-                    std::cmp::Ordering::Equal => d % 2 == 1,
-                };
+                let up = two_r.cmp(&s) != std::cmp::Ordering::Less;
                 digits.push(if up { d + 1 } else { d });
                 break;
             }
@@ -375,6 +392,43 @@ pub fn display_form(f: F64) -> String {
     } else {
         body
     }
+}
+
+/// A Float32's text (C-372): Rust `f32` Display's shortest round-trip digits
+/// of the binary32 value, positional; `dot0` keeps the `.0` of an integral
+/// value (`float32.to_string`), off for interpolation / containers (C-011).
+fn f32_form(g: f32, dot0: bool) -> String {
+    if g.is_nan() {
+        return "NaN".into();
+    }
+    if g.is_infinite() {
+        return if g > 0.0 { "inf".into() } else { "-inf".into() };
+    }
+    if g == 0.0 {
+        let z = if dot0 { "0.0" } else { "0" };
+        return if g.is_sign_negative() {
+            format!("-{z}")
+        } else {
+            z.into()
+        };
+    }
+    let (digits, k) = shortest_digits_f32(g);
+    let body = positional(&digits, k, dot0);
+    if g < 0.0 {
+        format!("-{body}")
+    } else {
+        body
+    }
+}
+
+/// `float32.to_string` (C-372).
+pub fn to_string_form_f32(g: f32) -> String {
+    f32_form(g, true)
+}
+
+/// A Float32 in interpolation or inside a container (C-372).
+pub fn display_form_f32(g: f32) -> String {
+    f32_form(g, false)
 }
 
 /// `float.to_fixed(x, n)` (ALS-T9): round-half-to-even on the EXACT binary

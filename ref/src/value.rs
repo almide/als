@@ -321,6 +321,11 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
             },
         ) if b1 == b2 && s1 == s2 => x == y,
         (Value::Float(x), Value::Float(y)) => x.0 == y.0,
+        // C-371: binary32 equality; a Float literal operand narrows first
+        (Value::Float32(x), Value::Float32(y)) => x == y,
+        (Value::Float32(x), Value::Float(y)) | (Value::Float(y), Value::Float32(x)) => {
+            *x == y.0 as f32
+        }
         (Value::Bool(x), Value::Bool(y)) => x == y,
         (Value::Unit, Value::Unit) => true,
         (Value::Str(x), Value::Str(y)) => x == y,
@@ -519,6 +524,8 @@ pub fn render(v: &Value) -> Option<String> {
     Some(match v {
         Value::Int(n) => fmt_int(*n),
         Value::Float(f) => crate::fmtfloat::display_form(*f),
+        // C-372: the shortest digits that round-trip to the SAME binary32
+        Value::Float32(g) => crate::fmtfloat::display_form_f32(*g),
         Value::Bool(b) => {
             if *b {
                 "true".to_string()
@@ -645,7 +652,6 @@ pub fn render(v: &Value) -> Option<String> {
         | Value::Path(_)
         | Value::Matrix(_)
         | Value::Time { .. }
-        | Value::Float32(_)
         | Value::Ptr(_) => return None,
     })
 }

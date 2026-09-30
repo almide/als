@@ -25,6 +25,7 @@ fn display_matches_host_shortest() {
         (123456789.123456789f64).to_bits(),
         (1e78f64).to_bits(),
         (0.30000000000000004f64).to_bits(),
+        (1669760939663944.25f64).to_bits(), // an exact tie: rounds UP
     ];
     let mut x: u64 = 0x9E3779B97F4A7C15;
     for _ in 0..3000 {
@@ -89,6 +90,71 @@ fn display_matches_host_shortest() {
         0,
         "{bad} of {} disagree with the host shortest formatter",
         expected.len()
+    );
+}
+
+/// C-372: a Float32 in interpolation prints the host's f32 Display — the
+/// shortest digits that round-trip to the same binary32 — over every biased
+/// exponent (with the significand edges, both signs: every power of two, the
+/// subnormal boundary, MIN/MAX, ±0, ±inf, NaN) and 3000 pseudo-random
+/// bit patterns.
+#[test]
+fn f32_display_matches_host_shortest() {
+    let exe = env!("CARGO_BIN_EXE_als-ref");
+    let dir = std::env::temp_dir().join(format!("alsref-fmt32-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut samples: Vec<u32> = Vec::new();
+    for e in 0..256u32 {
+        for m in [0u32, 1, 2, 3, 1 << 22, (1 << 23) - 2, (1 << 23) - 1] {
+            samples.push((e << 23) | m);
+            samples.push((1 << 31) | (e << 23) | m);
+        }
+    }
+    let mut x: u32 = 0x9E37_79B9;
+    for _ in 0..3000 {
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        samples.push(x);
+    }
+    let mut prog = String::from("fn show(b: Int) -> Unit = {\n  let g = float.to_float32(int.bits_to_float(b))\n  println(\"${g}\")\n}\n\nfn main() -> Unit = {\n");
+    let mut expected = Vec::new();
+    for &bits in &samples {
+        let g = f32::from_bits(bits);
+        expected.push(format!("{g}"));
+        // the f64 carrying the same value (exact: every binary32 is a binary64)
+        prog.push_str(&format!("  show({})\n", (g as f64).to_bits() as i64));
+    }
+    prog.push_str("}\n");
+    let path = dir.join("probe32.almd");
+    std::fs::write(&path, prog).unwrap();
+    let out = Command::new(exe)
+        .args(["run", path.to_str().unwrap(), "--json"])
+        .output()
+        .unwrap();
+    let doc = String::from_utf8_lossy(&out.stdout).to_string();
+    let stdout = serde_lite::parse(&doc).stdout;
+    let got: Vec<&str> = stdout.lines().collect();
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(
+        got.len(),
+        expected.len(),
+        "line count; raw: {}",
+        &doc[..doc.len().min(300)]
+    );
+    let bad: Vec<String> = got
+        .iter()
+        .zip(expected.iter())
+        .zip(samples.iter())
+        .filter(|((g, e), _)| g != e)
+        .map(|((g, e), b)| format!("bits={b:#010x} mine={g:?} host={e:?}"))
+        .collect();
+    assert!(
+        bad.is_empty(),
+        "{} of {} disagree:\n{}",
+        bad.len(),
+        expected.len(),
+        bad[..bad.len().min(10)].join("\n")
     );
 }
 
