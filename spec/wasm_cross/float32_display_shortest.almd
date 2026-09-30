@@ -8,9 +8,7 @@
 // 0.00024414063).
 type P = { x: Float32, n: Int }
 
-type Shape =
-  | Dot(Float32)
-  | Pair(Float32, Float32)
+type Shape = | Dot(Float32) | Pair(Float32, Float32)
 
 fn show(label: String, x: Float32) -> Unit = {
   println("${label}: ${x} | ${float32.to_string(x)}")
@@ -41,7 +39,7 @@ effect fn main() -> Unit = {
   let xs: List[Float32] = [tenth, one + one, one / three]
   println("${xs}")
   println("${P { x: tenth, n: 1 }}")
-  let o: Option[Float32] = some(tenth)
+  let o: Float32? = some(tenth)
   println("${o}")
   println("${(tenth, one + one)}")
   println("${Dot(tenth)} ${Pair(one / three, one + one)}")
