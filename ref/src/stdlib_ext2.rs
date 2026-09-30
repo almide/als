@@ -1086,11 +1086,18 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 other => return mismatch(name, "a function", other),
             };
             let mut vals: Vec<Value> = Vec::new();
+            // C-005 / ADR-0024 D1: fan.map evaluates EVERY element, and the
+            // lowest-index Err is the one that surfaces
+            let mut first_err: Option<Rc<Value>> = None;
             for x in xs.iter() {
                 let r = it.call_value(&c, vec![x.clone()])?;
                 match (name, r) {
                     ("fan.map", Value::Ok(v)) => vals.push((*v).clone()),
-                    ("fan.map", Value::Err(e)) => return Ok(Ok(Value::Err(e))), // first err, index order
+                    ("fan.map", Value::Err(e)) => {
+                        if first_err.is_none() {
+                            first_err = Some(e);
+                        }
+                    }
                     ("fan.map", v) => vals.push(v),
                     ("fan.any", Value::Ok(v)) => return Ok(Ok(Value::Ok(v))), // first success wins
                     ("fan.any", Value::Err(_)) => {}
@@ -1101,9 +1108,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     _ => unreachable!(),
                 }
             }
-            Ok(match name {
-                "fan.map" => ok(Value::List(Rc::new(vals))),
-                "fan.any" => err_str("fan.any: all candidates failed"),
+            Ok(match (name, first_err) {
+                ("fan.map", Some(e)) => Value::Err(e),
+                ("fan.map", None) => ok(Value::List(Rc::new(vals))),
+                ("fan.any", _) => err_str("fan.any: all candidates failed"),
                 _ => Value::List(Rc::new(vals)),
             })
         }
