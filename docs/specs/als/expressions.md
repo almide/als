@@ -341,7 +341,11 @@ ALS-ST1)。
 ## ALS-ST2 分解束縛(`Stmt::LetDestructure`)
 
 **受理形**: `let (a, b, …) = e` — 右辺はタプル。各成分が対応位置の値に
-不変束縛される。
+不変束縛される。`var` も同じパターン(入れ子のタプル・`_`・レコード略記
+`{ a, b }`)を受理し、束縛される名前はすべて可変になる(almide#3149)。
+`var (x, y) = e` は `e` を一度だけ評価し、`var x = e.0` / `var y = e.1` と
+一名ずつ書いた場合と観測等価 — 各名前は以後それぞれ独立に再代入でき、
+一方への再代入は他方にも右辺の値にも及ばない。
 
 **値の規範**: 成分ごとの型は右辺タプルの位置型(fixture: `let (p, q) =
 (1, 2)` の後 `p + q` が加算に参加 — 実測 53 の内訳)。関数パラメータ位置の
@@ -349,7 +353,8 @@ ALS-ST1)。
 規範を共有する。
 
 テスト: `spec/wasm_cross/for_in_forms.almd`(契約 C-249)、
-`spec/wasm_cross/tuple_ops.almd`(C-236 の `let (x, y) = t`)。
+`spec/wasm_cross/tuple_ops.almd`(C-236 の `let (x, y) = t`)、
+`spec/wasm_cross/var_destructure.almd`(C-373 の `var` 形)。
 
 ## ALS-E20 パイプと合成(`ExprKind::Pipe` / `ExprKind::Compose`)
 

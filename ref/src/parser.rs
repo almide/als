@@ -1023,6 +1023,22 @@ impl P {
         }
         if self.at_kw("var") {
             self.bump();
+            // ALS-ST2: `var <pattern> = e` takes the `let` patterns and binds
+            // every name as a var. The evaluator keeps no let/var distinction
+            // (assignment legality is the checker's), so the pattern form
+            // evaluates as the `let` form.
+            if self.at_sym("(") || self.at_sym("{") {
+                let pat = self.let_pat()?;
+                self.expect_sym("=")?;
+                self.skip_nl();
+                let expr = self.expr()?;
+                return Ok(Stmt::Let {
+                    pat,
+                    ty: None,
+                    expr,
+                    line,
+                });
+            }
             let name = self.ident()?;
             let ty = if self.eat_sym(":") {
                 Some(self.ty()?)
