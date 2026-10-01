@@ -78,7 +78,7 @@
 | [ALS-E17](./expressions.md#als-e17-識別子exprkindident) | 識別子(`ExprKind::Ident`) | C-246 |
 | [ALS-E18](./expressions.md#als-e18-match-式exprkindmatch) | match 式(`ExprKind::Match`) | C-247, C-281, C-323, C-332, C-333, C-352 |
 | [ALS-E19](./expressions.md#als-e19-for-in-文exprkindforin) | for-in 文(`ExprKind::ForIn`) | C-248, C-279 |
-| [ALS-ST2](./expressions.md#als-st2-分解束縛stmtletdestructure) | 分解束縛(`Stmt::LetDestructure`) | C-249 |
+| [ALS-ST2](./expressions.md#als-st2-分解束縛stmtletdestructure) | 分解束縛(`Stmt::LetDestructure`) | C-249, C-373 |
 | [ALS-E20](./expressions.md#als-e20-パイプと合成exprkindpipe--exprkindcompose) | パイプと合成(`ExprKind::Pipe` / `ExprKind::Compose`) | C-250 |
 | [ALS-E21](./expressions.md#als-e21-if-letexprkindiflet) | if let(`ExprKind::IfLet`) | C-251 |
 | [ALS-ST3](./expressions.md#als-st3-式文とコメントstmtexpr--stmtcomment) | 式文とコメント(`Stmt::Expr` / `Stmt::Comment`) | C-252, C-280 |

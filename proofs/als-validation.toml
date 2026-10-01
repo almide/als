@@ -469,9 +469,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-ST2"
-hash = "sha256:4161d991a77b"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:a3302e0014c4"
+reviewed = "2026-10-01"
+by = "O6lvl4 (via the Claude session; the var form checked against the ref evaluator, native almide and the wasm leg on spec/wasm_cross/var_destructure.almd — tuple, nested, record, heap components, loop state and loop body)"
 independent = "no"
 verdict = "accurate"
 

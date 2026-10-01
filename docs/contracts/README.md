@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 372 contracts: **requirements-first 67** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-372 contracts
+373 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -407,4 +407,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-370 | An http header that would split the request, or that the client manages, is refused with the same err on every lane | 0.66.0 | active | fixture | 0 |
 | C-371 | Float32 arithmetic rounds every result to binary32 on every leg | 0.66.0 | active | fixture | 1 |
 | C-372 | A Float32 displays as the shortest decimal that round-trips to the same binary32 | 0.66.0 | active | fixture | 1 |
+| C-373 | var destructures with the let patterns and every bound name is mutable, identically on both targets | 0.67.0 | active | fixture | 1 |
 
