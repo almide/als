@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:875d6cc33e29"
-reviewed = "2026-09-28"
-by = "O6lvl4 (via the Claude session; C-367 http.serve paragraph extended with the shutdown rule of almide/almide#2692 (first SIGTERM/SIGINT drains the request in flight, flushes stdout and returns from serve; a second signal or the 30 s drain bound flushes and exits 1, never 128+signal), checked against the C-367 statement, ADR-0020 §5.6 in almide/almide and spec/serve_cross/http_serve_shutdown.almd, whose driver is tests/http_serve_cross_test.rs of almide/almide#2692)"
+hash = "sha256:2a40d9e8e61d"
+reviewed = "2026-10-03"
+by = "O6lvl4 (via the Claude session; the C-374 paragraph added for almide/almide#2589 (ADR-0025): the subprocess family on the embedded wasm host with native's observables, the private almide:process/spawn import a stand-alone artifact carries only when it names a subprocess operation, load-time refusal where it is not defined, E081 for a component build; checked against the C-374 statement, ADR-0025 in almide/almide and spec/embedded_cross/process_spawn_family.almd, run natively and with almide run --target wasm on the #2589 branch: byte-identical stdout and exit code)"
 independent = "no"
 verdict = "accurate"
 
