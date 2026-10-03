@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-09-30
+> Last updated: 2026-10-03
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -91,6 +91,20 @@ temp_dir は非空かつ posix ホストでは絶対パス）が証明対象と�
 存在しない実行ファイルは起動失敗であり、タイムアウトと報告してはならない。
 期限が発火した場合の err は従来どおり `exec timed out after <ms>ms` とする。
 テスト: `spec/stdlib/process_timeout_test.almd`
+
+wasm ターゲットでは、埋め込みホスト（`almide run --target wasm` と `almide test`
+の wasm レグ）が子プロセス族（`process.exec`・`exec_in`・`exec_with_stdin`・
+`exec_status`・`exec_status_timeout`・`exec_attached`・`spawn`・`kill`・
+`is_alive`・`pid`）を native と同じ観測で提供する。捕捉した stdout と stderr、
+終了コード（シグナルで終わった子は -1）、err の文字列は同一バイトである。pid は
+ホストの値であり、レグ間で比べない。単体の成果物（`almide build --target wasm`）
+は、プログラムが子プロセス操作を含むときに限り、非公開インターフェース
+`almide:process/spawn` の `call` をインポートする。含まないプログラムの成果物は
+このインポートを持たない。このインポートを定義しないランタイムは、`_start` を
+実行する前の読み込み時にモジュールを拒否する。したがって子プロセス呼び出しが
+実行時に誤った答えを返すことはない。そのようなプログラムのコンポーネント
+（`--component`）としてのビルドは E081 で拒否する。
+テスト: `spec/embedded_cross/process_spawn_family.almd`
 
 `http.start(method, url, body, headers, limits)` は、要求を始めてすぐに呼び出し
 ハンドル（`HttpCall`）を返す。上限は呼び出しごとに `limits = { total_ms,
