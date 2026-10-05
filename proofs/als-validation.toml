@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:2a40d9e8e61d"
-reviewed = "2026-10-03"
-by = "O6lvl4 (via the Claude session; the C-374 paragraph added for almide/almide#2589 (ADR-0025): the subprocess family on the embedded wasm host with native's observables, the private almide:process/spawn import a stand-alone artifact carries only when it names a subprocess operation, load-time refusal where it is not defined, E081 for a component build; checked against the C-374 statement, ADR-0025 in almide/almide and spec/embedded_cross/process_spawn_family.almd, run natively and with almide run --target wasm on the #2589 branch: byte-identical stdout and exit code)"
+hash = "sha256:3099cb534bb9"
+reviewed = "2026-10-05"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-05 to carry the als work; the C-374 run/run_in addition (almide/almide#3379), the instance-closed app of C-367 (almide/almide#2698) with the socket-host / export-host split, the C-375 paragraph for the stock wasi:http/handler@0.3.0 export (almide/almide#2659, ADR-0020 §5.4, ADR-0023 §3.3) and the line-end stdout flush (C-162, almide/almide#3417); checked against the C-367, C-374 and C-375 statements, the C-162 statement, spec/serve_cross/http_serve_export.almd and spec/embedded_cross/process_spawn_family.almd, and the line-flush behaviour measured on the almide/almide fix-3415 branch: native and the embedded wasm host both deliver `hello` to a pipe while the program still runs)"
 independent = "no"
 verdict = "accurate"
 
