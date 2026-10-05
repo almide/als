@@ -173,9 +173,10 @@ err を返さない型なので、呼び出し側の `!` は何もしない（�
 対象外: HTTP のフレーミングと接続の再利用（ホストが決める）。その他のシグナル。
 native の Windows では、強制停止は stdout を flush せずに終了コード 1 で終わる。
 stdout のバッファには serve しているスレッドしか触れず、stdout がプロセス全体で
-一つのバッファになる（almide/almide の ADR-0020 §5.5）まではそうなる。標準の p1 成果物（`almide build --target wasm`）は待ち受けソケットを持たず、
-`http.serve` は check 時に拒否される（E081）。`wasi:http/handler@0.3.0` を
-export するコンポーネントの形は次の段落（C-375）が記述する（どちらも
+一つのバッファになる（almide/almide の ADR-0020 §5.5）まではそうなる。標準の成果物（`almide build --target wasm`）は待ち受けソケットを持たない。
+serve 形のプログラムは `wasi:http/handler@0.3.0` を export するコンポーネントになり、
+その形は次の段落（C-375）が記述する。それ以外の `http.serve` に届くプログラムは、
+標準の成果物では check 時にもビルド時にも拒否される（E081。どちらも
 almide/almide#2659）。
 テスト: `spec/serve_cross/http_serve_replay.almd`（終了しないサーバー fixture で、
 汎用ランナーは実行しない。実装側のドライバが両レグで起動し、同じ要求列を再生して
