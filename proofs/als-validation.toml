@@ -927,9 +927,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T6"
-hash = "sha256:5758726c6b70"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:c8198f50ae13"
+reviewed = "2026-10-06"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-06 — the stack-exhaustion paragraph checked against C-196's amended statement, the named fixtures, and live probes on native, the embedded wasm host and stock wasmtime 49 with an almide build carrying the guard)"
 independent = "no"
 verdict = "accurate"
 
