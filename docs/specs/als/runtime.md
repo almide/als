@@ -94,8 +94,8 @@ temp_dir は非空かつ posix ホストでは絶対パス）が証明対象と�
 
 wasm ターゲットでは、埋め込みホスト（`almide run --target wasm` と `almide test`
 の wasm レグ）が子プロセス族（`process.exec`・`exec_in`・`exec_with_stdin`・
-`exec_status`・`exec_status_timeout`・`exec_attached`・`spawn`・`kill`・
-`is_alive`・`pid`）を native と同じ観測で提供する。捕捉した stdout と stderr、
+`exec_status`・`exec_status_timeout`・`run`・`run_in`・`spawn`・
+`kill`・`is_alive`・`pid`）を native と同じ観測で提供する。捕捉した stdout と stderr、
 終了コード（シグナルで終わった子は -1）、err の文字列は同一バイトである。pid は
 ホストの値であり、レグ間で比べない。単体の成果物（`almide build --target wasm`）
 は、プログラムが子プロセス操作を含むときに限り、非公開インターフェース
@@ -132,10 +132,10 @@ E081 で拒否する。`openai_streaming_call_with_limits` と
 native と同じ意味で動く。1 回の実行のすべての要求を 1 つのインスタンスが、受理順に
 1 件ずつ処理する。main は 1 回だけ走り、native と同じく `http.serve` を呼ぶ。
 ホストは `0.0.0.0:<port>` に bind し、解析済みの要求を 1 件ずつゲストに渡す。
-ハンドラは main と同じインスタンス・同じヒープで走る。したがって main が `serve`
-の前に計算してハンドラが捕捉した値（乱数・時刻）は、その実行のどの要求でも同じで
-あり、`serve` の前の main の効果は 1 回だけ起こる。要求ごとにインスタンスを作る
-`wasi:http` proxy ホストの形ではない。要求の読み取りは両レグで同じコードが行う。
+`serve` の前の main の効果は 1 回だけ起こる。`serve` に渡すアプリはインスタンスに
+閉じている（main の局所変数を読まない。almide/almide#2698）。したがって main が
+`serve` の前に計算した値については何も規定せず、アプリを評価するインスタンスの数は
+観測できない。要求の読み取りは両レグで同じコードが行う。
 要求行のメソッドとターゲット、最初のコロンで分けて前後の空白を除いたヘッダ行
 （到着順）、Content-Length の本文（UTF-8、不正バイトは置換文字）を読む。
 どの要求にも両レグは同じ status コード・ヘッダ集合・本文で答える。ヘッダ集合は
@@ -150,16 +150,19 @@ HTTP ライブラリは自分の理由句を書く（native コアは `418 OK`�
 `req_body`・`req_header`（最初の一致、ASCII 大小無視）・`query_params`（最初の
 `?` 以降を `&` で分け、各組を最初の `=` で分け、`=` の無い組は捨て、`+` と `%XX`
 を復号し、後のキーが勝つ）は同じ値を返す。ハンドラの `err(m)` は本文
-`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。bind の失敗は、
-呼び出しがどの位置にあっても実行を中断し、stderr に
+`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。export ホスト
+（C-375 の成果物を走らせる `wasmtime serve`）では、ハンドラの trap や中断には
+ホスト自身の `500` が答え、そのインスタンスは捨てられる。ソケットホスト（native と
+埋め込みレーン）では、bind の失敗は、呼び出しがどの位置にあっても実行を中断し、stderr に
 `Error: bind failed: <os message>` を書いて終了コード 1 で終わる。`http.serve` は
 err を返さない型なので、呼び出し側の `!` は何もしない（この規範以前、native
 ランタイムが返す err が現れるのは呼び出しが関数の末尾にあるときだけで、それ以外の
-位置ではプログラムはサーバー無しで先へ進んでいた）。サーバーが走る間もレーンは native の
-ストリーム規則を保つ。stderr はバッファしないので、実行が stderr に書く行はどれも
+位置ではプログラムはサーバー無しで先へ進んでいた）。ソケットホストでは、サーバーが
+走る間もレーンは native のストリーム規則を保つ。stderr はバッファしないので、実行が stderr に書く行はどれも
 両レグでストリームに届き、2 つの記録は同じ行を持つ（要求をまたぐ行の順序は規範に
-含まない）。stdout は端末なら書き込みごとに flush し、それ以外は 64 KiB でバッファする。
-シグナルはサーバーの出力を失わせずに止める（almide/almide#2692）。`http.serve` が
+含まない。`wasmtime serve` の行頭 `stdout [req_id] :: ` のようなホストのログ装飾は
+記録に含まない）。stdout は端末なら書き込みごとに flush し、それ以外は 64 KiB でバッファする。
+ソケットホストでは、シグナルはサーバーの出力を失わせずに止める（almide/almide#2692）。`http.serve` が
 動いている間に最初の SIGTERM か SIGINT（Windows では Ctrl-C か Ctrl-Break）が届くと、
 ホストは受理をやめ（まだ受理していない接続は答えずに閉じる）、処理中の要求を最後まで
 処理して答え、stdout を flush し、`http.serve` から戻る。したがって後続の文が走り、
@@ -171,21 +174,42 @@ err を返さない型なので、呼び出し側の `!` は何もしない（�
 native の Windows では、強制停止は stdout を flush せずに終了コード 1 で終わる。
 stdout のバッファには serve しているスレッドしか触れず、stdout がプロセス全体で
 一つのバッファになる（almide/almide の ADR-0020 §5.5）まではそうなる。標準の p1 成果物（`almide build --target wasm`）は待ち受けソケットを持たず、
-`http.serve` は check 時に拒否される（E081）。`wasi:http/incoming-handler`
-コンポーネントの export は別の形であり、この規範は記述しない（どちらも
+`http.serve` は check 時に拒否される（E081）。`wasi:http/handler@0.3.0` を
+export するコンポーネントの形は次の段落（C-375）が記述する（どちらも
 almide/almide#2659）。
 テスト: `spec/serve_cross/http_serve_replay.almd`（終了しないサーバー fixture で、
 汎用ランナーは実行しない。実装側のドライバが両レグで起動し、同じ要求列を再生して
 各応答の status コード・ヘッダ集合・フレーミングを外した本文と、行の多重集合としての
-stderr の記録を比べ、1 回の実行の 2 つの要求で捕捉した乱数が同じで
-あることを確かめ、使用中のポートで起動して中断を比べる）、
+stderr の記録を比べ、使用中のポートで起動して中断を比べる）、
 `spec/serve_cross/http_serve_shutdown.almd`（同じドライバが stdout をファイルに
 向けて両レグで起動する終了しないサーバー fixture。ハンドラが眠っている要求の最中に
 SIGTERM を 1 回送ると、その要求に答え、`http.serve` の後に main が書く行まで
 すべての行をファイルに残し、終了コード 0 で終わる。止まった要求の最中に SIGTERM を
 2 回送ると、停止前に書いたすべての行を残して終了コード 1 で終わる）
 
-Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367。
+serve の形のプログラム（`main` の本体がちょうど 1 つの `http.serve(port, app)`
+呼び出しで、その前には `port` だけが読む `let` しか置かない）を
+`almide build --target wasm` で作ると、`wasi:http/handler@0.3.0` を export する
+コンポーネントになり、`wasmtime serve` はフラグ無しでそれを読み込んで serve する。
+コンポーネントが import するのはサービス world のインターフェースだけで、
+`wasi:filesystem` は含まない。`main` は走らず、`port` も評価しない（アドレスは
+ホストが決める）。アプリとトップレベルの `let` はインスタンスごとに評価する。
+1 つのインスタンスで同時に走るハンドラは 1 つである（バックプレッシャー）。ホストは
+並行する要求をインスタンスを増やして処理する。ゲストは native の上限を適用する。
+上限（1 MiB）を超える要求本文には `413`、上限（8 KiB）を超える要求行には `414` で
+答え、ハンドラは呼ばない。ハンドラの trap や中断にはホストの `500` が答え、ホストは
+そのインスタンスを捨てる。それ以外の受理した要求には、native と同じ status コード・
+ヘッダ集合・フレーミングを外した本文で答える。比べ方は C-367 の HTTP 意味論の比較で
+あり、理由句・`date`・フレーミングはホストのもので、バイトでは比べない。
+対象外: ホストのアドレス、受理、並行度、インスタンスの再利用、タイムアウト、停止、
+ログ装飾（どれもホストの設定）。
+テスト: `spec/serve_cross/http_serve_export.almd`（終了しないサーバー fixture で、
+汎用ランナーは実行しない。実装側のドライバが標準 wasm 向けに作って `wasmtime serve`
+で serve し、native でも走らせ、同じ要求列を再生して各応答の status コード・ヘッダ
+集合・フレーミングを外した本文を比べ、成果物に上限超えの本文と長すぎる要求行を送り、
+最後に `/trap` を要求する）
+
+Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367, C-375。
 
 ## ALS-R6 ファイルシステムのパス解決
 
