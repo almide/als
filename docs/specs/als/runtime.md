@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-10-05
+> Last updated: 2026-10-13
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -210,7 +210,86 @@ serve の形のプログラム（`main` の本体がちょうど 1 つの `http.
 集合・フレーミングを外した本文を比べ、成果物に上限超えの本文と長すぎる要求行を送り、
 最後に `/trap` を要求する）
 
-Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367, C-375。
+`net.tcp_*` 族（`tcp_listen`・`tcp_accept`・`tcp_connect`・`tcp_read`・
+`tcp_read_exact`・`tcp_read_timeout`・`tcp_write`・`tcp_available`・
+`tcp_set_timeout`・`tcp_close`・`tcp_close_listener`・`tcp_is_open`・
+`tcp_local_port`）は、native、埋め込み wasm レーン（`almide run --target wasm`）、
+標準の WASI 0.3 コンポーネント（net 操作を含むプログラムの
+`almide build --target wasm`。ネットワークを許可して走らせる）で同一バイトの観測を
+返す（almide/almide#3620）。ハンドルは素の `Int` で、ストリームとリスナーの 2 つの
+表から出る。どちらの表も 0 から番号を振り、新しいハンドルは空いている最小の枠を取る。
+閉じないハンドルは実行の終わりまで生きる。ループバックアドレスでは、1 つの逐次
+プログラムが listen・connect・accept・write・read を行える（`tcp_connect` は
+`tcp_accept` の前に listen のバックログに対して完了する）。`tcp_write` はすべての
+バイトを渡すか失敗する。`tcp_read(s, n)` は読めるバイトが現れると 1 以上 n 以下の
+バイトを返し、n が 0 のときとストリームの終わりでは待たずに空のバイト列を返す
+（何度尋ねても同じ）。`tcp_read_exact(s, n)` はちょうど n バイトを返す。閉じた
+ハンドルへの `tcp_close` と `tcp_close_listener` は ok を返す。`tcp_is_open` は
+プログラム自身の `tcp_close` の後と、発行していないハンドル（負を含む）で false を
+返し、相手が閉じても true のままである。`net.tcp_local_port(listener)` は
+リスナーが bind しているポートを `Result[Int, String]` で返す。ポート 0 に bind した
+リスナーは OS が割り当てたポート（1..=65535）を返し、ポート 0 の 2 つのリスナーは
+異なるポートを返す。IPv6 ソケットは native を含むすべてのレグで IPv6 専用
+（`IPV6_V6ONLY`）であり、`::` のリスナーは IPv4 のクライアントを受理しない。
+host 引数が名前ならホストが解決し、リゾルバの順にアドレスを試し、最初の成功を返す
+（すべて失敗すれば最後のアドレスの失敗を返す）。
+失敗はすべて `err` で、その文字列は 1 つの表から出てすべてのレグで同一であり、OS の
+errno も OS 自身の文言も含まない。`tcp_connect` と `tcp_listen` は
+`<fn>(<host>:<port>): <分類の文言>`、他の呼び出しは `<fn>: <分類の文言>` と書く。
+転送の失敗は `wasi:sockets` の `error-code` の場合として 1 回だけ分類する（native と
+埋め込みホストは OS のエラーを wasmtime と同じく対応づける）。分類の文言は
+access-denied `permission denied`、not-supported `operation not supported`、
+invalid-argument `invalid argument`、out-of-memory `out of memory`、timeout
+`timed out`、invalid-state `invalid socket state`、address-not-bindable
+`address not available`、address-in-use `address already in use`、
+remote-unreachable `host unreachable`、connection-refused `connection refused`、
+connection-broken `connection broken`、connection-reset `connection reset`、
+connection-aborted `connection aborted`、メッセージを持たない未分類の失敗は
+`network error` である。解決できない名前は `cannot resolve host "<host>"`、
+リゾルバの失敗は `name resolution failed for "<host>"` と読む。次の文言は転送の前に
+Almide が決め、すべてのレグで同じである。発行していないハンドル（負を含む）には
+`invalid TcpStream handle: N` と `invalid TcpListener handle: N`、閉じたハンドルには
+`TcpStream handle N is closed` と `TcpListener handle N is closed`（`tcp_close` と
+`tcp_close_listener` は除く）、`tcp_read`・`tcp_read_exact`・`tcp_read_timeout` の
+負の長さには `<fn>: negative length N`（パニックしない）、0 以下の N には
+`tcp_read_timeout: timeout must be positive (got N ms)`、N バイトのうち K バイトで
+ストリームが終われば `tcp_read_exact: connection closed after K of N bytes`、
+`tcp_connect` と `tcp_listen` の範囲外のポートには
+`<fn>(<host>:<port>): port out of range 0..=65535`。ネットワークを許可されない標準の
+実行も読み込まれて走り、試みる bind と connect はそれぞれ access-denied として
+失敗する（例: `tcp_connect(127.0.0.1:8080): permission denied`）。
+標準のコンポーネントでは、読み書きのタイムアウトと `tcp_available` をゲストが
+実施する（WASI には受信タイムアウトも peek も読めるバイト数もない）。どのレグも同じ
+答えを返す。`tcp_set_timeout(s, ms)` は s のその後の読み書きを 1 回ごとに ms
+ミリ秒で区切り、ms が 0 以下なら区切りを外す。区切りは下位の読み書き 1 回ごとに
+かかり、`tcp_read_exact` や `tcp_write` の全体にはかからない。区切りに達した呼び出しは
+`<fn>: timed out` で失敗する。`tcp_read_timeout(s, n, ms)` は ms > 0 で区切った
+1 回の読み取りで、ms 以内に読めたバイト（n 以下）を返すか
+`tcp_read_timeout: timed out` で失敗し、その後の s は呼び出し前の
+`tcp_set_timeout` の値で再び区切られる。`tcp_available(s)` は待たずに読めるバイト数を
+消費せずに返す。上限は 65536 で、読めるバイトが無いときとストリームが終わったときは
+0 である。標準のコンポーネントではこの数を、ゲストが待たずに満たす先読みバッファ
+（ストリームごとに 64 KiB 以下、そのストリームの最初の `tcp_available` で確保）から
+数え、どの読み取りもバッファのバイトを先に取るので、読み取りは native と同じバイトを
+同じ順に返す。
+対象外: ポート番号そのもの。デュアルスタックのソケット（提供しない）。名前が解決される
+アドレスとホスト間でのその順序（同じ機械ではどのレグも同じリゾルバに尋ねる）。
+メッセージ m を持つ未分類の失敗（p3 の `other(some(m))`）の文言は m で、native と
+埋め込みレーンの間でだけ一致する。タイムアウトが発火する時刻（壁時計）と、タイマーと
+同じ瞬間に届いたバイトが返るかタイムアウトするか（native にも同じ競合がある）。相手の
+バイトが読めるようになる時刻（`tcp_available` はバイトが届いた後でレグ間で一致する）。
+標準のコンポーネントのネットワーク許可（標準のホストは許可の無いソケットアドレスを
+すべて拒否する。許可は `wasmtime run -S inherit-network` で、host 引数が IP
+リテラルでなく名前なら `-S allow-ip-name-lookup` も要る。ホストの設定であり、
+この規範には含まない）。
+テスト: `spec/embedded_cross/net_tcp_loopback.almd`・
+`spec/embedded_cross/net_tcp_errors.almd`・`spec/embedded_cross/net_tcp_timeouts.almd`
+（127.0.0.1 のポート 0 で listen し、`tcp_local_port` でポートを読む 1 プログラム内の
+ループバック。spec/embedded_cross の網が native と埋め込みレーンで走らせ、実装側の
+ドライバが `-S inherit-network` の標準のコンポーネントとしても走らせる。同じドライバが
+許可の無い標準のコンポーネントで `permission denied` の文言を確かめる）
+
+Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367, C-375, C-377, C-378, C-379。
 
 ## ALS-R6 ファイルシステムのパス解決
 
