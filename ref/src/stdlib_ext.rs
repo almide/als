@@ -75,6 +75,7 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.write_uint32",
     "bytes.write_int32",
     "bytes.write_float32",
+    "bytes.set_float32",
     "bytes.set_uint16",
     "bytes.set_uint32",
     "bytes.read_uint16",
@@ -213,6 +214,36 @@ fn want_float(name: &str, v: &Value) -> Result<f64, Flow> {
     match v {
         Value::Float(f) => Ok(f.0),
         other => mismatch(name, "Float", other),
+    }
+}
+
+/// The binary32 value a Float32 writer receives: a Float32, or a Float literal
+/// narrowed to one (C-182: a literal takes its Float32 context).
+fn want_float32(name: &str, v: &Value) -> Result<f32, Flow> {
+    match v {
+        Value::Float32(g) => Ok(*g),
+        Value::Float(f) => Ok(f.0 as f32),
+        other => mismatch(name, "Float32", other),
+    }
+}
+
+/// C-210: every bytes float writer is a NaN-observation boundary — a NaN of
+/// any sign or payload writes the one canonical f64 pattern. The whole writer
+/// family (append, set, write) reads its bits from here.
+pub(crate) fn obs_bits_f64(x: f64) -> u64 {
+    if x.is_nan() {
+        0x7FF8_0000_0000_0000
+    } else {
+        x.to_bits()
+    }
+}
+
+/// C-210: the binary32 twin of [`obs_bits_f64`] — canonical f32 0x7FC00000.
+pub(crate) fn obs_bits_f32(x: f32) -> u32 {
+    if x.is_nan() {
+        0x7FC0_0000
+    } else {
+        x.to_bits()
     }
 }
 
@@ -628,10 +659,33 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "bytes.write_float32" => {
             arity(name, &args, 3)?;
             let b = want_bytes(name, &args[0])?;
-            let f = want_float(name, &args[1])? as f32;
+            let bits = obs_bits_f32(want_float32(name, &args[1])?);
             let le = want_endian(name, &args[2])?;
-            let raw = if le { f.to_le_bytes() } else { f.to_be_bytes() };
+            let raw = if le {
+                bits.to_le_bytes()
+            } else {
+                bits.to_be_bytes()
+            };
             b.borrow_mut().extend_from_slice(&raw);
+            Ok(Value::Unit)
+        }
+        "bytes.set_float32" => {
+            // OOB is a silent NO-OP, like every set_* (bytes_negative_offset_family)
+            arity(name, &args, 4)?;
+            let b = want_bytes(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let bits = obs_bits_f32(want_float32(name, &args[2])?);
+            let le = want_endian(name, &args[3])?;
+            let raw = if le {
+                bits.to_le_bytes()
+            } else {
+                bits.to_be_bytes()
+            };
+            let mut buf = b.borrow_mut();
+            if off >= 0 && (off as u64).saturating_add(4) <= buf.len() as u64 {
+                let off = off as usize;
+                buf[off..off + 4].copy_from_slice(&raw);
+            }
             Ok(Value::Unit)
         }
         "bytes.set_uint16" | "bytes.set_uint32" => {
@@ -1465,9 +1519,9 @@ fn write_bytes_fn(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Valu
     };
     let val_at = if is_set { 2 } else { 1 };
     let raw: u64 = if base.starts_with("f32") {
-        (want_float(name, &args[val_at])? as f32).to_bits() as u64
+        obs_bits_f32(want_float(name, &args[val_at])? as f32) as u64
     } else if base.starts_with("f64") {
-        want_float(name, &args[val_at])?.to_bits()
+        obs_bits_f64(want_float(name, &args[val_at])?)
     } else {
         want_int(name, &args[val_at])? as u64
     };
