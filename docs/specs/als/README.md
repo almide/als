@@ -23,7 +23,7 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-C1](./collections.md#als-c1-map-の順序規範) | Map の順序規範 | C-013 |
+| [ALS-C1](./collections.md#als-c1-map-の順序規範) | Map の順序規範 | C-013, C-380 |
 | [ALS-C2](./collections.md#als-c2-set-の順序規範) | Set の順序規範 | C-014 |
 | [ALS-C3](./collections.md#als-c3-構造的等価) | 構造的等価 | C-015, C-124, C-185 |
 | [ALS-C4](./collections.md#als-c4-範囲外アクセスの縮退規則) | 範囲外アクセスの縮退規則 | C-034, C-354 |
