@@ -8,6 +8,7 @@ use std::rc::Rc;
 
 use crate::eval::{fnan, Flow, Interp};
 use crate::libm;
+use crate::stdlib_ext::{obs_bits_f32, obs_bits_f64};
 use crate::value::{Value, F64};
 
 pub const EXT2_FNS: &[&str] = &[
@@ -850,7 +851,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             push_int(
                 &mut b.borrow_mut(),
-                (want_float(name, &args[1])? as f32).to_bits() as u64,
+                obs_bits_f32(want_float(name, &args[1])? as f32) as u64,
                 4,
                 false,
             );
@@ -861,7 +862,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             push_int(
                 &mut b.borrow_mut(),
-                want_float(name, &args[1])?.to_bits(),
+                obs_bits_f64(want_float(name, &args[1])?),
                 8,
                 true,
             );
