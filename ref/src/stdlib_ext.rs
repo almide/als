@@ -577,12 +577,19 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "json.to_map" => {
             arity(name, &args, 1)?;
             Ok(match want_dyn(name, &args[0])? {
+                // C-380: one entry per key — a repeated key keeps its first
+                // position and takes its last value (an upsert per field); a
+                // Str value is taken verbatim, any other is its stringify.
                 Dyn::O(fields) => {
                     let mut out: Vec<(Value, Value)> = Vec::new();
                     for (k, v) in fields.iter() {
-                        match v {
-                            Dyn::S(s) => out.push((Value::Str(k.clone()), Value::Str(s.clone()))),
-                            _ => return Ok(Ok(Value::None)),
+                        let text = match v {
+                            Dyn::S(s) => Value::Str(s.clone()),
+                            other => Value::str(&dyn_text(other)),
+                        };
+                        match out.iter_mut().find(|(ok, _)| matches!(ok, Value::Str(a) if *a == *k)) {
+                            Some(slot) => slot.1 = text,
+                            None => out.push((Value::Str(k.clone()), text)),
                         }
                     }
                     some(Value::Map(Rc::new(out)))
