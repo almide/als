@@ -587,7 +587,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                             Dyn::S(s) => Value::Str(s.clone()),
                             other => Value::str(&dyn_text(other)),
                         };
-                        match out.iter_mut().find(|(ok, _)| matches!(ok, Value::Str(a) if *a == *k)) {
+                        match out
+                            .iter_mut()
+                            .find(|(ok, _)| matches!(ok, Value::Str(a) if *a == *k))
+                        {
                             Some(slot) => slot.1 = text,
                             None => out.push((Value::Str(k.clone()), text)),
                         }
