@@ -174,7 +174,7 @@
 | [ALS-T15](./text-and-numbers.md#als-t15-符号と-minmax-の-nan-規則) | 符号と min/max の NaN 規則 | C-049, C-140 |
 | [ALS-T16](./text-and-numbers.md#als-t16-個数・添字の-i64-クランプ) | 個数・添字の i64 クランプ | C-054, C-056 |
 | [ALS-T17](./text-and-numbers.md#als-t17-datetimeformat-の指定子置換) | datetime.format の指定子置換 | C-128 |
-| [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153, C-339 |
+| [ALS-T18](./text-and-numbers.md#als-t18-assert-の-abort-形（非-test-位置）) | assert の abort 形（非 test 位置） | C-153, C-339, C-381 |
 | [ALS-T19](./text-and-numbers.md#als-t19-数値決定性ファミリー) | 数値決定性ファミリー | C-302, C-358 |
 | [ALS-T20](./text-and-numbers.md#als-t20-丸めと縮約の禁止) | 丸めと縮約の禁止 | C-303 |
 | [ALS-T21](./text-and-numbers.md#als-t21-非正規数の保存) | 非正規数の保存 | C-304 |

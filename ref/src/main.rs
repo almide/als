@@ -34,6 +34,7 @@ mod stdlib_ext2;
 mod stdlib_matrix;
 mod stdlib_regex;
 mod stdlib_sized;
+mod stdlib_testing;
 mod value;
 
 use std::io::Write;

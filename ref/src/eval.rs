@@ -1327,6 +1327,10 @@ impl Interp {
     }
 
     fn eval_call(&mut self, env: &Rc<Env>, callee: &Expr, args: &[Arg]) -> R {
+        // The call's own line: evaluating an argument that calls a user fn
+        // moves `cur_line` into that body, and a stdlib abort (the T18
+        // `at: line`) names the call site, not the callee's last statement.
+        let line = self.cur_line;
         match callee {
             Expr::Ident(name) => {
                 if let Some(v) = env.lookup(name) {
@@ -1370,6 +1374,7 @@ impl Interp {
                             "named arguments to a prelude function",
                         );
                     }
+                    self.cur_line = line;
                     return stdlib::call(self, name, pos);
                 }
                 Err(Flow::Fatal(format!("unbound function `{name}`")))
@@ -1389,6 +1394,7 @@ impl Interp {
                                 "named arguments to a stdlib function",
                             );
                         }
+                        self.cur_line = line;
                         return stdlib::call(self, &full, pos);
                     }
                 }

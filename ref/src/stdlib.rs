@@ -22,6 +22,7 @@ pub fn implemented() -> Vec<&'static str> {
     v.extend(crate::stdlib_matrix::MATRIX_FNS);
     v.extend(crate::stdlib_sized::SIZED_FNS);
     v.extend(crate::stdlib_regex::REGEX_FNS);
+    v.extend(crate::stdlib_testing::TESTING_FNS);
     v.extend(PRELUDE_FNS);
     v.extend(LIST_FNS);
     v.extend(STRING_FNS);
@@ -2597,6 +2598,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             .or_else(|| crate::stdlib_ext2::call_ext2(it, other, args.clone()))
             .or_else(|| crate::stdlib_sized::call_sized(it, other, args.clone()))
             .or_else(|| crate::stdlib_regex::call_regex(it, other, args.clone()))
+            .or_else(|| crate::stdlib_testing::call_testing(it, other, args.clone()))
             .or_else(|| crate::stdlib_matrix::call_matrix(it, other, args))
         {
             Some(r) => r,
