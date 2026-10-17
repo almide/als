@@ -2251,9 +2251,9 @@ impl Interp {
                         }
                         Ok(match best {
                             Some((_, v)) => Value::Ok(Rc::new(v)),
-                            None => {
-                                Value::Err(Rc::new(Value::str("fan.min_cost: all candidates failed")))
-                            }
+                            None => Value::Err(Rc::new(Value::str(
+                                "fan.min_cost: all candidates failed",
+                            ))),
                         })
                     }
                     Some(h) => self.abstain(
