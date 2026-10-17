@@ -86,8 +86,6 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.as_mut_ptr",
     "bytes.from_raw_ptr",
     "bytes.copy_to_ptr",
-    "bytes.heap_save",
-    "bytes.heap_restore",
     "bytes.set_at",
     "bytes.fill",
     "bytes.copy_from",
@@ -828,16 +826,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     )))
                 }
             })
-        }
-        // C-041: the arena checkpoints are trivial under RC discipline on
-        // BOTH legs — the contract is only that post-restore work matches
-        "bytes.heap_save" => {
-            arity(name, &args, 0)?;
-            Ok(Value::Int(0))
-        }
-        "bytes.heap_restore" => {
-            arity(name, &args, 1)?;
-            Ok(Value::Unit)
         }
         "bytes.to_list" => {
             arity(name, &args, 1)?;
