@@ -896,7 +896,7 @@ effect fn b() -> Result[Int, String] = ok(2)
 fn work(x: Int) -> Int = x * 2
 
 test "fan.* heads" {
-  let first = fan.any {                 // first Ok in source order
+  let first = fan.first_ok {                 // first Ok in source order
     a()
     b()
   }
