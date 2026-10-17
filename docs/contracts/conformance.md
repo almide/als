@@ -11,7 +11,7 @@
 > (spec-coverage + evidence-class >= fixture for every active contract), so this
 > page cannot legitimately contain an empty Fixtures cell.
 
-134 normative sections; 835 distinct executable fixtures.
+135 normative sections; 837 distinct executable fixtures.
 
 | Section | Contracts | Fixtures (how CI runs each) |
 |---------|-----------|------------------------------|
@@ -137,7 +137,7 @@
 | ALS-T15 | C-049, C-140 | `spec/wasm_cross/float_sign_minmax_ieee.almd` (byte-compare)<br>`spec/wasm_cross/float_round_exact.almd` (byte-compare)<br>`spec/wasm_cross/float_round_negzero.almd` (byte-compare) |
 | ALS-T16 | C-054, C-056 | `spec/wasm_cross/list_count_index_truncation.almd` (byte-compare)<br>`spec/wasm_cross/string_count_truncation.almd` (byte-compare)<br>`spec/wasm_cross/map_wide_int_key.almd` (byte-compare)<br>`spec/wasm_cross/chunk_str.almd` (byte-compare)<br>`spec/wasm_cross/value_domain_arith.almd` (byte-compare)<br>`spec/wasm_cross/bytes_array_count_domain.almd` (byte-compare)<br>`spec/wasm_cross/bytes_string_window_domain.almd` (byte-compare)<br>`spec/wasm_cross/list_product_overflow.almd` (byte-compare) |
 | ALS-T17 | C-128 | `spec/wasm_cross/datetime_format.almd` (byte-compare) |
-| ALS-T18 | C-153, C-339, C-381 | `spec/wasm_cross/assert_abort_eq.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_ne.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_msg.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_multiline.almd` (byte-compare)<br>`spec/wasm_cross/snapshot_mismatch_abort.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_gt.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_lt.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_approx.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_contains.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_some.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_none.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_ok.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_err.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_throws.almd` (byte-compare) |
+| ALS-T18 | C-153, C-339, C-381 | `spec/wasm_cross/assert_abort_eq.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_ne.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_msg.almd` (byte-compare)<br>`spec/wasm_cross/assert_abort_multiline.almd` (byte-compare)<br>`spec/wasm_cross/snapshot_mismatch_abort.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_gt.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_lt.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_approx.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_contains.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_some.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_none.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_ok.almd` (byte-compare)<br>`spec/wasm_cross/testing_assert_abort_err.almd` (byte-compare) |
 | ALS-T19 | C-302, C-358 | `spec/wasm_cross/float_no_contraction.almd` (byte-compare)<br>`spec/wasm_cross/float_subnormal_preserved.almd` (byte-compare)<br>`spec/wasm_cross/math_transcendental_bits.almd` (byte-compare)<br>`spec/wasm_cross/float_signed_zero_minmax.almd` (byte-compare)<br>`spec/wasm_cross/float_to_int_edges.almd` (byte-compare)<br>`spec/wasm_cross/float_round_exact.almd` (byte-compare)<br>`spec/wasm_cross/math_choose_exact.almd` (byte-compare)<br>`spec/wasm_cross/int_rotate_negative_count.almd` (byte-compare)<br>`spec/wasm_cross/math_log_gamma_negative.almd` (byte-compare) |
 | ALS-T20 | C-303 | `spec/wasm_cross/float_no_contraction.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test) |
 | ALS-T21 | C-304 | `spec/wasm_cross/float_subnormal_preserved.almd` (byte-compare)<br>`spec/stdlib/float_determinism_test.almd` (both-target test) |
@@ -149,3 +149,4 @@
 | ALS-T27 | C-361 | `spec/wasm_cross/url_authority_edges.almd` (byte-compare)<br>`spec/stdlib/url_test.almd` (both-target test) |
 | ALS-T28 | C-371 | `spec/wasm_cross/float32_arithmetic_rounds.almd` (byte-compare) |
 | ALS-T29 | C-372 | `spec/wasm_cross/float32_display_shortest.almd` (byte-compare) |
+| ALS-T30 | C-384 | `spec/stdlib/coverage_assert_aborts_test.almd` (both-target test)<br>`spec/stdlib/testing_polarity_test.almd` (both-target test)<br>`spec/lang/assert_aborts_continues_test.almd` (both-target test) |

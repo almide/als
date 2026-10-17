@@ -3,12 +3,14 @@
 //! `assertion failed`, `  at: line <N>`, `  expected: <relation>`,
 //! `  found: <operand>` — the same record C-153 gives `assert_eq`.
 //! The evaluator runs programs, never test blocks, so every call it sees is
-//! outside one.
+//! outside one. `testing.assert_aborts` (ALS-T30) is legal only inside a test
+//! block — outside one it is a check-time error (E099) — so no program the
+//! evaluator runs calls it; it is listed so a call abstains by name.
 
 use std::rc::Rc;
 
 use crate::eval::{Flow, Interp};
-use crate::value::{render, Callable, Value};
+use crate::value::{render, Value};
 
 pub const TESTING_FNS: &[&str] = &[
     "testing.assert_gt",
@@ -19,7 +21,7 @@ pub const TESTING_FNS: &[&str] = &[
     "testing.assert_none",
     "testing.assert_ok",
     "testing.assert_err",
-    "testing.assert_throws",
+    "testing.assert_aborts",
 ];
 
 fn mismatch<T>(name: &str, want: &str, got: &Value) -> Result<T, Flow> {
@@ -57,13 +59,6 @@ fn want_str<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<str>, Flow> {
     match v {
         Value::Str(s) => Ok(s),
         other => mismatch(name, "String", other),
-    }
-}
-
-fn want_fn<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<Callable>, Flow> {
-    match v {
-        Value::Fn(c) => Ok(c),
-        other => mismatch(name, "a function", other),
     }
 }
 
@@ -175,18 +170,11 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let expected = if want_ok { "ok(_)" } else { "err(_)" };
             fail(line, expected.into(), shown(&args[0])?)
         }
-        // Outside a test block a panic is the uncatchable abort (C-219): the
-        // thunk runs once, its abort propagates, and a normal return fails.
-        _ => {
-            arity(name, &args, 2)?;
-            let f = want_fn(name, &args[0])?.clone();
-            let expected = want_str(name, &args[1])?.to_string();
-            it.call_value(&f, vec![])?;
-            fail(
-                line,
-                format!("panic containing {expected}"),
-                "returned normally".into(),
-            )
-        }
+        // ALS-T30: a child-process assertion of test blocks only (E099
+        // outside one), which the evaluator never runs.
+        _ => Err(Flow::Abstain {
+            class: "testing:assert_aborts".into(),
+            reason: "testing.assert_aborts runs only in a test block, in a child; the reference evaluator runs programs".into(),
+        }),
     }
 }

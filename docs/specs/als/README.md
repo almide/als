@@ -153,7 +153,7 @@
 | [ALS-S5](./strings.md#als-s5-split-の区切り規範) | split の区切り規範 | C-050 |
 | [ALS-S6](./strings.md#als-s6-規模不変性) | 規模不変性 | C-074 |
 
-## text-and-numbers.md — 29 section(s)
+## text-and-numbers.md — 30 section(s)
 
 | ID | Section | Contracts |
 |----|---------|-----------|
@@ -186,5 +186,6 @@
 | [ALS-T27](./text-and-numbers.md#als-t27-urlparse-の-authority-規範) | url.parse の authority 規範 | C-361 |
 | [ALS-T28](./text-and-numbers.md#als-t28-float32-演算の-binary32-丸め) | Float32 演算の binary32 丸め | C-371 |
 | [ALS-T29](./text-and-numbers.md#als-t29-float32-の表示) | Float32 の表示 | C-372 |
+| [ALS-T30](./text-and-numbers.md#als-t30-testingassert_aborts-—-子で走る-abort-表明) | testing.assert_aborts — 子で走る abort 表明 | C-384 |
 
-134 sections across 11 chapters.
+135 sections across 11 chapters.
