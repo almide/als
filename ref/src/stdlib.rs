@@ -2565,7 +2565,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(hof_out(fal, bail, acc))
         }
 
-        "fan.race" => it.fan_race_values(args),
+        "fan.min_cost" => it.fan_race_values(args),
         // ── ALS-DT1: time constructors (compute.* deterministic clock,
         // duration.* wall clock) — negative aborts, overflow saturates ──
         "compute.ns" | "compute.us" | "compute.ms" | "compute.s" | "compute.min" | "compute.h"

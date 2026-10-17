@@ -111,7 +111,7 @@ pub const EXT2_FNS: &[&str] = &[
     "result.or_else",
     "map.upsert",
     "fan.map",
-    "fan.any",
+    "fan.first_ok",
     "fan.settle",
 ];
 
@@ -1079,7 +1079,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ fan mapper forms (ALS-R3 determinism: sequential = parallel) ═══
-        "fan.map" | "fan.any" | "fan.settle" => {
+        "fan.map" | "fan.first_ok" | "fan.settle" => {
             arity(name, &args, 2)?;
             let xs = want_list(name, &args[0])?.clone();
             let c = match &args[1] {
@@ -1100,9 +1100,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                         }
                     }
                     ("fan.map", v) => vals.push(v),
-                    ("fan.any", Value::Ok(v)) => return Ok(Ok(Value::Ok(v))), // first success wins
-                    ("fan.any", Value::Err(_)) => {}
-                    ("fan.any", v) => return Ok(Ok(Value::Ok(Rc::new(v)))),
+                    ("fan.first_ok", Value::Ok(v)) => return Ok(Ok(Value::Ok(v))), // first success wins
+                    ("fan.first_ok", Value::Err(_)) => {}
+                    ("fan.first_ok", v) => return Ok(Ok(Value::Ok(Rc::new(v)))),
                     ("fan.settle", Value::Ok(v)) => vals.push(Value::Ok(v)),
                     ("fan.settle", Value::Err(e)) => vals.push(Value::Err(e)),
                     ("fan.settle", v) => vals.push(Value::Ok(Rc::new(v))),
@@ -1112,7 +1112,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(match (name, first_err) {
                 ("fan.map", Some(e)) => Value::Err(e),
                 ("fan.map", None) => ok(Value::List(Rc::new(vals))),
-                ("fan.any", _) => err_str("fan.any: all candidates failed"),
+                ("fan.first_ok", _) => err_str("fan.first_ok: all candidates failed"),
                 _ => Value::List(Rc::new(vals)),
             })
         }

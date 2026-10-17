@@ -161,7 +161,7 @@ pub struct Interp {
     inline_exempt: BTreeMap<String, bool>,
 }
 
-/// one active fan.bounded / fan.race arm / fan.timeout region
+/// one active fan.bounded / fan.min_cost arm / fan.timeout region
 struct MeterFrame {
     /// charge units admitted (min-capped against the parent at push)
     budget: u64,
@@ -532,7 +532,7 @@ impl Interp {
         f.spent
     }
 
-    /// the VALUE form of `fan.race(budget?, xs, f)` (T7-1 mapper via the
+    /// the VALUE form of `fan.min_cost(budget?, xs, f)` (T7-1 mapper via the
     /// stdlib route): same winner rule as the block form — lexicographic
     /// min (spend, index) among admitted, non-Err arms
     pub fn fan_race_values(&mut self, args: Vec<Value>) -> R {
@@ -544,13 +544,13 @@ impl Interp {
         } else if let Some(Value::Time { wall: true, .. }) = args.first() {
             return self.abstain(
                 "semantics:fan-budget",
-                "`fan.race` over a wall-clock budget",
+                "`fan.min_cost` over a wall-clock budget",
             );
         }
         let [Value::List(xs), Value::Fn(f)] = rest else {
             return self.abstain(
-                "syntax:fan.race",
-                format!("`fan.race` value form with {} argument(s)", rest.len()),
+                "syntax:fan.min_cost",
+                format!("`fan.min_cost` value form with {} argument(s)", rest.len()),
             );
         };
         let (xs, f) = (xs.clone(), f.clone());
@@ -577,7 +577,7 @@ impl Interp {
         }
         Ok(match best {
             Some((_, v)) => Value::Ok(Rc::new(v)),
-            None => Value::Err(Rc::new(Value::str("fan.race: all candidates failed"))),
+            None => Value::Err(Rc::new(Value::str("fan.min_cost: all candidates failed"))),
         })
     }
 
@@ -2097,7 +2097,7 @@ impl Interp {
                             Ok(Value::Tuple(Rc::new(vals)))
                         }
                     }
-                    Some(h) if h == "any" => {
+                    Some(h) if h == "first_ok" => {
                         // ALS-R3: list order, first Ok wins; plain thunk values
                         // auto-wrap (effect-system.md §5 Thunk typing)
                         for a in arms {
@@ -2108,7 +2108,7 @@ impl Interp {
                             }
                         }
                         Ok(Value::Err(Rc::new(Value::str(
-                            "fan.any: all candidates failed",
+                            "fan.first_ok: all candidates failed",
                         ))))
                     }
                     Some(h) if h == "settle" => {
@@ -2174,7 +2174,7 @@ impl Interp {
                             Err(e) => Err(e),
                         }
                     }
-                    Some(h) if h == "race" => {
+                    Some(h) if h == "min_cost" => {
                         // ALS-DT3: winner = lexicographic min (spend, index)
                         // among arms that stayed in budget and did not Err
                         let mut vals = Vec::new();
@@ -2189,7 +2189,7 @@ impl Interp {
                         } else if let Some(Value::Time { wall: true, .. }) = vals.first() {
                             return self.abstain(
                                 "semantics:fan-budget",
-                                "`fan.race` over a wall-clock budget",
+                                "`fan.min_cost` over a wall-clock budget",
                             );
                         }
                         enum Arm {
@@ -2199,11 +2199,11 @@ impl Interp {
                         let arm_list: Vec<Arm> = if rest.is_empty() {
                             arms.iter().map(|a| Arm::Block(a.clone())).collect()
                         } else if rest.len() == 2 {
-                            // the mapper form: fan.race(budget?, xs, f)
+                            // the mapper form: fan.min_cost(budget?, xs, f)
                             let Value::List(xs) = &rest[0] else {
                                 return self.abstain(
-                                    "syntax:fan.race",
-                                    "`fan.race` mapper over a non-list",
+                                    "syntax:fan.min_cost",
+                                    "`fan.min_cost` mapper over a non-list",
                                 );
                             };
                             let f = rest[1].clone();
@@ -2212,8 +2212,8 @@ impl Interp {
                                 .collect()
                         } else {
                             return self.abstain(
-                                "syntax:fan.race",
-                                format!("`fan.race` with {} head arg(s)", rest.len()),
+                                "syntax:fan.min_cost",
+                                format!("`fan.min_cost` with {} head arg(s)", rest.len()),
                             );
                         };
                         let mut best: Option<(u64, Value)> = None;
@@ -2227,7 +2227,7 @@ impl Interp {
                                         self.call_value(&c, vec![x.clone()])
                                     }
                                     other => Err(Flow::Fatal(format!(
-                                        "fan.race mapper is a {}",
+                                        "fan.min_cost mapper is a {}",
                                         other.type_name()
                                     ))),
                                 },
@@ -2252,7 +2252,7 @@ impl Interp {
                         Ok(match best {
                             Some((_, v)) => Value::Ok(Rc::new(v)),
                             None => {
-                                Value::Err(Rc::new(Value::str("fan.race: all candidates failed")))
+                                Value::Err(Rc::new(Value::str("fan.min_cost: all candidates failed")))
                             }
                         })
                     }
