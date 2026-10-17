@@ -38,17 +38,17 @@ effect fn main() -> Unit = {
   fs.write(d + "/a.txt", "alpha")!
   fs.write(d + "/b.txt", "beta")!
   // Shape B, ok path, `!` consumption.
-  let b_ok = fan.any([d + "/a.txt"], (p) => fs.read_text(p))!
+  let b_ok = fan.first_ok([d + "/a.txt"], (p) => fs.read_text(p))!
   println("B ok ${b_ok}")
   // Shape B, err path (no candidate exists), `??` consumption.
-  let b_err = fan.any([d + "/missing1.txt", d + "/missing2.txt"], (p) => fs.read_text(p)) ?? "fb"
+  let b_err = fan.first_ok([d + "/missing1.txt", d + "/missing2.txt"], (p) => fs.read_text(p)) ?? "fb"
   println("B err ${b_err}")
   // Shape D, ok path, `!` consumption — first candidate missing, second ok:
-  // fan.any skips the failure to find the Ok.
-  let d_ok = fan.any([d + "/missing.txt", d + "/b.txt"], (p) => helper(p))!
+  // fan.first_ok skips the failure to find the Ok.
+  let d_ok = fan.first_ok([d + "/missing.txt", d + "/b.txt"], (p) => helper(p))!
   println("D ok ${d_ok}")
   // Shape D, err path, `??` consumption.
-  let d_err = fan.any([d + "/nope.txt"], (p) => helper(p)) ?? "fb2"
+  let d_err = fan.first_ok([d + "/nope.txt"], (p) => helper(p)) ?? "fb2"
   println("D err ${d_err}")
   // Shape D over fan.map (the collect-all mapper), ok path, `!` consumption —
   // the heap-Ok LIST payload family (`Result[List[String], String]`).

@@ -1,34 +1,34 @@
-// fan.any, fan.settle.
-// fan.any is now DETERMINISTIC: it tries thunks in LIST ORDER and returns the
+// fan.first_ok, fan.settle.
+// fan.first_ok is now DETERMINISTIC: it tries thunks in LIST ORDER and returns the
 // FIRST Ok as Result[T, String]; if all fail it returns a defined Err. In a test
 // block (no auto-unwrap) the binding is the full Result, asserted on `ok(v)`.
 effect fn succeed(x: Int) -> Result[Int, String] = ok(x)
 
 effect fn fail(msg: String) -> Result[Int, String] = err(msg)
 
-// ── fan.any — first success in list order wins (deterministic) ──
-test "fan.any first success" {
-  let result = fan.any {
+// ── fan.first_ok — first success in list order wins (deterministic) ──
+test "fan.first_ok first success" {
+  let result = fan.first_ok {
     succeed(42)
     succeed(99)
   }
   assert_eq(result, ok(42))
 }
 
-test "fan.any skips failures" {
-  let result = fan.any {
+test "fan.first_ok skips failures" {
+  let result = fan.first_ok {
     fail("nope")
     succeed(7)
   }
   assert_eq(result, ok(7))
 }
 
-test "fan.any all fail returns a defined error" {
-  let result = fan.any {
+test "fan.first_ok all fail returns a defined error" {
+  let result = fan.first_ok {
     fail("a")
     fail("b")
   }
-  assert_eq(result, err("fan.any: all candidates failed"))
+  assert_eq(result, err("fan.first_ok: all candidates failed"))
 }
 
 // ── fan.settle — collect all results (a TUPLE of per-arm Results, T2-4) ──

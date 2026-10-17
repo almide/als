@@ -36,7 +36,7 @@ fn try_d() -> Result[Int, String] = {
 }
 
 effect fn main() -> Unit = {
-  let a = fan.any {
+  let a = fan.first_ok {
     try_c()
     try_d()
   }!

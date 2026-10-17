@@ -16,7 +16,7 @@
 // Three cells, one per mapper head, covering both callback SPELLINGS — the
 // #1055 lesson is that a capability decided by spelling is the bug, so an
 // inline lambda over an effect fn and a bare effect-fn VALUE must agree:
-//   fan.any   — inline lambda calling an effect fn
+//   fan.first_ok   — inline lambda calling an effect fn
 //   fan.map   — bare effect-fn value
 //   fan.settle— inline lambda, mixed ok/err so the Err capture is exercised
 effect fn probe(n: Int) -> Result[Int, String] = if n > 2 then ok(n * 10)
@@ -24,7 +24,7 @@ else err("too small: ${int.to_string(n)}")
 
 effect fn main() -> Unit = {
   // any: first Ok in LIST order — 1 fails, 5 wins (NOT 9, and NOT wall-clock).
-  let a = fan.any([1, 5, 9], (n) => probe(n))!
+  let a = fan.first_ok([1, 5, 9], (n) => probe(n))!
   println("any=" + int.to_string(a))
   // map: the bare effect-fn VALUE spelling, all-Ok, order preserved.
   let m = fan.map([3, 4], probe)!

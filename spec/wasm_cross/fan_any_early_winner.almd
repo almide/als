@@ -1,6 +1,6 @@
 // @contract: C-185
 //
-// `fan.any` returns the FIRST Ok in list order on both targets, whichever
+// `fan.first_ok` returns the FIRST Ok in list order on both targets, whichever
 // position it is in.
 //
 // On wasm the fan combinators are inlined; the pre-J3 form reused ONE cloned
@@ -18,7 +18,7 @@
 // 231KB names witness that took trust-spine's [names] pass from 13s to 53min
 // and parked the kernel oracle past 4h (2026-07-27; the file was then split
 // one-case-per-function as a stopgap). Since arc v1-join-completeness J2a/J3,
-// `fan.any` lowers as ONE first-Ok-chain bind joined by the variant
+// `fan.first_ok` lowers as ONE first-Ok-chain bind joined by the variant
 // bind-position machinery (`is_first_ok_chain` declines the tail-duplication)
 // — the same main now emits a ~4KB witness, and corpus-wall's
 // MAX_WITNESS_LINE gate turns any regression back to duplication into a fast
@@ -33,51 +33,51 @@ effect fn boom() -> Result[Int, String] = err("boom")
 
 effect fn main() -> Result[Unit, String] = {
   // Winner FIRST — the case that returned 0.
-  let a = fan.any {
+  let a = fan.first_ok {
     ok11()
     ok22()
   }!
   println("a=" + int.to_string(a))
   // Winner first, loser after.
-  let b = fan.any {
+  let b = fan.first_ok {
     ok11()
     boom()
   }!
   println("b=" + int.to_string(b))
   // Winner last: the arrangement that always worked.
-  let c = fan.any {
+  let c = fan.first_ok {
     boom()
     ok22()
   }!
   println("c=" + int.to_string(c))
   // Three levels, so the chain is deeper than the single nesting.
-  let d = fan.any {
+  let d = fan.first_ok {
     ok11()
     ok22()
     ok33()
   }!
   println("d=" + int.to_string(d))
-  let e = fan.any {
+  let e = fan.first_ok {
     boom()
     ok22()
     ok33()
   }!
   println("e=" + int.to_string(e))
-  let f = fan.any {
+  let f = fan.first_ok {
     boom()
     boom()
     ok33()
   }!
   println("f=" + int.to_string(f))
   // The match-subject spelling of the same call, and the all-failed fallback.
-  match fan.any {
+  match fan.first_ok {
     ok11()
     ok22()
   } {
     ok(v) => println("m=" + int.to_string(v)),
     err(er) => println("m-err=" + er),
   }
-  match fan.any {
+  match fan.first_ok {
     boom()
     boom()
   } {
