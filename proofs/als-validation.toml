@@ -53,9 +53,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T25"
-hash = "sha256:4ea71b74db8f"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; transcription checked line-by-line against stdlib/matrix_activations.almd __fast_exp/__softmax_row/__gelu_scalar, the C-223 canonical spelling both legs run)"
+hash = "sha256:ce5ff8df91ad"
+reviewed = "2026-10-17"
+by = "O6lvl4 (via the Claude session; rewritten for dialect epoch 14 — the fast-exp activations left for package almide/nn; checked against stdlib/matrix_arith.almd matrix_pow, runtime/rs/src/matrix.rs almide_rt_matrix_pow and the products in stdlib/matrix_core.almd)"
 independent = "no"
 verdict = "accurate"
 
@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:b4f569fbf4e9"
-reviewed = "2026-10-13"
-by = "O6lvl4 (via the Claude session, on the owner's rulings of 2026-10-12 for net/tcp on wasm (almide/almide#3620, items 1-7); the net.tcp_* paragraph added for C-377, C-378 and C-379: handle numbering, loopback, end of stream, close, is_open and tcp_local_port; the one error table and the Almide-local texts; guest-enforced timeouts with the tcp_set_timeout restore and the tcp_available lookahead; checked against the three statements and the owner-approved design (net-tcp-design.md, sections 0-7). Requirements-first: no almide build implements tcp_local_port or the new texts yet; the three spec/embedded_cross fixtures were checked against v0.67.1 with tcp_local_port shimmed to a fixed port, which prints the current transcript except at the points this paragraph changes (errno text, the negative-length panic, the wiped timeout))"
+hash = "sha256:7ac3838fdd67"
+reviewed = "2026-10-17"
+by = "O6lvl4 (via the Claude session; the provider streaming clients left for package almide/llm at dialect epoch 14 — checked against stdlib/http.almd, which keeps request_stream and its limited twin)"
 independent = "no"
 verdict = "accurate"
 
