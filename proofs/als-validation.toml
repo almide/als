@@ -53,9 +53,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T25"
-hash = "sha256:4ea71b74db8f"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; transcription checked line-by-line against stdlib/matrix_activations.almd __fast_exp/__softmax_row/__gelu_scalar, the C-223 canonical spelling both legs run)"
+hash = "sha256:ce5ff8df91ad"
+reviewed = "2026-10-17"
+by = "O6lvl4 (via the Claude session; rewritten for dialect epoch 14 — the fast-exp activations left for package almide/nn; checked against stdlib/matrix_arith.almd matrix_pow, runtime/rs/src/matrix.rs almide_rt_matrix_pow and the products in stdlib/matrix_core.almd)"
 independent = "no"
 verdict = "accurate"
 
@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:ae6c1b828b5e"
+hash = "sha256:39590183f0c5"
 reviewed = "2026-10-17"
-by = "O6lvl4 (via the Claude session, on the owner's ruling of 2026-10-17 for the unix-socket and shared-memory family on the embedded wasm lane (almide/almide#3620, interim ops 104..=116; Q14: native follows the held-descriptor table); the net.unix_* / net.shm_* paragraph added for C-382 and C-383: bytes, descriptors received as the same open files, readiness and shm contents agree on native and the embedded lane, the stock artifact is E081; the held-descriptor refusal texts, the argument-domain texts and the OS-refusal form; checked against the two statements and the two spec/embedded_cross fixtures, which print identically on native and `almide run --target wasm` at almide insp-all 375e2ce7f, three runs each)"
+by = "O6lvl4 (via the Claude session, on the owner's ruling of 2026-10-17 for the unix-socket and shared-memory family on the embedded wasm lane (almide/almide#3620, interim ops 104..=116; Q14: native follows the held-descriptor table); the net.unix_* / net.shm_* paragraph added for C-382 and C-383: bytes, descriptors received as the same open files, readiness and shm contents agree on native and the embedded lane, the stock artifact is E081; the held-descriptor refusal texts, the argument-domain texts and the OS-refusal form; checked against the two statements and the two spec/embedded_cross fixtures, which print identically on native and `almide run --target wasm` at almide insp-all 375e2ce7f, three runs each; and, re-reviewed after the rebase onto that change: the provider streaming clients left for package almide/llm at dialect epoch 14 — checked against stdlib/http.almd, which keeps request_stream and its limited twin)"
 independent = "no"
 verdict = "accurate"
 
