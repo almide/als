@@ -53,9 +53,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T25"
-hash = "sha256:ce5ff8df91ad"
-reviewed = "2026-10-17"
-by = "O6lvl4 (via the Claude session; rewritten for dialect epoch 14 — the fast-exp activations left for package almide/nn; checked against stdlib/matrix_arith.almd matrix_pow, runtime/rs/src/matrix.rs almide_rt_matrix_pow and the products in stdlib/matrix_core.almd)"
+hash = "sha256:6e10654fe195"
+reviewed = "2026-10-18"
+by = "O6lvl4 (via the Claude session; rewritten for dialect epoch 14, re-stamped 2026-10-18 for the package name almide/nnlib — the fast-exp activations left for package almide/nnlib; checked against stdlib/matrix_arith.almd matrix_pow, runtime/rs/src/matrix.rs almide_rt_matrix_pow and the products in stdlib/matrix_core.almd)"
 independent = "no"
 verdict = "accurate"
 
