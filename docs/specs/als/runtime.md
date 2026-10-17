@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-10-13
+> Last updated: 2026-10-17
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -289,7 +289,41 @@ Almide が決め、すべてのレグで同じである。発行していない�
 ドライバが `-S inherit-network` の標準のコンポーネントとしても走らせる。同じドライバが
 許可の無い標準のコンポーネントで `permission denied` の文言を確かめる）
 
-Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367, C-375, C-377, C-378, C-379。
+`net.unix_*`・`net.shm_*` 族（`unix_connect`・`unix_listen`・`unix_accept`・
+`unix_send`・`unix_recv`・`unix_take_fds`・`unix_poll`・`unix_wait`・`unix_close`・
+`shm_create`・`shm_resize`・`shm_write`・`shm_read`）は、Unix のホストで native と
+埋め込み wasm レーン（`almide run --target wasm`）が同じ観測を返す
+（almide/almide#3620）。受け取るバイトは一致する。`unix_send` に添えた記述子は、
+数と送った順が一致して `unix_take_fds` に届き、それぞれ同じ開いたファイルを指す新しい
+記述子である（一方から書いた内容を他方から読める）。`unix_poll` と `unix_wait` の
+準備完了（データ、待っている接続、相手の close）は一致し、`unix_wait` は準備できた
+記述子を与えた順に返す。`shm_read` は同じバイトを返す（作成時と伸長時は 0 で埋まり、
+ファイルの終わりでは短くなる）。記述子は OS の素の番号で、レグ間で異なってよい。
+その性質（0 以上、開いている間は互いに異なる）は一致する。標準の成果物
+（`almide build --target wasm`）はどの関数もビルド時に拒否する（E081）。WASI には
+Unix ドメインソケットも共有メモリも無いからである。
+失敗はすべて `err` で（trap しない）、その文字列は native と埋め込みレーンで同一である。
+呼び出しはプログラムが保持する記述子にだけ作用する。保持する記述子とは、
+`unix_listen`・`unix_connect`・`unix_accept`・`shm_create` が返したものと `unix_recv`
+が受け取ったもので、`unix_close` まで保持される。それ以外の番号はシステムコールの前に
+拒否する。n < 0 または n > 2^31-1 には `<fn>: not a file descriptor: <n>`、それ以外
+（標準ストリームと閉じた記述子を含む）には `<fn>: descriptor <n> is not open in this
+program` を返す。引数の定義域は Almide 自身の文言で、記述子の後に確かめる:
+`shm_create: negative size <n>`・`shm_resize: negative size <n>`・
+`shm_write: negative offset <n>`・`shm_read: negative offset or length (<o>, <n>)`・
+`unix_send: <k> descriptors in one message (at most 28)`。OS の拒否は
+`<fn>: <プラットフォームのエラー文>` と読み、`unix_connect(<path>)` と
+`unix_listen(<path>)` はパスを添える。両レグは同じホストからこの文を読む。
+`unix_take_fds` は失敗しない。何も受け取っていないソケットと保持していない番号には
+空のリストを返す。ソケットを閉じると、受け取ったまま取り出されていない記述子も閉じる。
+対象外: 記述子の番号そのもの。OS のエラー文の言い回し（ホストごとに異なり、同じ
+ホストのレグ間でだけ一致する）。Unix 以外のプラットフォーム（どの呼び出しも `err`）。
+テスト: `spec/embedded_cross/net_unix_loopback.almd`（全関数の成功経路。記述子を
+双方向に渡す）・`spec/embedded_cross/net_unix_errors.almd`（全関数の失敗経路）。
+どちらも一時ディレクトリの新しいパスで listen し、終わる前にそのパスを消す。
+spec/embedded_cross の網が native と埋め込みレーンで走らせる。
+
+Contracts: C-096, C-112, C-118, C-133, C-189, C-214, C-366, C-367, C-375, C-377, C-378, C-379, C-382, C-383。
 
 ## ALS-R6 ファイルシステムのパス解決
 
