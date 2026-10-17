@@ -20,7 +20,7 @@ fundamentally different notions of time:
 There is no portable meaning for "elapsed wall-clock time" in the wasm
 sandbox, so `fan.timeout` was excluded from the cross-target equivalence
 guarantee, with a loud build-time warning when emitting wasm. It was the only
-`fan.*` op left out: `fan.race` / `fan.any` / `fan.map` / `fan.settle` were
+`fan.*` op left out: `fan.min_cost` / `fan.first_ok` / `fan.map` / `fan.settle` were
 all made deterministic by list order (see C-004 / C-005) and DO hold the
 equivalence promise.
 
@@ -44,7 +44,7 @@ An org-wide sweep found zero consumers. So the operation was removed outright:
 
 - `tests/diagnostics/e027-fan-timeout-removed/` — broken/fixed pair: the
   broken file must produce `error[E027]` with the host-boundary hint; the
-  fixed file (the same work via `fan.race`) must compile cleanly.
+  fixed file (the same work via `fan.min_cost`) must compile cleanly.
 - `tests/diagnostic_harness_test.rs::broken_files_produce_expected_diagnostics`
   — the harness that executes every diagnostics case.
 

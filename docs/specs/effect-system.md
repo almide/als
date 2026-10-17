@@ -119,7 +119,7 @@ effect fn compute_b() -> Result[Int, String] = ok(2)
 fn bad() -> (Int, Int) = fan { compute_a(), compute_b() }
 ```
 
-The same check applies to `fan.map()` and `fan.any()` calls via `static_dispatch.rs`.
+The same check applies to `fan.map()` and `fan.first_ok()` calls via `static_dispatch.rs`.
 
 ### E008: No mutable variable capture
 
@@ -138,7 +138,7 @@ effect fn bad() -> Result[Unit, String] = {
 
 ### Type behavior
 
-A `fan` ALL-block / `fan.settle` yields its tuple (no Result wrapper — nothing to unwrap). The Result-yielding forms (`fan.any`, the mappers, `fan.race`) follow ADR-0008: the Result is a VALUE, and a binding spells its propagation explicitly (`let v = fan.any { ... }!`). Test: `spec/wasm_cross/fan_any_early_winner.almd` and the fan fixtures migrated at the 0.55 switch.
+A `fan` ALL-block / `fan.settle` yields its tuple (no Result wrapper — nothing to unwrap). The Result-yielding forms (`fan.first_ok`, the mappers, `fan.min_cost`) follow ADR-0008: the Result is a VALUE, and a binding spells its propagation explicitly (`let v = fan.first_ok { ... }!`). Test: `spec/wasm_cross/fan_any_early_winner.almd` and the fan fixtures migrated at the 0.55 switch.
 
 ```almide
 effect fn add(a: Int, b: Int) -> Result[Int, String] = ok(a + b)
