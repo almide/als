@@ -1,17 +1,14 @@
 //! Round-3 stdlib module: `matrix` — the f64 matrix value, its constructors,
-//! the byte-buffer loaders/selectors (f32 LE, fp16, Q1_0, Q8_0) and the
+//! the byte-buffer loaders/selectors (f32 LE, fp16) and the
 //! index/reduction domain. Written from C-161 (dims normalize + the 2^28
 //! ceiling), C-223 (transcendentals through the vendored musl-libm),
-//! C-228/C-229 (selector decode + OOB→zeros/clamps), C-270 (the shared fp16
-//! block scale, +0.0 dequant ruling), C-282 (`matrix.get` aborts out of
-//! range) and the fixtures they cite; unknown edges abstain with a class.
+//! C-228/C-229 (selector decode + OOB→zeros/clamps), C-282 (`matrix.get`
+//! aborts out of range) and the fixtures they cite; unknown edges abstain
+//! with a class.
 //!
-//! Sign discipline (C-270): a DEQUANTIZED element is written as `0.0 + v`,
-//! the accumulate-into-zeros spelling that lands every zero-magnitude
-//! product on +0.0 while leaving infinities, NaN and normal values alone.
-//! The float DECODERS (`from_bytes_f16_le` / `from_bytes_f32_le` /
-//! `select_rows_f32`) store the datum verbatim — a stored -0.0 is
-//! information there.
+//! Sign discipline: the float DECODERS (`from_bytes_f16_le` /
+//! `from_bytes_f32_le` / `select_rows_f32`) store the datum verbatim — a
+//! stored -0.0 is information there.
 
 use std::rc::Rc;
 
@@ -30,18 +27,7 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.row_dot",
     "matrix.dot_row",
     "matrix.pow",
-    "matrix.gelu",
-    "matrix.softmax_rows",
-    "matrix.rms_norm_rows",
-    "matrix.rope_rotate",
-    "matrix.rope_rotate_at",
-    "matrix.rope_rotate_neox_at",
-    "matrix.multi_head_attention",
-    "matrix.masked_multi_head_attention",
     "matrix.select_rows_f32",
-    "matrix.select_rows_q8_0_dq",
-    "matrix.select_rows_q1_0",
-    "matrix.from_q1_0_bytes",
     "matrix.from_bytes_f32_le",
     "matrix.from_bytes_f16_le",
     // C-353 / C-354 / C-355: the shape-precondition, row-range and
@@ -63,9 +49,6 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.concat_cols",
     "matrix.concat_cols_many",
     "matrix.conv1d",
-    "matrix.silu_mul",
-    "matrix.swiglu_gate",
-    "matrix.layer_norm_rows",
 ];
 
 /// C-161: 2^28 elements (2 GiB of f64, inside wasm32's address space), and
@@ -179,10 +162,6 @@ fn mismatch_mat(name: &str, other: &Value) -> Result<Value, Flow> {
         "{name}: expected List[Matrix], got {}",
         other.type_name()
     )))
-}
-
-fn scale_at(data: &[u8], start: usize) -> f64 {
-    f16_to_f64(u16::from_le_bytes([data[start], data[start + 1]]))
 }
 
 pub fn call_matrix(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Result<Value, Flow>> {
@@ -604,261 +583,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 .collect();
             Ok(mat(m.rows, m.cols, data))
         }
-        "matrix.gelu" => {
-            arity(name, &args, 1)?;
-            let m = want_mat(name, &args[0])?;
-            let data = m.data.iter().map(|x| gelu_scalar(*x)).collect();
-            Ok(mat(m.rows, m.cols, data))
-        }
-        "matrix.softmax_rows" => {
-            arity(name, &args, 1)?;
-            let m = want_mat(name, &args[0])?;
-            let mut data = Vec::with_capacity(m.data.len());
-            for r in 0..m.rows {
-                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
-                data.extend(softmax_row(row));
-            }
-            Ok(mat(m.rows, m.cols, data))
-        }
-        // y[i][j] = x[i][j] * (1/sqrt(mean(x[i,:]^2) + eps)) * gamma[j], the
-        // output truncated to the shorter of the row and gamma (the zip rule
-        // C-353 keeps outside the shape-mismatch abort).
-        "matrix.rms_norm_rows" => {
-            arity(name, &args, 3)?;
-            let m = want_mat(name, &args[0])?;
-            let gamma = want_floats(name, &args[1])?;
-            let eps = want_float(name, &args[2])?;
-            if m.rows == 0 {
-                return Ok(mat(m.rows, 0, Vec::new()));
-            }
-            let outn = m.cols.min(gamma.len() as i64);
-            let mut data = Vec::with_capacity((m.rows * outn) as usize);
-            for r in 0..m.rows {
-                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
-                let mut sq = 0.0f64;
-                for x in row {
-                    sq += x * x;
-                }
-                let inv = 1.0 / (sq / m.cols as f64 + eps).sqrt();
-                for j in 0..outn {
-                    data.push(row[j as usize] * inv * gamma[j as usize]);
-                }
-            }
-            Ok(mat(m.rows, outn, data))
-        }
-        // mean / variance per row, then (x - mean) * inv * gamma + beta over
-        // the shorter of the row, gamma and beta.
-        "matrix.layer_norm_rows" => {
-            arity(name, &args, 4)?;
-            let m = want_mat(name, &args[0])?;
-            let gamma = want_floats(name, &args[1])?;
-            let beta = want_floats(name, &args[2])?;
-            let eps = want_float(name, &args[3])?;
-            if m.rows == 0 {
-                return Ok(mat(m.rows, 0, Vec::new()));
-            }
-            let gb = (gamma.len() as i64).min(beta.len() as i64);
-            let outn = m.cols.min(gb);
-            let mut data = Vec::with_capacity((m.rows * outn) as usize);
-            for r in 0..m.rows {
-                let row = &m.data[(r * m.cols) as usize..((r + 1) * m.cols) as usize];
-                let n = m.cols as f64;
-                let mut sum = 0.0f64;
-                for x in row {
-                    sum += x;
-                }
-                let mean = sum / n;
-                let mut var = 0.0f64;
-                for x in row {
-                    let d = x - mean;
-                    var += d * d;
-                }
-                let inv = 1.0 / (var / n + eps).sqrt();
-                for j in 0..outn {
-                    data.push(
-                        (row[j as usize] - mean) * inv * gamma[j as usize] + beta[j as usize],
-                    );
-                }
-            }
-            Ok(mat(m.rows, outn, data))
-        }
-        // silu(a) * b elementwise, zip-truncated; the sigmoid runs through
-        // the vendored libm exp (both implementations spell it that way).
-        "matrix.silu_mul" => {
-            arity(name, &args, 2)?;
-            let a = want_mat(name, &args[0])?;
-            let b = want_mat(name, &args[1])?;
-            let rows = a.rows.min(b.rows);
-            let cols = a.cols.min(b.cols);
-            let mut data = Vec::with_capacity((rows * cols) as usize);
-            for r in 0..rows {
-                for c in 0..cols {
-                    let x = a.data[(r * a.cols + c) as usize];
-                    let y = b.data[(r * b.cols + c) as usize];
-                    let sig = 1.0 / (1.0 + crate::libm::almide_rt_libm_exp(0.0 - x));
-                    data.push(x * sig * y);
-                }
-            }
-            Ok(mat(rows, cols, data))
-        }
-        // ALS-T25: the sigmoid rides the CANONICAL fast-exp, over the clamped
-        // negation; the dots accumulate ascending from 0.0. C-353: both
-        // weights are (d_out, d_in) against cols(x).
-        "matrix.swiglu_gate" => {
-            arity(name, &args, 3)?;
-            let x = want_mat(name, &args[0])?;
-            let wg = want_mat(name, &args[1])?;
-            let wu = want_mat(name, &args[2])?;
-            if x.rows == 0 || wg.rows == 0 || wu.rows == 0 {
-                return Ok(mat(0, 0, Vec::new()));
-            }
-            let (r, d_in, d_out) = (x.rows, x.cols, wg.rows);
-            shape_eq(wg.cols, d_in)?;
-            shape_eq(wu.cols, d_in)?;
-            shape_eq(wu.rows, d_out)?;
-            let mut data = Vec::with_capacity((r * d_out) as usize);
-            for i in 0..r {
-                for j in 0..d_out {
-                    let mut g = 0.0f64;
-                    let mut u = 0.0f64;
-                    for k in 0..d_in {
-                        let xv = x.data[(i * d_in + k) as usize];
-                        g += xv * wg.data[(j * d_in + k) as usize];
-                        u += xv * wu.data[(j * d_in + k) as usize];
-                    }
-                    // `min` then `max`, in the self-host's order — spelled
-                    // as the pair rather than `clamp` because the NaN
-                    // behaviour of the two differs and the pair is what the
-                    // implementations run.
-                    #[allow(clippy::manual_clamp)]
-                    let negg = (0.0 - g).min(40.0).max(-40.0);
-                    let sig = 1.0 / (1.0 + fast_exp(negg));
-                    data.push((g * sig) * u);
-                }
-            }
-            Ok(mat(r, d_out, data))
-        }
-        "matrix.rope_rotate" | "matrix.rope_rotate_at" | "matrix.rope_rotate_neox_at" => {
-            // RoPE (rope_at_family / rope_geometry_family): per row p at
-            // absolute position start+p, per head, per pair, rotate by
-            // angle = pos * (1.0 / libm_pow(theta, 2i/head_dim)) — 1/pow,
-            // NOT the fast-exp (the last-ulp divergence the 2026-08-15
-            // burn-down measured); non-pair columns copy through
-            let at = name.ends_with("_at");
-            let neox = name.contains("neox");
-            arity(name, &args, if at { 5 } else { 4 })?;
-            let m = want_mat(name, &args[0])?;
-            let nh = want_int(name, &args[1])?;
-            let head_dim = want_int(name, &args[2])?;
-            let theta = want_float(name, &args[3])?;
-            let start = if at {
-                want_int(name, &args[4])?.max(0)
-            } else {
-                0
-            };
-            if nh < 1 {
-                return Err(Flow::Abort("head count must be positive".into()));
-            }
-            if m.rows > 0 && head_dim > 0 && nh > m.cols / head_dim {
-                return Err(Flow::Abort("head geometry exceeds row width".into()));
-            }
-            let half = head_dim / 2;
-            let mut data = m.data.clone();
-            for p in 0..m.rows {
-                let base = (p * m.cols) as usize;
-                let pos_f = (start + p) as f64;
-                for h in 0..nh {
-                    for i in 0..half {
-                        let (j0, j1) = if neox {
-                            (
-                                (h * head_dim + i) as usize,
-                                (h * head_dim + half + i) as usize,
-                            )
-                        } else {
-                            let j0 = (h * head_dim + 2 * i) as usize;
-                            (j0, j0 + 1)
-                        };
-                        let x0 = data[base + j0];
-                        let x1 = data[base + j1];
-                        let e = (2 * i) as f64 / head_dim as f64;
-                        let inv_freq = 1.0 / crate::libm::almide_rt_libm_pow(theta, e);
-                        let angle = pos_f * inv_freq;
-                        let s = crate::libm::almide_rt_libm_sin(angle);
-                        let c = crate::libm::almide_rt_libm_cos(angle);
-                        data[base + j0] = x0 * c - x1 * s;
-                        data[base + j1] = x0 * s + x1 * c;
-                    }
-                }
-            }
-            Ok(mat(m.rows, m.cols, data))
-        }
-        "matrix.multi_head_attention" | "matrix.masked_multi_head_attention" => {
-            // transcribed from the convergent self-host __mha_impl (C-198):
-            // dh = dm/nh truncating, scale = 1/sqrt(dh), causal mask adds
-            // -1e9 past (sk-sq)+i, softmax via the canonical fast-exp with a
-            // degenerate row falling back to uniform weights, out = Σ w·v
-            let causal = name.contains("masked");
-            arity(name, &args, 4)?;
-            let q = want_mat(name, &args[0])?;
-            let k = want_mat(name, &args[1])?;
-            let v = want_mat(name, &args[2])?;
-            let nh = want_int(name, &args[3])?;
-            if nh < 1 {
-                return Err(Flow::Abort("head count must be positive".into()));
-            }
-            let (sq, sk, dm) = (q.rows, k.rows, if q.rows == 0 { 0 } else { q.cols });
-            let dh = dm / nh;
-            let scale = 1.0 / (dh as f64).sqrt();
-            let mut out = vec![0.0f64; (sq * dm) as usize];
-            for i in 0..sq {
-                let qb = (i * q.cols) as usize;
-                for h in 0..nh {
-                    let col0 = (h * dh) as usize;
-                    let mask = if causal { (sk - sq) + i } else { -1 };
-                    let mut scores = vec![0.0f64; sk as usize];
-                    for j in 0..sk {
-                        let kb = (j * k.cols) as usize;
-                        let mut dot = 0.0f64;
-                        for kk in 0..dh as usize {
-                            dot += q.data[qb + col0 + kk] * k.data[kb + col0 + kk];
-                        }
-                        let scaled = dot * scale;
-                        scores[j as usize] = if mask >= 0 && j > mask {
-                            scaled + (0.0 - 1_000_000_000.0)
-                        } else {
-                            scaled
-                        };
-                    }
-                    let mut mx = scores.first().copied().unwrap_or(0.0);
-                    for s in scores.iter().skip(1) {
-                        if *s > mx {
-                            mx = *s;
-                        }
-                    }
-                    let mut sum = 0.0f64;
-                    for s in scores.iter_mut() {
-                        let e = fast_exp(*s - mx);
-                        *s = e;
-                        sum += e;
-                    }
-                    if sum <= 0.0 || sum.is_nan() {
-                        for s in scores.iter_mut() {
-                            *s = 1.0;
-                        }
-                        sum = sk as f64;
-                    }
-                    for (j, s) in scores.iter().enumerate() {
-                        let w = *s / sum;
-                        let vb = j * v.cols as usize;
-                        for kk in 0..dh as usize {
-                            let o = (i * dm) as usize + col0 + kk;
-                            out[o] += v.data[vb + col0 + kk] * w;
-                        }
-                    }
-                }
-            }
-            Ok(mat(sq, dm, out))
-        }
         "matrix.select_rows_f32" => {
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
@@ -882,62 +606,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 }
             }
             Ok(mat(rids.len() as i64, cols, data))
-        }
-        "matrix.select_rows_q8_0_dq" => {
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?.max(0);
-            let cols = want_int(name, &args[2])?.max(0);
-            let rids = want_rids(name, &args[3])?;
-            let mut data = vec![0.0f64; rids.len() * cols as usize];
-            for (i, rid) in rids.iter().enumerate() {
-                let rid = (*rid).max(0);
-                for c in 0..cols {
-                    let k = rid as i128 * cols as i128 + c as i128;
-                    data[i * cols as usize + c as usize] = q_element(&b, off, k, true);
-                }
-            }
-            Ok(mat(rids.len() as i64, cols, data))
-        }
-        "matrix.select_rows_q1_0" => {
-            // C-229 (#1787): a selected row is `cols / 128` WHOLE blocks on the
-            // ROW schedule (`row_off = off + rid * n_blocks * 18`), the trailing
-            // `cols mod 128` elements are 0.0, and a row whose blocks would fall
-            // outside the buffer is the all-zero row — a ROW-level bound. The
-            // full loader `from_q1_0_bytes` below keeps the global-k, per-element
-            // rule (C-229 #2419): the two entry points are deliberately different.
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?.max(0) as i128;
-            let cols = want_int(name, &args[2])?.max(0);
-            let rids = want_rids(name, &args[3])?;
-            let n_blocks = cols as i128 / 128;
-            let mut data = vec![0.0f64; rids.len() * cols as usize];
-            for (i, rid) in rids.iter().enumerate() {
-                let rid = (*rid).max(0) as i128;
-                let row_off = off + rid * n_blocks * 18;
-                if row_off + n_blocks * 18 > b.len() as i128 {
-                    continue; // the all-zero row
-                }
-                for c in 0..n_blocks * 128 {
-                    data[i * cols as usize + c as usize] = q_element(&b, row_off as i64, c, false);
-                }
-            }
-            Ok(mat(rids.len() as i64, cols, data))
-        }
-        "matrix.from_q1_0_bytes" => {
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?.max(0);
-            let (r, c) = norm_dims(want_int(name, &args[2])?, want_int(name, &args[3])?)?;
-            let mut data = vec![0.0f64; (r * c) as usize];
-            for row in 0..r {
-                for col in 0..c {
-                    let k = row as i128 * c as i128 + col as i128;
-                    data[(row * c + col) as usize] = q_element(&b, off, k, false);
-                }
-            }
-            Ok(mat(r, c, data))
         }
         "matrix.from_bytes_f32_le" | "matrix.from_bytes_f16_le" => {
             arity(name, &args, 4)?;
@@ -981,98 +649,4 @@ fn want_rids(name: &str, v: &Value) -> Result<Vec<i64>, Flow> {
             other.type_name()
         ))),
     }
-}
-
-/// One dequantized element on the GLOBAL-k block schedule (C-270,
-/// matrix_q_dims_guard): element k reads block k>>5 (Q8_0: 34-byte blocks,
-/// 32 weights) or k>>7 (Q1_0: 18-byte blocks, 128 sign bits, LSB-first,
-/// bit 1 → +scale / bit 0 → -scale), with a PER-ELEMENT bound — a block
-/// outside the data region is 0.0, never a read past it. Written `0.0 + v`:
-/// the accumulate-into-zeros sign ruling.
-fn q_element(b: &[u8], off: i64, k: i128, q8: bool) -> f64 {
-    let (block_bytes, weights_per_block) = if q8 {
-        (34i128, 32i128)
-    } else {
-        (18i128, 128i128)
-    };
-    let block = k / weights_per_block;
-    let start = off as i128 + block * block_bytes;
-    if start < 0 || start + block_bytes > b.len() as i128 {
-        return 0.0;
-    }
-    let start = start as usize;
-    let scale = scale_at(b, start);
-    let w = (k % weights_per_block) as usize;
-    let v = if q8 {
-        let q = b[start + 2 + w] as i8;
-        scale * q as f64
-    } else if (b[start + 2 + (w >> 3)] >> (w & 7)) & 1 == 1 {
-        scale
-    } else {
-        0.0 - scale
-    };
-    0.0 + v
-}
-
-/// ALS-T25: the CANONICAL fast-exp (C-223) — deg-6 unfused Horner, ties-to-
-/// even range reduction, 2^k by bit shift, clamped to ±708. Every step is a
-/// separate mul-then-add on purpose: an FMA anywhere re-opens #1197.
-#[allow(clippy::approx_constant, clippy::manual_clamp)] // the T25 coefficients ARE the algorithm; the clamp is spelled out for wasm fmax/fmin NaN propagation
-fn fast_exp(x0: f64) -> f64 {
-    // the clamp is spelled with wasm fmax/fmin semantics: a NaN PROPAGATES
-    // (Rust's f64::max would discard it and answer -708.0)
-    let x = if x0.is_nan() {
-        x0
-    } else if x0 < -708.0 {
-        -708.0
-    } else if x0 > 708.0 {
-        708.0
-    } else {
-        x0
-    };
-    let kf = (x * 1.4426950408889634).round_ties_even();
-    let r = x - kf * 0.6931471805599453;
-    let mut p = 0.001388888888888889;
-    p = p * r + 0.008333333333333333;
-    p = p * r + 0.041666666666666664;
-    p = p * r + 0.16666666666666666;
-    p = p * r + 0.5;
-    p = p * r + 1.0;
-    p = p * r + 1.0;
-    p * f64::from_bits(((kf as i64 + 1023) << 52) as u64)
-}
-
-/// ALS-T25 gelu: the identity `1 - 2/(e2+1)` (not `(e2-1)/(e2+1)`), the cube
-/// association `(x*x)*x`, and the halve-first scaling `(0.5*x)*(1+t)`.
-fn gelu_scalar(x: f64) -> f64 {
-    let inner = 0.7978845608028654 * (x + 0.044715 * ((x * x) * x));
-    let e2 = fast_exp(2.0 * inner);
-    let t = 1.0 - 2.0 / (e2 + 1.0);
-    (0.5 * x) * (1.0 + t)
-}
-
-/// ALS-T25 softmax row: row-max from element 0 scanned with `>` (a NaN
-/// element leaves the max), fast-exp per element, ONE left-to-right sum,
-/// reciprocal-multiply; a non-positive or NaN sum answers the uniform row.
-fn softmax_row(row: &[f64]) -> Vec<f64> {
-    let n = row.len();
-    if n == 0 {
-        return Vec::new();
-    }
-    let mut mx = row[0];
-    for x in &row[1..] {
-        if *x > mx {
-            mx = *x;
-        }
-    }
-    let exps: Vec<f64> = row.iter().map(|x| fast_exp(x - mx)).collect();
-    let mut s = 0.0f64;
-    for e in &exps {
-        s += e;
-    }
-    if s <= 0.0 || s.is_nan() {
-        return vec![1.0 / n as f64; n];
-    }
-    let inv = 1.0 / s;
-    exps.iter().map(|v| v * inv).collect()
 }
