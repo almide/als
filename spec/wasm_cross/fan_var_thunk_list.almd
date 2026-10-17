@@ -12,7 +12,7 @@ fn ra() -> Int = 1
 fn rb() -> Int = 2
 
 effect fn main() -> Unit = {
-  let r = fan.any {
+  let r = fan.first_ok {
     one()
   }!
   println("any_var=${r}")

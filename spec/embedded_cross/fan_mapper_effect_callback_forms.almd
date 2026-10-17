@@ -4,7 +4,7 @@
 // wasm leg, in every spelling the ruling admits:
 //   - the canonical `!` tail (`(p) => fs.read_text(p)!`, `(p) => helper(p)!`)
 //   - a COMPOUND body — a statement before the `!` (`{ let t = ..; f(t)! }`)
-//   - a bare effect-fn VALUE (`fan.any(paths, helper)`)
+//   - a bare effect-fn VALUE (`fan.first_ok(paths, helper)`)
 // consumed via `!`, `??`, and a match over settle's list.
 //
 // The frontend strips the canonical `!` only for `list.*` callees, and
@@ -37,15 +37,15 @@ effect fn main() -> Unit = {
   let mixed = [d + "/missing.txt", d + "/b.txt", d + "/a.txt"]
   let good = [d + "/a.txt", d + "/b.txt"]
   let bad_last = [d + "/a.txt", d + "/gone.txt"]
-  // ── fan.any: first Ok wins, an element's err skips ──
-  println("any bang fs: " + fan.any(mixed, (p) => fs.read_text(p)!)!)
-  println("any bang helper: " + fan.any(mixed, (p) => helper(p)!)!)
-  println("any compound: " + fan.any(mixed, (p) => {
+  // ── fan.first_ok: first Ok wins, an element's err skips ──
+  println("any bang fs: " + fan.first_ok(mixed, (p) => fs.read_text(p)!)!)
+  println("any bang helper: " + fan.first_ok(mixed, (p) => helper(p)!)!)
+  println("any compound: " + fan.first_ok(mixed, (p) => {
     let t = string.trim(p)
     fs.read_text(t)!
   })!)
-  println("any value: " + fan.any(mixed, helper)!)
-  println("any all-fail: " + (fan.any([d + "/x.txt"], (p) => fs.read_text(p)!) ?? "fb"))
+  println("any value: " + fan.first_ok(mixed, helper)!)
+  println("any all-fail: " + (fan.first_ok([d + "/x.txt"], (p) => fs.read_text(p)!) ?? "fb"))
   // ── fan.settle: EVERY element's Result, errs captured ──
   let s1 = fan.settle(mixed, (p) => fs.read_text(p)!)
   println("settle bang fs: " + list.join(s1 |> list.map((r) => show(r)), " | "))

@@ -1,10 +1,10 @@
-// Use fan.any when you meant "the first candidate that SUCCEEDS, in list order".
+// Use fan.first_ok when you meant "the first candidate that SUCCEEDS, in list order".
 effect fn a() -> Result[String, String] = ok("a")
 
 effect fn b() -> Result[String, String] = ok("b")
 
 effect fn main() -> Unit = {
-  let w = fan.any {
+  let w = fan.first_ok {
     a()
     b()
   }!

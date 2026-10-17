@@ -1,7 +1,7 @@
 effect fn one() -> Result[Int, String] = ok(1)
 
 effect fn main() -> Unit = {
-  let r = fan.any {
+  let r = fan.first_ok {
     one()
   }!
   println(int.to_string(r))
