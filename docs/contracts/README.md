@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 386 contracts: **requirements-first 81** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 387 contracts: **requirements-first 82** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-386 contracts
+387 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -421,4 +421,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-384 | testing.assert_aborts runs only its capture-free closure in a fresh child and passes iff the child ends in a defined abort whose text contains the expected substring, identically on native and wasm | 0.68.0 | active | fixture | 0 |
 | C-385 | The http client frames the request body itself: a caller's Content-Length header is dropped on every lane | 0.68.0 | active | fixture | 0 |
 | C-386 | A record-form fan block is the record literal of its fields, run as parallel siblings | 0.68.0 | active | fixture | 2 |
+| C-387 | Identifiers are UAX #31 names held in NFC; compatibility characters are refused; a caseless name is type-side only by declaration; non-ASCII names run byte-identically on every leg | 0.68.0 | active | fixture | 1 |
 
