@@ -246,7 +246,7 @@ impl P {
         while self.at_kw("import") {
             let line = self.line();
             self.bump();
-            let mut path = vec![self.member_name()?];
+            let mut path = vec![self.module_name()?];
             let mut names = None;
             while self.eat_sym(".") {
                 if self.at_sym("{") {
@@ -272,10 +272,10 @@ impl P {
                     names = Some(ns);
                     break;
                 }
-                path.push(self.member_name()?);
+                path.push(self.module_name()?);
             }
             let alias = if self.eat_kw("as") || self.at_kw("as") {
-                Some(self.ident()?)
+                Some(self.module_name()?)
             } else {
                 None
             };
@@ -295,11 +295,23 @@ impl P {
         Ok(prog)
     }
 
+    /// A module name — a `module` / `import` path segment or an `import … as`
+    /// alias — is ASCII (ALS-E17, #1456): it is a qualifier, and no qualifier
+    /// a program can write is caseless.
+    fn module_name(&mut self) -> PResult<String> {
+        let name = self.member_name()?;
+        if name.is_ascii() {
+            Ok(name)
+        } else {
+            self.err(format!("module name '{name}' is not ASCII"))
+        }
+    }
+
     fn dotted(&mut self) -> PResult<Vec<String>> {
-        let mut v = vec![self.member_name()?];
+        let mut v = vec![self.module_name()?];
         while self.at_sym(".") && !matches!(self.peek_at(1), Tok::Sym("{")) {
             self.bump();
-            v.push(self.member_name()?);
+            v.push(self.module_name()?);
         }
         Ok(v)
     }
