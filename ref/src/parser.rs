@@ -2062,7 +2062,7 @@ impl P {
     }
 
     fn fan_expr(&mut self) -> PResult<Expr> {
-        // `fan { … }`, `fan.first_ok { … }`, `fan.settle { … }`, `fan.bounded(b) { … }`,
+        // `fan { … }`, `fan.min(clock) { … }`, `fan.settle { … }`, `fan.bounded(b) { … }`,
         // or a plain call `fan.map(xs, f)` (falls through to the postfix machinery)
         self.expect_kw("fan")?;
         if self.at_sym("{") {

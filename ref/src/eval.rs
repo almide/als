@@ -161,7 +161,7 @@ pub struct Interp {
     inline_exempt: BTreeMap<String, bool>,
 }
 
-/// one active fan.bounded / fan.min_cost arm / fan.timeout region
+/// one active fan.bounded / fan.min arm / fan.timeout region
 struct MeterFrame {
     /// charge units admitted (min-capped against the parent at push)
     budget: u64,
@@ -532,25 +532,29 @@ impl Interp {
         f.spent
     }
 
-    /// the VALUE form of `fan.min_cost(budget?, xs, f)` (T7-1 mapper via the
+    /// the VALUE form of `fan.min(clock, xs, f)` (T7-1 mapper via the
     /// stdlib route): same winner rule as the block form — lexicographic
-    /// min (spend, index) among admitted, non-Err arms
+    /// min (spend, index) among admitted, non-Err arms. The clock is
+    /// required (ADR-0028); only the compute clock is implemented (#3788)
     pub fn fan_race_values(&mut self, args: Vec<Value>) -> R {
-        let mut budget = u64::MAX;
-        let mut rest = &args[..];
-        if let Some(Value::Time { wall: false, ns }) = args.first() {
-            budget = (*ns / 3) as u64;
-            rest = &args[1..];
-        } else if let Some(Value::Time { wall: true, .. }) = args.first() {
-            return self.abstain(
-                "semantics:fan-budget",
-                "`fan.min_cost` over a wall-clock budget",
-            );
-        }
+        let budget = match args.first() {
+            Some(Value::Time { wall: false, ns }) => (*ns / 3) as u64,
+            Some(Value::Time { wall: true, .. }) => {
+                return self.abstain(
+                    "semantics:fan-budget",
+                    "`fan.min` over the duration clock (#3788)",
+                )
+            }
+            _ => return self.abstain("syntax:fan.min", "`fan.min` without a clock argument"),
+        };
+        let rest = &args[1..];
         let [Value::List(xs), Value::Fn(f)] = rest else {
             return self.abstain(
-                "syntax:fan.min_cost",
-                format!("`fan.min_cost` value form with {} argument(s)", rest.len()),
+                "syntax:fan.min",
+                format!(
+                    "`fan.min` value form with {} argument(s) after the clock",
+                    rest.len()
+                ),
             );
         };
         let (xs, f) = (xs.clone(), f.clone());
@@ -577,7 +581,9 @@ impl Interp {
         }
         Ok(match best {
             Some((_, v)) => Value::Ok(Rc::new(v)),
-            None => Value::Err(Rc::new(Value::str("fan.min_cost: all candidates failed"))),
+            None => Value::Err(Rc::new(Value::str(
+                "fan.min: no branch succeeded within budget",
+            ))),
         })
     }
 
@@ -2097,19 +2103,16 @@ impl Interp {
                             Ok(Value::Tuple(Rc::new(vals)))
                         }
                     }
-                    Some(h) if h == "first_ok" => {
-                        // ALS-R3: list order, first Ok wins; plain thunk values
-                        // auto-wrap (effect-system.md §5 Thunk typing)
-                        for a in arms {
-                            match self.eval(env, a)? {
-                                Value::Ok(v) => return Ok(Value::Ok(v)),
-                                Value::Err(_) => continue,
-                                other => return Ok(Value::Ok(Rc::new(other))),
-                            }
-                        }
-                        Ok(Value::Err(Rc::new(Value::str(
-                            "fan.first_ok: all candidates failed",
-                        ))))
+                    Some(h) if h == "any" || h == "first_ok" => {
+                        // removed in dialect epoch 14 (ADR-0028): the selection
+                        // is a `??` chain; almide refuses the spelling at check
+                        // time (E027), so the judge never evaluates it
+                        self.abstain(
+                            &format!("syntax:fan.{h}"),
+                            format!(
+                                "`fan.{h} {{ … }}` was removed in dialect epoch 14 — a `??` chain"
+                            ),
+                        )
                     }
                     Some(h) if h == "settle" => {
                         // ALS-R3: a TUPLE of per-arm Results, list order
@@ -2174,23 +2177,32 @@ impl Interp {
                             Err(e) => Err(e),
                         }
                     }
-                    Some(h) if h == "min_cost" => {
+                    Some(h) if h == "min" => {
                         // ALS-DT3: winner = lexicographic min (spend, index)
-                        // among arms that stayed in budget and did not Err
+                        // among arms that stayed in budget and did not Err.
+                        // The clock is REQUIRED (ADR-0028): its type says what
+                        // "least" is measured on; only the compute clock is
+                        // implemented (the duration clock is #3788)
                         let mut vals = Vec::new();
                         for a in head_args {
                             vals.push(self.eval(env, a)?);
                         }
-                        let mut budget = u64::MAX;
-                        let mut rest = &vals[..];
-                        if let Some(Value::Time { wall: false, ns }) = vals.first() {
-                            budget = (*ns / 3) as u64;
-                            rest = &vals[1..];
-                        } else if let Some(Value::Time { wall: true, .. }) = vals.first() {
-                            return self.abstain(
-                                "semantics:fan-budget",
-                                "`fan.min_cost` over a wall-clock budget",
-                            );
+                        let budget;
+                        let rest = &vals[1..];
+                        match vals.first() {
+                            Some(Value::Time { wall: false, ns }) => budget = (*ns / 3) as u64,
+                            Some(Value::Time { wall: true, .. }) => {
+                                return self.abstain(
+                                    "semantics:fan-budget",
+                                    "`fan.min` over the duration clock (#3788)",
+                                )
+                            }
+                            _ => {
+                                return self.abstain(
+                                    "syntax:fan.min",
+                                    "`fan.min` without a clock argument",
+                                )
+                            }
                         }
                         enum Arm {
                             Block(Expr),
@@ -2199,12 +2211,10 @@ impl Interp {
                         let arm_list: Vec<Arm> = if rest.is_empty() {
                             arms.iter().map(|a| Arm::Block(a.clone())).collect()
                         } else if rest.len() == 2 {
-                            // the mapper form: fan.min_cost(budget?, xs, f)
+                            // the mapper form: fan.min(clock, xs, f)
                             let Value::List(xs) = &rest[0] else {
-                                return self.abstain(
-                                    "syntax:fan.min_cost",
-                                    "`fan.min_cost` mapper over a non-list",
-                                );
+                                return self
+                                    .abstain("syntax:fan.min", "`fan.min` mapper over a non-list");
                             };
                             let f = rest[1].clone();
                             xs.iter()
@@ -2212,8 +2222,11 @@ impl Interp {
                                 .collect()
                         } else {
                             return self.abstain(
-                                "syntax:fan.min_cost",
-                                format!("`fan.min_cost` with {} head arg(s)", rest.len()),
+                                "syntax:fan.min",
+                                format!(
+                                    "`fan.min` with {} head arg(s) after the clock",
+                                    rest.len()
+                                ),
                             );
                         };
                         let mut best: Option<(u64, Value)> = None;
@@ -2227,7 +2240,7 @@ impl Interp {
                                         self.call_value(&c, vec![x.clone()])
                                     }
                                     other => Err(Flow::Fatal(format!(
-                                        "fan.min_cost mapper is a {}",
+                                        "fan.min mapper is a {}",
                                         other.type_name()
                                     ))),
                                 },
@@ -2252,7 +2265,7 @@ impl Interp {
                         Ok(match best {
                             Some((_, v)) => Value::Ok(Rc::new(v)),
                             None => Value::Err(Rc::new(Value::str(
-                                "fan.min_cost: all candidates failed",
+                                "fan.min: no branch succeeded within budget",
                             ))),
                         })
                     }

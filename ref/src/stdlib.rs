@@ -71,6 +71,7 @@ const LIST_FNS: &[&str] = &[
     "list.sort_by",
     "list.flat_map",
     "list.filter_map",
+    "list.find_map",
     "list.take_while",
     "list.drop_while",
     "list.count",
@@ -891,8 +892,8 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // ── list HOFs (first-err form when the callback is fallible) ──
         "list.map" | "list.filter" | "list.find" | "list.any" | "list.all" | "list.flat_map"
-        | "list.filter_map" | "list.take_while" | "list.drop_while" | "list.count"
-        | "list.partition" | "list.find_index" => {
+        | "list.filter_map" | "list.find_map" | "list.take_while" | "list.drop_while"
+        | "list.count" | "list.partition" | "list.find_index" => {
             arity(name, &args, 2)?;
             let xs = want_list(name, &args[0])?.clone();
             let c = want_fn(name, &args[1])?.clone();
@@ -933,6 +934,16 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                             break;
                         }
                     }
+                    // the first `some` in list order; a later element never runs
+                    // (the K1 selection that replaced `fan.any(xs, f)`, ADR-0028)
+                    "list.find_map" => match r {
+                        Value::Some(v) => {
+                            found = Some((*v).clone());
+                            break;
+                        }
+                        Value::None => {}
+                        other => return mismatch(name, "Option", &other),
+                    },
                     "list.find_index" => {
                         if want_bool(name, &r)? {
                             found = Some(Value::Int(idx as i64));
@@ -980,7 +991,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                     Value::List(Rc::new(out)),
                     Value::List(Rc::new(out2)),
                 ])),
-                "list.find" | "list.find_index" => found
+                "list.find" | "list.find_index" | "list.find_map" => found
                     .map(|v| Value::Some(Rc::new(v)))
                     .unwrap_or(Value::None),
                 "list.any" | "list.all" => Value::Bool(acc_bool),
@@ -2565,7 +2576,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(hof_out(fal, bail, acc))
         }
 
-        "fan.min_cost" => it.fan_race_values(args),
+        "fan.min" => it.fan_race_values(args),
         // ── ALS-DT1: time constructors (compute.* deterministic clock,
         // duration.* wall clock) — negative aborts, overflow saturates ──
         "compute.ns" | "compute.us" | "compute.ms" | "compute.s" | "compute.min" | "compute.h"
