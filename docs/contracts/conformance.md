@@ -11,7 +11,7 @@
 > (spec-coverage + evidence-class >= fixture for every active contract), so this
 > page cannot legitimately contain an empty Fixtures cell.
 
-135 normative sections; 853 distinct executable fixtures.
+135 normative sections; 854 distinct executable fixtures.
 
 | Section | Contracts | Fixtures (how CI runs each) |
 |---------|-----------|------------------------------|
@@ -46,8 +46,8 @@
 | ALS-DL1 | C-260 | `spec/wasm_cross/declaration_forms.almd` (byte-compare) |
 | ALS-DL2 | C-263 | `spec/wasm_cross/declaration_forms.almd` (byte-compare) |
 | ALS-DT1 | C-202, C-203 | `spec/wasm_cross/time_negative_trap.almd` (byte-compare)<br>`spec/wasm_cross/time_negative_scale.almd` (byte-compare)<br>`spec/wasm_cross/time_saturate.almd` (byte-compare)<br>`spec/wasm_cross/time_ops_algebra.almd` (byte-compare) |
-| ALS-DT2 | C-204, C-207, C-320 | `spec/wasm_cross/fuel_bounded_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_block_body.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_divergence_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_dyn_charge.almd` (byte-compare)<br>`spec/wasm_cross/fuel_var_budget.almd` (byte-compare)<br>`spec/wasm_cross/fuel_interp_uncharged.almd` (byte-compare)<br>`spec/wasm_cross/fuel_cut_in_arm_loop.almd` (byte-compare) |
-| ALS-DT3 | C-205 | `spec/wasm_cross/fuel_race_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_race_err_skip.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_window.almd` (byte-compare)<br>`spec/wasm_cross/fan_race_mapper.almd` (byte-compare) |
+| ALS-DT2 | C-204, C-207, C-320 | `spec/wasm_cross/fuel_bounded_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_block_body.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_divergence_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_dyn_charge.almd` (byte-compare)<br>`spec/wasm_cross/fuel_var_budget.almd` (byte-compare)<br>`spec/wasm_cross/fuel_interp_uncharged.almd` (byte-compare)<br>`spec/wasm_cross/fuel_single_call_args.almd` (byte-compare)<br>`spec/wasm_cross/fuel_cut_in_arm_loop.almd` (byte-compare) |
+| ALS-DT3 | C-205 | `spec/wasm_cross/fuel_race_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_race_err_skip.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_window.almd` (byte-compare)<br>`spec/wasm_cross/fan_race_mapper.almd` (byte-compare)<br>`spec/wasm_cross/fuel_single_call_args.almd` (byte-compare) |
 | ALS-DT4 | C-206 | `spec/wasm_cross/fan_settle_tuple.almd` (byte-compare) |
 | ALS-DT5 | C-208 | `spec/wasm_cross/fuel_timeout_ends.almd` (byte-compare) |
 | ALS-E1 | C-231 | `spec/wasm_cross/literal_int_forms.almd` (byte-compare) |
