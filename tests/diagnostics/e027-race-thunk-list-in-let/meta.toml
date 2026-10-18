@@ -1,2 +1,2 @@
 expects_code = "E027"
-expects_error = "fan.race was renamed to fan.min_cost"
+expects_error = "fan.race was renamed to fan.min"
