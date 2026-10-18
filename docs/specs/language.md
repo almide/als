@@ -896,10 +896,7 @@ effect fn b() -> Result[Int, String] = ok(2)
 fn work(x: Int) -> Int = x * 2
 
 test "fan.* heads" {
-  let first = fan.first_ok {                 // first Ok in source order
-    a()
-    b()
-  }
+  let first = a() ?? b() ?? -1          // first Ok in source order (a `??` chain)
   let (ra, rb) = fan.settle {           // a TUPLE of per-arm Results
     a()
     b()

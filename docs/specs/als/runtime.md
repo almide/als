@@ -29,14 +29,14 @@ Contracts: C-008, C-009, C-010, C-011。
 
 **受理形**(構文要素方向: `ExprKind::Fan` / `FanBounded` / `FanRace` /
 `FanRaceMap` / `FanSettle` / `FanTimeout`): リスト形 `fan.map(xs, (x) =>
-…)`、ブロック形 `fan.first_ok { a(); b() }` / `fan.settle { … }`。全形が
+…)`、ブロック形 `fan.settle { … }` / `fan.min(clock) { … }`。全形が
 **effect fn 文脈必須**。`fan.map` の mapper は **Result を返す契約**
-(裸の値は検査時拒否、`(x) => ok(…)` へ誘導 — any/settle の thunk は
+(裸の値は検査時拒否、`(x) => ok(…)` へ誘導 — settle の arm は
 auto-wrap、map の mapper はしない)。`fan.settle { a; b }` の返りは
 **Result のタプル**(要素数 = thunk 数、ALS-DT4)。
 
-`fan.first_ok`・`fan.map`・`fan.settle` の結果は**リスト順で決定的**(最初に
-完了したものではなく、引数リストの先頭から評価した最初の該当)。エラーは
+`fan.map`・`fan.settle` の結果は**リスト順で決定的**(最初に
+完了したものではなく、引数リストの先頭から評価した結果)。エラーは
 ALS-R1 の統一 abort 形で表面化する。
 
 `fan.map` と `fan.settle` の観測(stdout・stderr・終了コード・返り値)は、
@@ -51,12 +51,14 @@ trap までの出力の後に abort する観測となり、k より後の要素
 
 `fan.race` と `fan.timeout` は 0.42.0 / 0.29.0 でいったん削除された後、
 **決定的意味論を得て 0.47.0 で復活した**: race は (spend, index) 辞書式
-最小の勝者則(ALS-DT3、C-205 — mapper 形 `fan.min_cost(budget?, xs, f)` を含む)、
+最小の勝者則(ALS-DT3、C-205 — mapper 形 `fan.min(clock, xs, f)` を含む)、
 timeout は charge site 協調チェックの壁時計期限(ALS-DT5、C-208)。
 `fan.bounded(c) { … }` は決定的予算(ALS-DT2、C-204)であり、mapper 形は
 持たない。旧 tombstone 裁定(C-004/C-006)はこの復活で SUPERSEDED。
-dialect epoch 14 で `fan.race` は `fan.min_cost`、`fan.any` は `fan.first_ok` に改名された
-(意味は不変、ADR-0028)。旧名はどの形でも E027 で、置換先を示す。
+dialect epoch 14 で `fan.race` は `fan.min(clock)` になり(時計引数は必須、その型が
+「何で測った最小か」を言う。compute 時計のみ実装、duration 時計は almide/almide#3788)、
+`fan.any` は撤去された(順に試して最初の Ok は `a() ?? b()` の連鎖、リストなら
+`list.find_map(xs, (x) => f(x)?)`。ADR-0028)。旧名はどの形でも E027 で、置換先を示す。
 Contracts: C-004, C-005, C-006。
 
 ## ALS-R4 非有限浮動小数の定数表示

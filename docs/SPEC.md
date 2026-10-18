@@ -1014,18 +1014,20 @@ effect fn main() -> Result[Unit, String] = {
 Results are returned as a tuple. All siblings are joined — nothing is cancelled. If any
 expression returns `Err`, the block's value is the first `Err` in list order.
 
-### 13.2 fan.map and the block heads fan.first_ok / fan.settle
+### 13.2 fan.map and the block head fan.settle
 
 ```
 let results = fan.map(urls, (url) => fetch(url))    // Result[List[B], String], list order
-let first   = fan.first_ok { fetch_a(); fetch_b() }      // Result[T, String]: first Ok in SOURCE order
 let all     = fan.settle { job_a(); job_b() }       // List[Result[T, String]], list order
+let first   = fetch_a() ?? fetch_b() ?? fallback    // first Ok in SOURCE order: a `??` chain, not a fan form
 ```
 
 - `fan.map(xs, f)` maps in deterministic list order; the first `Err` (in list
   order) propagates as the whole map's `Err`.
-- `fan.first_ok { ... }` — arms are single calls. The value is the first `Ok` in
-  source order; `Err` arms are skipped; all-`Err` yields `Err`.
+- The first `Ok` in source order is a `??` chain (`a() ?? b() ?? fallback`; a
+  later candidate never runs once one succeeds), and over a list it is
+  `list.find_map(xs, (x) => f(x)?) ?? fallback`. `fan.any` is E027 since
+  dialect epoch 14 (ADR-0028).
 - `fan.settle { ... }` — every arm runs to completion; the RESULT list is in
   arm order (deterministic) even where the native leg uses real threads.
 - The thunk-list spellings `fan.any([...])` / `fan.settle([...])` were removed
@@ -1072,28 +1074,29 @@ let r = fan.bounded(compute.ms(100)) { work(input) } ?? fallback
 - The body is checked in a PURE context; in v1 it must be a single function
   call returning a plain (non-`Result`) value.
 
-### 13.5 fan.min_cost — deterministic winner
+### 13.5 fan.min — deterministic winner
 
 ```
-let w = fan.min_cost { solve_fast(); solve_slow() } ?? fallback
-let b = fan.min_cost(compute.us(50)) { a(); b() } ?? fallback   // per-arm budget
-let m = fan.min_cost(xs, (x) => ok(solve(x))) ?? fallback       // mapper form
-let n = fan.min_cost(compute.us(50), xs, (x) => ok(solve(x))) ?? fallback
+let b = fan.min(compute.us(50)) { a(); b() } ?? fallback              // per-arm budget; the clock is required
+let n = fan.min(compute.us(50), xs, (x) => ok(solve(x))) ?? fallback  // mapper form
 ```
 
+- The clock argument is required: its TYPE says what "least" is measured on.
+  `compute` is the deterministic clock below; `duration` (first to succeed in
+  real time, I/O arms) is decided and tracked in almide/almide#3788.
 - Every arm is metered on the deterministic clock; the winner is the arm with
   the LEXICOGRAPHICALLY least `(spend, index)` — the cheapest arm, ties
-  resolved by source order. With a budget, arms whose spend exceeds it are
-  excluded; no admitted arm yields `Err`. Type: `Result[T, String]`.
+  resolved by source order. Arms whose spend exceeds the budget are
+  excluded; no admitted arm yields `Err("fan.min: no branch succeeded within budget")`. Type: `Result[T, String]`.
 - The MAPPER form races one PURE 1-param lambda over a dynamic list: arm `i`
-  is `f(xs[i])`, index order is list order, and the budget (when given) is
+  is `f(xs[i])`, index order is list order, and the budget is
   per-element — the same law as the block form. The mapper must return a
   `Result` (the mapper-form contract): `ok(v)` competes, `err(_)`
   self-disqualifies the element. An empty list is the no-admitted-arm `Err`.
 - History: an earlier spec revision promised both "results are identical on
   every target" (§13.1) and "the first arm to COMPLETE wins" (then-§13.2) —
   incompatible, since the second makes wall-clock scheduling observable. The
-  wall-clock race was removed in 0.42.0. `fan.min_cost` (named `fan.race` until dialect epoch 14) returns with the winner
+  wall-clock race was removed in 0.42.0. `fan.min` (named `fan.race` until dialect epoch 14) returns with the winner
   measured on the DECLARED deterministic clock, which makes both promises
   true at once: the fast arm wins, and every target agrees on which arm that
   is. Selecting a winner by wall clock is impossible in the deterministic
@@ -1118,7 +1121,7 @@ let t = fan.timeout(duration.ms(5000)) { work(input) } ?? fallback
 ### 13.7 Rules
 
 - All `fan` forms only inside `effect fn` — pure functions cannot fork
-  (`fan.bounded` / `fan.min_cost` bodies and arms are themselves checked PURE)
+  (`fan.bounded` / `fan.min` bodies and arms are themselves checked PURE)
 - No `var` capture — only `let` bindings from outer scope (prevents data races)
 - No unstructured `spawn` — all concurrency is scoped
 - No cancellation, by design — a cancelled sibling's side effects would depend on when the
