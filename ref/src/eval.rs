@@ -2078,12 +2078,20 @@ impl Interp {
                 match head {
                     None => {
                         // ALS-R3: deterministic, list order; the all-ok path yields the
-                        // tuple of unwrapped values. The err path's observable order is
-                        // pinned by C-199 and not yet read into this evaluator.
+                        // tuple of unwrapped values. C-199: every arm runs — an arm's
+                        // own `!` ends that ARM with its Err, not the block — and the
+                        // first Err in arm order escalates after the last arm.
                         let mut vals = Vec::new();
                         let mut first_err: Option<Value> = None;
                         for a in arms {
-                            match self.eval(env, a)? {
+                            let v = match self.eval(env, a) {
+                                Ok(v) => v,
+                                Err(Flow::Propagate(crate::eval::Prop::Err(e))) => {
+                                    Value::Err(Rc::new(e))
+                                }
+                                Err(f) => return Err(f),
+                            };
+                            match v {
                                 Value::Ok(v) => vals.push((*v).clone()),
                                 Value::Err(e) => {
                                     if first_err.is_none() {
