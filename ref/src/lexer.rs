@@ -672,3 +672,94 @@ fn lex_raw(chars: &[char], start: usize, line: usize) -> Result<(String, usize, 
         i += 1;
     }
 }
+
+/// A name whose first character is a letter with no case (CJK, kana, Hangul,
+/// ...). ALS-E17: such a name is a value name unless its module declares it
+/// type-side — after `type` / `protocol`, or heading a variant case or an
+/// alias target (directly after the declaration's `=` or a `|`, outside any
+/// bracket).
+pub fn is_caseless(name: &str) -> bool {
+    name.chars()
+        .next()
+        .is_some_and(|c| c.is_alphabetic() && !c.is_uppercase() && !c.is_lowercase())
+}
+
+fn is_word(t: &Tok, w: &str) -> bool {
+    matches!(t, Tok::Ident(s) if s == w)
+}
+
+/// The caseless names a token stream declares type-side (ALS-E17).
+pub fn declared_caseless_types(toks: &[Token]) -> std::collections::BTreeSet<String> {
+    let mut names = std::collections::BTreeSet::new();
+    let mut i = 0;
+    while i < toks.len() {
+        let is_type = is_word(&toks[i].tok, "type");
+        if !is_type && !is_word(&toks[i].tok, "protocol") {
+            i += 1;
+            continue;
+        }
+        let mut n = i + 1;
+        while n < toks.len() && toks[n].tok == Tok::Newline {
+            n += 1;
+        }
+        if let Some(Tok::Ident(name)) = toks.get(n).map(|t| &t.tok) {
+            if is_caseless(name) {
+                names.insert(name.clone());
+            }
+        }
+        i = n + 1;
+        if !is_type {
+            continue;
+        }
+        // The declaration body: depth-0 heads after `=` / `|`, until a line
+        // break that neither follows `=` / `|` nor precedes a `|`.
+        let mut depth = 0usize;
+        let mut seen_eq = false;
+        let mut prev: Option<&'static str> = None;
+        while i < toks.len() {
+            match &toks[i].tok {
+                Tok::Sym("(") | Tok::Sym("[") | Tok::Sym("{") => depth += 1,
+                Tok::Sym(")") | Tok::Sym("]") | Tok::Sym("}") => depth = depth.saturating_sub(1),
+                Tok::Eof => break,
+                Tok::Newline if depth == 0 && seen_eq => {
+                    let continues = matches!(prev, Some("=") | Some("|"))
+                        || matches!(toks.get(i + 1).map(|t| &t.tok), Some(Tok::Sym("|")));
+                    if !continues {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            if toks[i].tok != Tok::Newline && depth == 0 {
+                match &toks[i].tok {
+                    Tok::Sym("=") => seen_eq = true,
+                    Tok::Ident(name)
+                        if seen_eq
+                            && matches!(prev, Some("=") | Some("|"))
+                            && is_caseless(name) =>
+                    {
+                        names.insert(name.clone());
+                    }
+                    _ => {}
+                }
+                prev = match &toks[i].tok {
+                    Tok::Sym(s) => Some(*s),
+                    _ => Some(""),
+                };
+            }
+            i += 1;
+        }
+    }
+    names
+}
+
+/// Reclassify every name token spelled as a declared caseless type-side name.
+pub fn reclassify_caseless(toks: &mut [Token], names: &std::collections::BTreeSet<String>) {
+    for t in toks.iter_mut() {
+        if let Tok::Ident(name) = &t.tok {
+            if names.contains(name) {
+                t.tok = Tok::TypeName(name.clone());
+            }
+        }
+    }
+}

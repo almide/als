@@ -24,11 +24,22 @@ const KEYWORDS: &[&str] = &[
     "or", "not", "true", "false", "break", "continue", "todo", "where",
 ];
 
+thread_local! {
+    /// ALS-E17: the caseless names the program being parsed declares
+    /// type-side; an interpolation segment is lexed apart from its program,
+    /// so it reads the set from here.
+    static CASELESS_TYPES: std::cell::RefCell<std::collections::BTreeSet<String>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
 pub fn parse_program(src: &str) -> PResult<Program> {
-    let toks = lex(src).map_err(|e| ParseError {
+    let mut toks = lex(src).map_err(|e| ParseError {
         line: e.line,
         msg: e.msg,
     })?;
+    let names = crate::lexer::declared_caseless_types(&toks);
+    crate::lexer::reclassify_caseless(&mut toks, &names);
+    CASELESS_TYPES.with(|c| *c.borrow_mut() = names);
     let mut p = P {
         toks,
         pos: 0,
@@ -40,7 +51,8 @@ pub fn parse_program(src: &str) -> PResult<Program> {
 
 /// Parse a standalone expression (interpolation segments).
 fn parse_expr_src(src: &str, line: usize) -> PResult<Expr> {
-    let toks = lex(src).map_err(|e| ParseError { line, msg: e.msg })?;
+    let mut toks = lex(src).map_err(|e| ParseError { line, msg: e.msg })?;
+    CASELESS_TYPES.with(|c| crate::lexer::reclassify_caseless(&mut toks, &c.borrow()));
     let mut p = P {
         toks,
         pos: 0,
