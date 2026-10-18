@@ -1,6 +1,6 @@
 # ALS — 決定的時間（deterministic time）
 
-> Last updated: 2026-08-27
+> Last updated: 2026-10-19
 
 正規化元: [ADR-0001](../../adr/0001-deterministic-time-units.md)（S1–S8）、
 [SPEC.md §13](../../SPEC.md)。決定的時間は「charge unit × CM-1（versioned 校正定数）」
@@ -27,6 +27,10 @@ unit が予算 unit（`ns / CM-1`、切り捨て）を超えたときのみ Err�
 （EIP-150 式 — 現行リリースは region の入れ子自体を E007 で拒否するため、
 この規則の executable 証拠は参照評価器の実装のみである）。bind 文は
 charge 0。
+単一呼び出しの body `{ f(g(x)) }` では引数 `g(x)` も region の内側で評価され、
+body の他の部分と同じく課金される（ADR-0028 E）: ループ無しの `id` なら
+`{ id(heavy(1000)) }` は `{ heavy(1000) }` と同じ 1002 unit を消費する。
+`fan.min` の各 arm と mapper 呼び出しも同じ規則で計量される。
 
 **charge 表（CM-1 v0.3 = 3ns/unit、C-207）**: charge site は (a) fn entry —
 1 unit、ただしループ無し・非再帰の callee は共有 MIR インライナで消える
@@ -55,7 +59,7 @@ charge 0。
    fallback と後続出力は常に健全。
 
 Fixtures: `spec/wasm_cross/fuel_bounded_boundary.almd`, `fuel_block_body.almd`,
-`fuel_bare_result.almd`; cut 簿記は `spec/wasm_cross/fuel_cut_in_arm_loop.almd`
+`fuel_bare_result.almd`, `fuel_single_call_args.almd`; cut 簿記は `spec/wasm_cross/fuel_cut_in_arm_loop.almd`
 （0.58.0 は規則 1〜2 に両ターゲット同一に違反する — 直下ループの cut が stale Ok(0) になり、以後の全 region が汚染される。合意判定には映らない種で、
 参照レグが値を固定するまで agreement で運ぶ。almide/almide#1572）。
 
@@ -68,7 +72,7 @@ Fixtures: `spec/wasm_cross/fuel_bounded_boundary.almd`, `fuel_block_body.almd`,
 ADR-0028）で、その型が「何で測った最小か」を言う。compute 時計のみ実装、duration
 時計は almide/almide#3788。
 Fixtures: `spec/wasm_cross/fuel_race_boundary.almd`, `fuel_race_err_skip.almd`,
-`fuel_bare_result.almd`。
+`fuel_bare_result.almd`, `fuel_single_call_args.almd`。
 
 ## ALS-DT4 settle の tuple 契約
 
