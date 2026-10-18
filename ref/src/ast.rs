@@ -250,7 +250,7 @@ pub enum Expr {
         cond: Box<Expr>,
         body: Box<Expr>,
     },
-    /// `fan { a; b }` and the block heads `fan.first_ok { … }` / `fan.settle { … }` /
+    /// `fan { a; b }` and the block heads `fan.min(clock) { … }` / `fan.settle { … }` /
     /// `fan.bounded(budget) { … }` — `head` is None for the plain block
     Fan {
         head: Option<String>,
