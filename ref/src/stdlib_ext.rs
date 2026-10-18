@@ -159,6 +159,7 @@ pub const EXT_FNS: &[&str] = &[
     "env.args",
     "env.get",
     "env.set",
+    "env.sleep_ms",
     "env.cwd",
     "env.temp_dir",
     "env.os",
@@ -1316,6 +1317,15 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let k = want_str(name, &args[0])?.to_string();
             let v = want_str(name, &args[1])?.to_string();
             it.env_overlay.push((k, v));
+            Ok(Value::Unit)
+        }
+        "env.sleep_ms" => {
+            // a wall pause with no observation of its own: the reference
+            // sleeps for real so a fixture's ordering argument (a sleeping
+            // reader, a writer) reads the same here as on the targets
+            arity(name, &args, 1)?;
+            let ms = want_int(name, &args[0])?;
+            std::thread::sleep(std::time::Duration::from_millis(ms.max(0) as u64));
             Ok(Value::Unit)
         }
         "env.cwd" => {
