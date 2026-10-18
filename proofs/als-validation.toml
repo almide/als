@@ -293,17 +293,17 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-DT2"
-hash = "sha256:70ea6044c285"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:fd4c0369a038"
+reviewed = "2026-10-19"
+by = "O6lvl4 (via the Claude session; the single-call-argument paragraph (ADR-0028 E, decided 2026-10-18) checked against C-204 and spec/wasm_cross/fuel_single_call_args.almd run on native, wasm and als-ref, byte-identical; the rest of the section is unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-DT3"
-hash = "sha256:6cd943d32d95"
-reviewed = "2026-10-18"
-by = "O6lvl4 (via the Claude session; the heading names `fan.min`, the dialect-epoch-14 name of `fan.race` (ADR-0028, decided 2026-10-18: the clock argument is required and its type says what is minimised; the interim `fan.min_cost` was never released); the selection rule text gained the ledger Err text and the required-clock sentence, checked against C-205 and spec/wasm_cross/fuel_race_boundary.almd / fuel_race_err_skip.almd)"
+hash = "sha256:abee2fa5d66a"
+reviewed = "2026-10-19"
+by = "O6lvl4 (via the Claude session; the fixture list gained spec/wasm_cross/fuel_single_call_args.almd, whose fan.min arms and mapper call are metered with their arguments (ADR-0028 E), run on native, wasm and als-ref, byte-identical; the selection rule text is unchanged from the 2026-10-18 review)"
 independent = "no"
 verdict = "accurate"
 
