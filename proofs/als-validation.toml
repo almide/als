@@ -445,9 +445,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-E17"
-hash = "sha256:0e2988962b03"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:9aed9ce18df2"
+reviewed = "2026-10-18"
+by = "O6lvl4 (via the Claude session; the #1456 lexical paragraphs checked against C-386's fixtures run on native, wasm and als-ref, byte-identical; the resolution paragraphs are unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
