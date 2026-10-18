@@ -301,9 +301,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-DT3"
-hash = "sha256:b585c89218fc"
-reviewed = "2026-10-17"
-by = "O6lvl4 (via the Claude session; the heading names `fan.min_cost`, the dialect-epoch-14 name of `fan.race` (ADR-0028 Q1, ratified 2026-10-17); the selection rule text is unchanged and was checked against C-205 and spec/wasm_cross/fuel_race_boundary.almd / fuel_race_err_skip.almd)"
+hash = "sha256:6cd943d32d95"
+reviewed = "2026-10-18"
+by = "O6lvl4 (via the Claude session; the heading names `fan.min`, the dialect-epoch-14 name of `fan.race` (ADR-0028, decided 2026-10-18: the clock argument is required and its type says what is minimised; the interim `fan.min_cost` was never released); the selection rule text gained the ledger Err text and the required-clock sentence, checked against C-205 and spec/wasm_cross/fuel_race_boundary.almd / fuel_race_err_skip.almd)"
 independent = "no"
 verdict = "accurate"
 
@@ -677,9 +677,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R3"
-hash = "sha256:8924d7330e7e"
-reviewed = "2026-10-17"
-by = "O6lvl4 (via the Claude session; the dialect-epoch-14 rename only — `fan.any` → `fan.first_ok`, `fan.race` → `fan.min_cost`, meaning unchanged (ADR-0028 Q1, ratified 2026-10-17) — checked against the renamed C-004/C-185/C-205 statements, the renamed spec/wasm_cross fan fixtures, and the reference evaluator's renamed heads)"
+hash = "sha256:5de8e2c626f4"
+reviewed = "2026-10-18"
+by = "O6lvl4 (via the Claude session; dialect epoch 14 final form (ADR-0028, decided 2026-10-18): `fan.any` removed in favour of a `??` chain / `list.find_map`, `fan.race` → `fan.min(clock)` with the clock required; checked against the rewritten C-004/C-005/C-185/C-205 statements, the rewritten spec/wasm_cross fan fixtures and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
