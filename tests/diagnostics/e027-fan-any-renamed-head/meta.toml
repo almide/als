@@ -1,3 +1,0 @@
-expects_code = "E027"
-expects_error = "fan.any was renamed to fan.first_ok"
-hint_substring = "not the first to finish"

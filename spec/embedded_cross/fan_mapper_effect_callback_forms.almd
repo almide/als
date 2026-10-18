@@ -4,7 +4,9 @@
 // wasm leg, in every spelling the ruling admits:
 //   - the canonical `!` tail (`(p) => fs.read_text(p)!`, `(p) => helper(p)!`)
 //   - a COMPOUND body — a statement before the `!` (`{ let t = ..; f(t)! }`)
-//   - a bare effect-fn VALUE (`fan.first_ok(paths, helper)`)
+//   - a bare effect-fn VALUE (`fan.settle(paths, helper)`)
+// plus the first-Ok selection `fan.any(xs, f)` used to spell (removed in
+// dialect epoch 14): `list.find_map(xs, (p) => f(p)?)` in the same spellings
 // consumed via `!`, `??`, and a match over settle's list.
 //
 // The frontend strips the canonical `!` only for `list.*` callees, and
@@ -18,10 +20,16 @@
 // Result channel.
 //
 // SELF-CONTAINED: its own temp dir (never printed — the suffix differs per
-// run), removed at the end. An fs program routes to the incumbent on the
+// run; the ABSENT paths below are fixed literals for the same reason, #2122),
+// removed at the end. An fs program routes to the incumbent on the
 // BUILD path, so this lives in the embedded lane (`run --target wasm`),
 // where the structural leg serves it.
 import fs
+
+/// A directory that does not exist, named the same on every run: the error
+/// text names its path (#2090), so a temp-dir suffix here would put a
+/// nanosecond stamp on stdout and the cross net could not compare the runs.
+let absent = "almide-no-such-directory"
 
 effect fn helper(p: String) -> Result[String, String] = fs.read_text(p)
 
@@ -34,18 +42,22 @@ effect fn main() -> Unit = {
   let d = fs.create_temp_dir("fanForms")!
   fs.write(d + "/a.txt", "alpha")!
   fs.write(d + "/b.txt", "beta")!
-  let mixed = [d + "/missing.txt", d + "/b.txt", d + "/a.txt"]
+  // #2122: the absent paths are fixed literals. They only ever have to not
+  // exist, and the temp directory's name is a nanosecond stamp that reaches
+  // stdout through the fs error — which made this fixture's output differ
+  // between its own two runs and the net unable to compare them.
+  let mixed = [absent + "/missing.txt", d + "/b.txt", d + "/a.txt"]
   let good = [d + "/a.txt", d + "/b.txt"]
-  let bad_last = [d + "/a.txt", d + "/gone.txt"]
-  // ── fan.first_ok: first Ok wins, an element's err skips ──
-  println("any bang fs: " + fan.first_ok(mixed, (p) => fs.read_text(p)!)!)
-  println("any bang helper: " + fan.first_ok(mixed, (p) => helper(p)!)!)
-  println("any compound: " + fan.first_ok(mixed, (p) => {
+  let bad_last = [d + "/a.txt", absent + "/gone.txt"]
+  // ── list.find_map: first Ok wins, an element's err (`?` → none) skips ──
+  println("any bang fs: " + (list.find_map(mixed, (p) => fs.read_text(p)?) ?? "fb"))
+  println("any bang helper: " + (list.find_map(mixed, (p) => helper(p)?) ?? "fb"))
+  println("any compound: " + (list.find_map(mixed, (p) => {
     let t = string.trim(p)
-    fs.read_text(t)!
-  })!)
-  println("any value: " + fan.first_ok(mixed, helper)!)
-  println("any all-fail: " + (fan.first_ok([d + "/x.txt"], (p) => fs.read_text(p)!) ?? "fb"))
+    fs.read_text(t)?
+  }) ?? "fb"))
+  println("any value: " + (list.find_map(mixed, (p) => helper(p)?) ?? "fb"))
+  println("any all-fail: " + (list.find_map([absent + "/x.txt"], (p) => fs.read_text(p)?) ?? "fb"))
   // ── fan.settle: EVERY element's Result, errs captured ──
   let s1 = fan.settle(mixed, (p) => fs.read_text(p)!)
   println("settle bang fs: " + list.join(s1 |> list.map((r) => show(r)), " | "))
@@ -61,15 +73,21 @@ effect fn main() -> Unit = {
   // ── fan.map: collect in order, the FIRST err is the result ──
   println("map bang fs: " + list.join(fan.map(good, (p) => fs.read_text(p)!)!, ","))
   println("map bang helper: " + list.join(fan.map(good, (p) => helper(p)!)!, ","))
-  println("map compound: " + list.join(fan.map(good, (p) => {
-    let t = string.trim(p)
-    fs.read_text(t)!
-  })!, ","))
+  println("map compound: " + list.join(
+    fan.map(good, (p) => {
+      let t = string.trim(p)
+      fs.read_text(t)!
+    })!,
+    ",",
+  ))
   println("map value: " + list.join(fan.map(good, helper)!, ","))
-  println("map first err: " + list.join(fan.map(bad_last, (p) => {
-    let t = string.trim(p)
-    fs.read_text(t)!
-  }) ?? ["fb"], ","))
+  println("map first err: " + list.join(
+    fan.map(bad_last, (p) => {
+      let t = string.trim(p)
+      fs.read_text(t)!
+    }) ?? ["fb"],
+    ",",
+  ))
   println("map value err: " + show(match fan.map(bad_last, helper) {
     ok(vs) => ok(list.join(vs, ",")),
     err(e) => err(e),
