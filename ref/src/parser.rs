@@ -2065,6 +2065,9 @@ impl P {
         // `fan { … }`, `fan.min(clock) { … }`, `fan.settle { … }`, `fan.bounded(b) { … }`,
         // or a plain call `fan.map(xs, f)` (falls through to the postfix machinery)
         self.expect_kw("fan")?;
+        if self.at_sym("{") && self.brace_opens_record() {
+            return self.fan_record();
+        }
         if self.at_sym("{") {
             let arms = self.fan_arms()?;
             return Ok(Expr::Fan {
@@ -2120,6 +2123,75 @@ impl P {
             self.pos = save;
         }
         Ok(Expr::Ident("fan".into()))
+    }
+
+    /// At `{`: does a `name:` field head follow (newlines skipped)?
+    fn brace_opens_record(&self) -> bool {
+        let mut k = 1;
+        while matches!(self.peek_at(k), Tok::Newline) {
+            k += 1;
+        }
+        matches!(self.peek_at(k), Tok::Ident(_) | Tok::EscIdent(_))
+            && matches!(self.peek_at(k + 1), Tok::Sym(":"))
+    }
+
+    /// `fan { a: e1, b: e2 }` (ALS-R3, C-386): the plain fan of the field
+    /// values, bound to names no source can spell, then the anonymous record
+    /// over them — `{ let (·a, ·b) = fan { e1, e2 }; { a: ·a, b: ·b } }`.
+    fn fan_record(&mut self) -> PResult<Expr> {
+        let line = self.line();
+        self.expect_sym("{")?;
+        let mut names: Vec<String> = Vec::new();
+        let mut arms = Vec::new();
+        loop {
+            self.skip_nl();
+            if self.eat_sym("}") {
+                break;
+            }
+            let n = self.member_name()?;
+            if names.contains(&n) {
+                return self.err("a fan record field is named once");
+            }
+            self.expect_sym(":")?;
+            self.skip_nl();
+            arms.push(self.expr()?);
+            names.push(n);
+            if !(self.eat_sym(",") || self.at_nl() || self.at_sym("}")) {
+                return self.err("fan arms are separated by `,` or a newline");
+            }
+        }
+        let hidden: Vec<String> = names
+            .iter()
+            .map(|n| format!("\u{b7}fan\u{b7}{n}"))
+            .collect();
+        let pat = match hidden.as_slice() {
+            [one] => LetPat::Name(one.clone()),
+            many => LetPat::Tuple(many.iter().map(|h| LetPat::Name(h.clone())).collect()),
+        };
+        let fan = Expr::Fan {
+            head: None,
+            head_args: vec![],
+            arms,
+        };
+        let record = Expr::Record {
+            module: None,
+            type_name: None,
+            spread: None,
+            fields: names
+                .into_iter()
+                .zip(hidden)
+                .map(|(n, h)| (n, Expr::Ident(h)))
+                .collect(),
+        };
+        Ok(Expr::Block(vec![
+            Stmt::Let {
+                pat,
+                ty: None,
+                expr: fan,
+                line,
+            },
+            Stmt::Expr(record, line),
+        ]))
     }
 
     fn fan_arms(&mut self) -> PResult<Vec<Expr>> {
