@@ -11,7 +11,7 @@
 > (spec-coverage + evidence-class >= fixture for every active contract), so this
 > page cannot legitimately contain an empty Fixtures cell.
 
-135 normative sections; 841 distinct executable fixtures.
+135 normative sections; 843 distinct executable fixtures.
 
 | Section | Contracts | Fixtures (how CI runs each) |
 |---------|-----------|------------------------------|
@@ -46,7 +46,7 @@
 | ALS-DL1 | C-260 | `spec/wasm_cross/declaration_forms.almd` (byte-compare) |
 | ALS-DL2 | C-263 | `spec/wasm_cross/declaration_forms.almd` (byte-compare) |
 | ALS-DT1 | C-202, C-203 | `spec/wasm_cross/time_negative_trap.almd` (byte-compare)<br>`spec/wasm_cross/time_negative_scale.almd` (byte-compare)<br>`spec/wasm_cross/time_saturate.almd` (byte-compare)<br>`spec/wasm_cross/time_ops_algebra.almd` (byte-compare) |
-| ALS-DT2 | C-204, C-207, C-320 | `spec/wasm_cross/fuel_bounded_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_block_body.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_divergence_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_dyn_charge.almd` (byte-compare)<br>`spec/wasm_cross/fuel_var_budget.almd` (byte-compare)<br>`spec/wasm_cross/fuel_cut_in_arm_loop.almd` (byte-compare) |
+| ALS-DT2 | C-204, C-207, C-320 | `spec/wasm_cross/fuel_bounded_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_block_body.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_divergence_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_dyn_charge.almd` (byte-compare)<br>`spec/wasm_cross/fuel_var_budget.almd` (byte-compare)<br>`spec/wasm_cross/fuel_interp_uncharged.almd` (byte-compare)<br>`spec/wasm_cross/fuel_cut_in_arm_loop.almd` (byte-compare) |
 | ALS-DT3 | C-205 | `spec/wasm_cross/fuel_race_boundary.almd` (byte-compare)<br>`spec/wasm_cross/fuel_race_err_skip.almd` (byte-compare)<br>`spec/wasm_cross/fuel_bare_result.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_cut.almd` (byte-compare)<br>`spec/wasm_cross/fuel_trap_window.almd` (byte-compare)<br>`spec/wasm_cross/fan_race_mapper.almd` (byte-compare) |
 | ALS-DT4 | C-206 | `spec/wasm_cross/fan_settle_tuple.almd` (byte-compare) |
 | ALS-DT5 | C-208 | `spec/wasm_cross/fuel_timeout_ends.almd` (byte-compare) |
@@ -120,7 +120,7 @@
 | ALS-ST4 | C-253 | `spec/wasm_cross/place_assign_ascription.almd` (byte-compare) |
 | ALS-ST5 | C-265 | `spec/wasm_cross/guard_statement.almd` (byte-compare) |
 | ALS-ST6 | C-266 | `spec/wasm_cross/guard_let_statement.almd` (byte-compare) |
-| ALS-T1 | C-021, C-294 | `spec/wasm_cross/string_whitespace.almd` (byte-compare)<br>`spec/wasm_cross/fuel_zero_budget_inline.almd` (byte-compare) |
+| ALS-T1 | C-021, C-294 | `spec/wasm_cross/string_whitespace.almd` (byte-compare)<br>`spec/wasm_cross/fuel_zero_budget_inline.almd` (byte-compare)<br>`spec/wasm_cross/fuel_wrapper_entry_exempt.almd` (byte-compare) |
 | ALS-T2 | C-024, C-210, C-300, C-301 | `spec/wasm_cross/float_parse.almd` (byte-compare)<br>`spec/wasm_cross/nan_canonical_observation.almd` (byte-compare)<br>`spec/wasm_cross/nan_canonical_bytes_write.almd` (byte-compare)<br>`spec/wasm_cross/nan_canonical_bytes_set_write.almd` (byte-compare)<br>`spec/wasm_cross/map_literal_ctor_values.almd` (byte-compare)<br>`tests/heap_cap_test.rs` (cargo gate)<br>`spec/wasm_cross/list_arg_map_view.almd` (byte-compare)<br>`spec/wasm_cross/map_upsert_str.almd` (byte-compare) |
 | ALS-T3 | C-087, C-298, C-299 | `spec/wasm_cross/json_number_unicode.almd` (byte-compare)<br>`spec/wasm_cross/json_string_span.almd` (byte-compare)<br>`spec/wasm_cross/json_parse_lenient_edges.almd` (byte-compare)<br>`spec/wasm_cross/json_many_keys.almd` (byte-compare)<br>`spec/wasm_cross/codec_decode_error_surface.almd` (byte-compare)<br>`spec/wasm_cross/codec_deep_nesting.almd` (byte-compare)<br>`spec/wasm_cross/codec_doc_array.almd` (byte-compare)<br>`spec/wasm_cross/codec_empty_and_bool.almd` (byte-compare)<br>`spec/wasm_cross/codec_extra_keys.almd` (byte-compare)<br>`spec/wasm_cross/codec_int_float_boundaries.almd` (byte-compare)<br>`spec/wasm_cross/codec_list_list_field.almd` (byte-compare)<br>`spec/wasm_cross/codec_list_default_field.almd` (byte-compare)<br>`spec/wasm_cross/codec_nested_records.almd` (byte-compare)<br>`spec/wasm_cross/codec_option_numeric.almd` (byte-compare)<br>`spec/wasm_cross/codec_string_escapes.almd` (byte-compare)<br>`spec/wasm_cross/codec_variant_roundtrip.almd` (byte-compare)<br>`spec/wasm_cross/codec_whitespace_tolerance.almd` (byte-compare)<br>`spec/wasm_cross/codec_list_default.almd` (byte-compare)<br>`spec/wasm_cross/codec_triple_list.almd` (byte-compare)<br>`spec/wasm_cross/hash_digests.almd` (byte-compare)<br>`spec/stdlib/hash_test.almd` (both-target test) |
 | ALS-T4 | C-129, C-171 | `spec/wasm_cross/list_chunk_windows.almd` (byte-compare)<br>`spec/wasm_cross/list_chunk_zero.almd` (byte-compare)<br>`spec/wasm_cross/list_windows_zero.almd` (byte-compare)<br>`spec/wasm_cross/list_window_zero.almd` (byte-compare)<br>`spec/wasm_cross/bytes_f16_offset_overflow.almd` (byte-compare) |
