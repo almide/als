@@ -10,7 +10,7 @@
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
 ceiling = 18
-evaluated = 718
+evaluated = 732
 
 [[abstain]]
 class = "parse"
@@ -23,6 +23,10 @@ count = 2
 [[abstain]]
 class = "stdlib:matrix.from_bytes_f64_le"
 count = 2
+
+[[abstain]]
+class = "semantics:carrier-shape"
+count = 1
 
 [[abstain]]
 class = "semantics:ctor-call"
@@ -38,10 +42,6 @@ count = 1
 
 [[abstain]]
 class = "stdlib:bytes.set_int32"
-count = 1
-
-[[abstain]]
-class = "stdlib:env.sleep_ms"
 count = 1
 
 [[abstain]]
