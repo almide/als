@@ -736,7 +736,8 @@ pub fn declared_caseless_types(toks: &[Token]) -> std::collections::BTreeSet<Str
                     Tok::Ident(name)
                         if seen_eq
                             && matches!(prev, Some("=") | Some("|"))
-                            && is_caseless(name) =>
+                            && is_caseless(name)
+                            && !matches!(toks.get(i + 1).map(|t| &t.tok), Some(Tok::Sym("."))) =>
                     {
                         names.insert(name.clone());
                     }
