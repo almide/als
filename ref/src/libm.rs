@@ -1498,21 +1498,33 @@ fn pow(x: f64, y: f64) -> f64 {
 // Named `almide_rt_libm_*` so the runtime-registry build script auto-links
 // the `libm` module wherever `math` (or any other module) references it, and
 // so the flattened single-file crate has no bare `sin`/`cos`/`tan` collisions.
+//
+// MANUFACTURED NaN (C-055): a NaN the kernels make from non-NaN operands (log of a
+// negative, sin/cos/tan of +-inf, a negative base to a non-integer power) is the ONE
+// fixed pattern +qNaN 0x7FF8000000000000, not the host-signed result of `x - x` /
+// `(x - x) / 0.0`. A NaN operand passes through as the kernel propagates it.
+fn fixed_nan(r: f64, operand_is_nan: bool) -> f64 {
+    if r.is_nan() && !operand_is_nan {
+        std::hint::black_box(f64::from_bits(0x7FF8_0000_0000_0000))
+    } else {
+        r
+    }
+}
 
 /// Deterministic `sin` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_sin(x: f64) -> f64 {
-    sin(x)
+    fixed_nan(sin(x), x.is_nan())
 }
 /// Deterministic `cos` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_cos(x: f64) -> f64 {
-    cos(x)
+    fixed_nan(cos(x), x.is_nan())
 }
 /// Deterministic `tan` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_tan(x: f64) -> f64 {
-    tan(x)
+    fixed_nan(tan(x), x.is_nan())
 }
 /// Deterministic `exp` for the Almide runtime. See module docs.
 #[inline(always)]
@@ -1522,22 +1534,22 @@ pub fn almide_rt_libm_exp(x: f64) -> f64 {
 /// Deterministic natural `log` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_log(x: f64) -> f64 {
-    log(x)
+    fixed_nan(log(x), x.is_nan())
 }
 /// Deterministic `log2` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_log2(x: f64) -> f64 {
-    log2(x)
+    fixed_nan(log2(x), x.is_nan())
 }
 /// Deterministic `log10` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_log10(x: f64) -> f64 {
-    log10(x)
+    fixed_nan(log10(x), x.is_nan())
 }
 /// Deterministic `pow` for the Almide runtime. See module docs.
 #[inline(always)]
 pub fn almide_rt_libm_pow(base: f64, exp: f64) -> f64 {
-    pow(base, exp)
+    fixed_nan(pow(base, exp), base.is_nan() || exp.is_nan())
 }
 // ────────────────── atan / expm1 / tanh ──────────────────
 // origin: FreeBSD s_atan.c / s_expm1.c / s_tanh.c (vendored libm 0.2.16)
