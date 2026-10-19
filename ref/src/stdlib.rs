@@ -1800,8 +1800,14 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         "math.sqrt" | "float.sqrt" => {
             arity(name, &args, 1)?;
-            // ALS-T22: sqrt is correctly rounded (0 ulp)
-            Ok(Value::Float(F64(want_float(name, &args[0])?.sqrt())))
+            // ALS-T22: sqrt is correctly rounded (0 ulp); a negative operand gives the
+            // fixed +qNaN 0x7FF8000000000000 (C-055), never the host-signed sqrt NaN.
+            let x = want_float(name, &args[0])?;
+            Ok(Value::Float(F64(if x < 0.0 {
+                std::hint::black_box(f64::from_bits(0x7FF8_0000_0000_0000))
+            } else {
+                x.sqrt()
+            })))
         }
         "math.fmin" | "math.fmax" => {
             arity(name, &args, 2)?;
