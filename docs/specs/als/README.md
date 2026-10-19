@@ -87,7 +87,7 @@
 | [ALS-E23](./expressions.md#als-e23-レコードexprkindrecord--exprkindspreadrecord--exprkindmember) | レコード(`ExprKind::Record` / `ExprKind::SpreadRecord` / `ExprKind::Member`) | C-255 |
 | [ALS-E24](./expressions.md#als-e24-break-と-continueexprkindbreak--exprkindcontinue) | break と continue(`ExprKind::Break` / `ExprKind::Continue`) | C-256 |
 | [ALS-E25](./expressions.md#als-e25-エラー演算子exprkindunwrap--exprkindtooption--exprkindunwrapor--exprkindtry) | エラー演算子(`ExprKind::Unwrap` / `ExprKind::ToOption` / `ExprKind::UnwrapOr` / `ExprKind::Try`) | C-257, C-271 |
-| [ALS-E26](./expressions.md#als-e26-呼び出しとラムダexprkindcall--exprkindlambda) | 呼び出しとラムダ(`ExprKind::Call` / `ExprKind::Lambda`) | C-258 |
+| [ALS-E26](./expressions.md#als-e26-呼び出しとラムダexprkindcall--exprkindlambda) | 呼び出しとラムダ(`ExprKind::Call` / `ExprKind::Lambda`) | C-258, C-388 |
 | [ALS-E27](./expressions.md#als-e27-コンストラクタ参照exprkindtypename) | コンストラクタ参照(`ExprKind::TypeName`) | C-259, C-322 |
 | [ALS-DL1](./expressions.md#als-dl1-宣言declmodule--declimport--decltype--declfn--decltoplet--declprotocol--decltest--decltestwheredef) | 宣言(`Decl::Module` / `Decl::Import` / `Decl::Type` / `Decl::Fn` / `Decl::TopLet` / `Decl::Protocol` / `Decl::Test` / `Decl::TestWhereDef`) | C-260 |
 | [ALS-E3](./expressions.md#als-e3-浮動小数点リテラルexprkindfloat—-部分節) | 浮動小数点リテラル(`ExprKind::Float`)— 部分節 | C-182, C-261 |
