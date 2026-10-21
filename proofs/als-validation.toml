@@ -821,9 +821,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-M13"
-hash = "sha256:3ff93778c8ae"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:02a623bf428f"
+reviewed = "2026-10-21"
+by = "O6lvl4 (via the Claude session; the plain-Bytes-parameter route the 2026-08-27 text described was closed by #2466 (epoch 5) — rewritten to the declared-mut rule and re-probed on almide 0.68.0 dev, native and wasm: a let, a non-mut parameter and a temporary to a mut receiver are each E032; `let t = s` keeps its value across a mut-param write to s (String) and `let c = b` across bytes.set_u8 (Bytes); a callee reading the module-level var its mut argument is rooted at sees the pre-call value)"
 independent = "no"
 verdict = "accurate"
 
