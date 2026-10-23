@@ -307,7 +307,7 @@ fn ok(v: Value) -> Value {
     Value::Ok(Rc::new(v))
 }
 
-/// `rel` under `dir` (C-395), or None when it leaves the root.
+/// `rel` under `dir` (C-392), or None when it leaves the root.
 fn root_resolve(dir: &str, rel: &str) -> Option<String> {
     if rel.starts_with('/') {
         return None;
@@ -1089,7 +1089,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ fs / env / io / process ═══════════════════════════════════
-        // ═══ fs rooted family (C-395, almide/almide#4022) ══════════════
+        // ═══ fs rooted family (C-392, almide/almide#4022) ══════════════
         // ALS-R6: a path relative to the root; `.`/empty dropped, `..` pops;
         // absolute, past-the-root `..`, or a symlink at any segment under
         // the root is refused before anything is touched.

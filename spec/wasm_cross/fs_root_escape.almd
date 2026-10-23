@@ -1,4 +1,4 @@
-// @contract: C-395
+// @contract: C-392
 // The rooted fs family (#4022) answers identically on both targets: a path
 // that stays inside the root is read, written, listed, tested and removed
 // relative to it (`a/../b` included); a `..` past the root and an absolute
