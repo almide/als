@@ -21,8 +21,58 @@ fn show(r: Result[Bytes, String]) -> String = match r {
 }
 
 fn raw() -> Bytes = bytes.from_list([
-  43, 201, 72, 85, 40, 44, 205, 76, 206, 86, 72, 42, 202, 47, 207, 83, 72, 203, 175, 80, 200, 42, 205, 45, 40, 86,
-  200, 47, 75, 45, 82, 40, 1, 74, 231, 36, 86, 85, 42, 164, 228, 167, 91, 131, 121, 131, 64, 177, 171, 159, 11, 0,
+  43,
+  201,
+  72,
+  85,
+  40,
+  44,
+  205,
+  76,
+  206,
+  86,
+  72,
+  42,
+  202,
+  47,
+  207,
+  83,
+  72,
+  203,
+  175,
+  80,
+  200,
+  42,
+  205,
+  45,
+  40,
+  86,
+  200,
+  47,
+  75,
+  45,
+  82,
+  40,
+  1,
+  74,
+  231,
+  36,
+  86,
+  85,
+  42,
+  164,
+  228,
+  167,
+  91,
+  131,
+  121,
+  131,
+  64,
+  177,
+  171,
+  159,
+  11,
+  0
 ])
 
 fn zl() -> Bytes = bytes.concat(
@@ -31,12 +81,38 @@ fn zl() -> Bytes = bytes.concat(
 )
 
 fn gz() -> Bytes = bytes.concat(
-  bytes.concat(bytes.from_list([31, 139, 8, 0, 0, 0, 0, 0, 2, 19]), raw()),
-  bytes.from_list([166, 223, 224, 152, 183, 0, 0, 0]),
+  bytes.concat(
+    bytes.from_list([
+      31,
+      139,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      19
+    ]),
+    raw(),
+  ),
+  bytes.from_list([
+    166,
+    223,
+    224,
+    152,
+    183,
+    0,
+    0,
+    0
+  ]),
 )
 
 // A stored block that declares 100 bytes and holds 50.
-fn stored_cut() -> Bytes = bytes.concat(bytes.from_list([1, 100, 0, 155, 255]), bytes.repeat(bytes.from_list([7]), 50))
+fn stored_cut() -> Bytes = bytes.concat(
+  bytes.from_list([1, 100, 0, 155, 255]),
+  bytes.repeat(bytes.from_list([7]), 50),
+)
 
 // The `_max` forms are plain `fn`s: callable from a pure function.
 fn bounded(f: String, b: Bytes, n: Int) -> String = match f {
@@ -46,7 +122,18 @@ fn bounded(f: String, b: Bytes, n: Int) -> String = match f {
 }
 
 effect fn main() -> Unit = {
-  for n in [1, 45, 46, 47, 100, 181, 182, 183, 184, 1000000] {
+  for n in [
+    1,
+    45,
+    46,
+    47,
+    100,
+    181,
+    182,
+    183,
+    184,
+    1000000
+  ] {
     println("inflate_max ${n}: " + bounded("inflate", raw(), n))
     println("decompress_max ${n}: " + bounded("decompress", zl(), n))
     println("gunzip_max ${n}: " + bounded("gunzip", gz(), n))

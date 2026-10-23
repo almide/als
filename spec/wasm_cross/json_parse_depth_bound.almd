@@ -17,7 +17,10 @@ fn arrays(n: Int) -> String = string.repeat("[", n) + string.repeat("]", n)
 
 fn objects(n: Int) -> String = string.repeat("{\"a\":", n) + "1" + string.repeat("}", n)
 
-fn mixed(pairs: Int, tail: String) -> String = string.repeat("[{\"k\":", pairs) + tail + string.repeat("}]", pairs)
+fn mixed(pairs: Int, tail: String) -> String = string.repeat("[{\"k\":", pairs) + tail + string.repeat(
+  "}]",
+  pairs,
+)
 
 effect fn main() -> Unit = {
   println("arrays 1000: " + show(json.parse(arrays(1000))))
