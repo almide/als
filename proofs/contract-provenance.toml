@@ -2918,4 +2918,16 @@ id = "C-389"
 since = "0.68.0"
 entry = "2026-10-23T23:01:04+09:00"
 entry_commit = "c7f3788f"
+
+id = "C-390"
+since = "0.69.0"
+entry = "2026-10-23T23:07:37+09:00"
+entry_commit = "3ad51187"
+class = "requirements-first"
+
+[[contract]]
+id = "C-391"
+since = "0.69.0"
+entry = "2026-10-23T23:07:37+09:00"
+entry_commit = "3ad51187"
 class = "requirements-first"
