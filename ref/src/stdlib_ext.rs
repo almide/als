@@ -156,6 +156,12 @@ pub const EXT_FNS: &[&str] = &[
     "fs.read_text_if_exists",
     "fs.fold_lines",
     "fs.for_each_line",
+    "fs.open_root",
+    "fs.root_read_text",
+    "fs.root_write_text",
+    "fs.root_list_dir",
+    "fs.root_exists",
+    "fs.root_remove",
     "env.args",
     "env.get",
     "env.set",
@@ -299,6 +305,43 @@ fn want_path<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<Vec<PathSeg>>, Flow>
 
 fn ok(v: Value) -> Value {
     Value::Ok(Rc::new(v))
+}
+
+/// `rel` under `dir` (C-395), or None when it leaves the root.
+fn root_resolve(dir: &str, rel: &str) -> Option<String> {
+    if rel.starts_with('/') {
+        return None;
+    }
+    // The segments between `/`s, written over chars (ADR-0015 clause 5).
+    let mut raw: Vec<String> = vec![String::new()];
+    for c in rel.chars() {
+        if c == '/' {
+            raw.push(String::new());
+        } else if let Some(last) = raw.last_mut() {
+            last.push(c);
+        }
+    }
+    let mut segs: Vec<String> = Vec::new();
+    for seg in raw {
+        match seg.as_str() {
+            "" | "." => {}
+            ".." => {
+                segs.pop()?;
+            }
+            _ => segs.push(seg),
+        }
+    }
+    let mut at = dir.to_string();
+    for seg in &segs {
+        at = format!("{at}/{seg}");
+        if std::path::Path::new(&at)
+            .symlink_metadata()
+            .is_ok_and(|m| m.file_type().is_symlink())
+        {
+            return None;
+        }
+    }
+    Some(at)
 }
 
 fn err_str(s: &str) -> Value {
@@ -1046,6 +1089,51 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ fs / env / io / process ═══════════════════════════════════
+        // ═══ fs rooted family (C-395, almide/almide#4022) ══════════════
+        // ALS-R6: a path relative to the root; `.`/empty dropped, `..` pops;
+        // absolute, past-the-root `..`, or a symlink at any segment under
+        // the root is refused before anything is touched.
+        "fs.open_root" => {
+            arity(name, &args, 1)?;
+            let d = want_str(name, &args[0])?.to_string();
+            Ok(if std::path::Path::new(&d).is_dir() {
+                let mut t = d.as_str();
+                while t.len() > 1 && t.ends_with('/') {
+                    t = &t[..t.len() - 1];
+                }
+                ok(Value::str(t))
+            } else {
+                err_str(&format!("fs.open_root(\"{d}\"): not a directory"))
+            })
+        }
+        "fs.root_read_text" | "fs.root_write_text" | "fs.root_list_dir" | "fs.root_exists"
+        | "fs.root_remove" => {
+            arity(
+                name,
+                &args,
+                if name == "fs.root_write_text" { 3 } else { 2 },
+            )?;
+            let dir = want_str(name, &args[0])?.to_string();
+            let rel = want_str(name, &args[1])?.to_string();
+            let Some(p) = root_resolve(&dir, &rel) else {
+                return Ok(Ok(err_str(&format!("fs: path escapes root: {rel}"))));
+            };
+            let plain = match name {
+                "fs.root_read_text" => "fs.read_text",
+                "fs.root_write_text" => "fs.write",
+                "fs.root_list_dir" => "fs.list_dir",
+                "fs.root_exists" => "fs.exists",
+                _ => "fs.remove",
+            };
+            let mut rest = vec![Value::str(&p)];
+            rest.extend(args.into_iter().skip(2));
+            let r = dispatch(it, plain, rest)?;
+            if name == "fs.root_exists" {
+                r.map(ok)
+            } else {
+                r
+            }
+        }
         "fs.read_text" => {
             arity(name, &args, 1)?;
             Ok(
