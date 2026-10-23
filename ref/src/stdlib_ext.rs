@@ -1631,7 +1631,7 @@ fn pretty(d: &Dyn, level: usize) -> String {
 
 fn json_parse(text: &str) -> Value {
     let b = text.as_bytes();
-    match jp_value(b, 0) {
+    match jp_value(b, 0, 0) {
         Ok((v, _p)) => Value::Ok(Rc::new(Value::Dyn(v))),
         Err(m) => err_str(&m),
     }
@@ -1685,7 +1685,7 @@ fn jp_ws(b: &[u8], mut p: usize) -> usize {
     p
 }
 
-fn jp_value(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
+fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
     let q = jp_ws(b, p);
     if q >= b.len() {
         return Err("unexpected end of input".into());
@@ -1695,12 +1695,14 @@ fn jp_value(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
             let (s, np) = jp_string(b, q);
             Ok((Dyn::S(Rc::from(s.as_str())), np))
         }
+        // ALS-T3 / C-391: an array or object opened inside 1000 others.
+        123 | 91 if depth >= 1000 => Err("json: nesting deeper than 1000".into()),
         123 => {
             let q2 = jp_ws(b, q + 1);
             if q2 < b.len() && b[q2] == 125 {
                 Ok((Dyn::O(Rc::new(Vec::new())), q2 + 1))
             } else {
-                jp_object(b, q2)
+                jp_object(b, q2, depth + 1)
             }
         }
         91 => {
@@ -1708,7 +1710,7 @@ fn jp_value(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
             if q2 < b.len() && b[q2] == 93 {
                 Ok((Dyn::A(Rc::new(Vec::new())), q2 + 1))
             } else {
-                jp_array(b, q2)
+                jp_array(b, q2, depth + 1)
             }
         }
         116 | 102 => jp_bool(b, q),
@@ -1897,11 +1899,11 @@ fn jp_bool(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
     }
 }
 
-fn jp_array(b: &[u8], p0: usize) -> Result<(Dyn, usize), String> {
+fn jp_array(b: &[u8], p0: usize, depth: usize) -> Result<(Dyn, usize), String> {
     let mut p = p0;
     let mut acc: Vec<Dyn> = Vec::new();
     loop {
-        let (v, np) = jp_value(b, p)?;
+        let (v, np) = jp_value(b, p, depth)?;
         acc.push(v);
         let q = jp_ws(b, np);
         let x = b.get(q).copied().unwrap_or(0);
@@ -1915,7 +1917,7 @@ fn jp_array(b: &[u8], p0: usize) -> Result<(Dyn, usize), String> {
     }
 }
 
-fn jp_object(b: &[u8], p0: usize) -> Result<(Dyn, usize), String> {
+fn jp_object(b: &[u8], p0: usize, depth: usize) -> Result<(Dyn, usize), String> {
     let mut p = p0;
     let mut acc: Vec<(Rc<str>, Dyn)> = Vec::new();
     loop {
@@ -1927,7 +1929,7 @@ fn jp_object(b: &[u8], p0: usize) -> Result<(Dyn, usize), String> {
         } else {
             q2
         };
-        let (v, np) = jp_value(b, q3)?;
+        let (v, np) = jp_value(b, q3, depth)?;
         let kr: Rc<str> = Rc::from(k.as_str());
         match acc.iter_mut().find(|(k2, _)| *k2 == kr) {
             Some(slot) => slot.1 = v,
