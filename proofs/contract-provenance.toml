@@ -2915,31 +2915,35 @@ class = "requirements-first"
 
 [[contract]]
 id = "C-389"
-since = "0.68.0"
+since = "0.69.0"
 entry = "2026-10-23T23:01:04+09:00"
-entry_commit = "c7f3788f"
+entry_commit = "103bc554"
+class = "requirements-first"
 
+[[contract]]
 id = "C-390"
 since = "0.69.0"
 entry = "2026-10-23T23:07:37+09:00"
-entry_commit = "3ad51187"
+entry_commit = "ab086fbe"
 class = "requirements-first"
 
 [[contract]]
 id = "C-391"
 since = "0.69.0"
 entry = "2026-10-23T23:07:37+09:00"
-entry_commit = "3ad51187"
-
-id = "C-395"
-since = "0.68.0"
-entry = "2026-10-23T23:26:59+09:00"
-entry_commit = "ad20efbd"
+entry_commit = "ab086fbe"
 class = "requirements-first"
 
 [[contract]]
-id = "C-396"
-since = "0.68.0"
+id = "C-392"
+since = "0.69.0"
 entry = "2026-10-23T23:26:59+09:00"
-entry_commit = "ad20efbd"
+entry_commit = "db3e8165"
+class = "requirements-first"
+
+[[contract]]
+id = "C-393"
+since = "0.69.0"
+entry = "2026-10-23T23:26:59+09:00"
+entry_commit = "db3e8165"
 class = "requirements-first"
