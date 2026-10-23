@@ -9,8 +9,8 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 18
-evaluated = 734
+ceiling = 19
+evaluated = 742
 
 [[abstain]]
 class = "parse"
@@ -70,4 +70,8 @@ count = 1
 
 [[abstain]]
 class = "stdlib:zlib.decompress"
+count = 1
+
+[[abstain]]
+class = "stdlib:zlib.inflate_max"
 count = 1
