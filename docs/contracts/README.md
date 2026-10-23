@@ -28,7 +28,7 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 388 contracts: **requirements-first 83** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 390 contracts: **requirements-first 85** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
 390 contracts
