@@ -470,6 +470,24 @@ pub(crate) fn is_als_whitespace(c: char) -> bool {
         0x0009..=0x000D | 0x0020 | 0x0085 | 0x00A0 | 0x1680 | 0x2000..=0x200A | 0x2028 | 0x2029 | 0x202F | 0x205F | 0x3000)
 }
 
+/// ALS-T5 (C-412): a case mapping never folds a non-ASCII scalar INTO ASCII.
+/// `mapped` is `c`'s full default mapping; when `c` is not ASCII and the
+/// mapping holds an ASCII scalar (U+0131 -> I, U+017F -> S, U+FB01 -> FI,
+/// U+212A -> k, U+0130 -> i + U+0307, ...), `c` stays as it is.
+fn no_ascii_fold(c: char, mapped: String) -> String {
+    if !c.is_ascii() && mapped.chars().any(|m| m.is_ascii()) {
+        c.to_string()
+    } else {
+        mapped
+    }
+}
+
+/// ALS-T2 / ALS-T8 (C-413): the whitespace int.parse and float.parse trim —
+/// ASCII TAB, LF, FF, CR and SPACE only (not VT, no Unicode White_Space).
+pub(crate) fn is_parse_trim_ws(c: char) -> bool {
+    matches!(c, '\t' | '\n' | '\u{0C}' | '\r' | ' ')
+}
+
 /// Case-ignorable / cased approximations for the Final_Sigma rule (ALS-T5,
 /// Unicode 3.13): sufficient for the corpus; a full property table is the
 /// upgrade path.
@@ -1469,7 +1487,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 1)?;
             let mut cs = want_str(name, &args[0])?.chars();
             Ok(Value::str(&match cs.next() {
-                Some(f) => f.to_uppercase().collect::<String>() + cs.as_str(),
+                Some(f) => no_ascii_fold(f, f.to_uppercase().collect()) + cs.as_str(),
                 None => String::new(),
             }))
         }
@@ -1478,7 +1496,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(Value::str(
                 &want_str(name, &args[0])?
                     .chars()
-                    .flat_map(|c| c.to_uppercase())
+                    .map(|c| no_ascii_fold(c, c.to_uppercase().collect()))
                     .collect::<String>(),
             ))
         }
@@ -1505,7 +1523,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                         continue;
                     }
                 }
-                out.extend(c.to_lowercase());
+                out.push_str(&no_ascii_fold(c, c.to_lowercase().collect()));
             }
             Ok(Value::str(&out))
         }
@@ -2661,15 +2679,15 @@ fn ieee_min_max(a: f64, b: f64, want_max: bool) -> f64 {
 
 /// ALS-T8: Rust i64 FromStr grammar and its exact error strings.
 fn parse_i64(s: &str) -> Value {
-    // string_whitespace pins it: int.parse trims the T1 UNICODE whitespace
-    // set before the Rust FromStr grammar (T8 error strings unchanged)
+    // int_parse_ascii_trim pins it: int.parse trims ASCII whitespace only
+    // (C-413) before the Rust FromStr grammar (T8 error strings unchanged)
     let cs_all: Vec<char> = s.chars().collect();
     let mut lo = 0;
     let mut hi = cs_all.len();
-    while lo < hi && is_als_whitespace(cs_all[lo]) {
+    while lo < hi && is_parse_trim_ws(cs_all[lo]) {
         lo += 1;
     }
-    while hi > lo && is_als_whitespace(cs_all[hi - 1]) {
+    while hi > lo && is_parse_trim_ws(cs_all[hi - 1]) {
         hi -= 1;
     }
     let cs: Vec<char> = cs_all[lo..hi].to_vec();
@@ -2715,18 +2733,21 @@ fn parse_i64(s: &str) -> Value {
 /// ALS-T2 grammar + error strings; exact rounding on the fast path, abstain
 /// beyond it (the full big-rational correctly rounded path is future work).
 fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
-    Ok(parse_f64_pure(s))
+    Ok(parse_f64_pure(s, true))
 }
 
-fn parse_f64_pure(s: &str) -> Value {
-    // ws* sign? (number | inf | infinity | nan) ws* — ws per ALS-T1's set
+/// `finite_only` is float.parse (C-413: a literal past f64::MAX is refused);
+/// json.parse's number token keeps the overflow-to-±inf reading.
+fn parse_f64_pure(s: &str, finite_only: bool) -> Value {
+    // ws* sign? number ws* — ws per C-413's ASCII set; no inf / nan spelling
+    // (C-413: they fall to the digit grammar and are `invalid float literal`)
     let cs_all: Vec<char> = s.chars().collect();
     let mut lo = 0;
     let mut hi = cs_all.len();
-    while lo < hi && is_als_whitespace(cs_all[lo]) {
+    while lo < hi && is_parse_trim_ws(cs_all[lo]) {
         lo += 1;
     }
-    while hi > lo && is_als_whitespace(cs_all[hi - 1]) {
+    while hi > lo && is_parse_trim_ws(cs_all[hi - 1]) {
         hi -= 1;
     }
     if lo >= hi {
@@ -2738,17 +2759,6 @@ fn parse_f64_pure(s: &str) -> Value {
         '+' => (false, body[1..].to_vec()),
         _ => (false, body),
     };
-    let lower: String = body.iter().flat_map(|c| c.to_lowercase()).collect();
-    if lower == "inf" || lower == "infinity" {
-        return Value::Ok(Rc::new(Value::Float(F64(if neg {
-            f64::NEG_INFINITY
-        } else {
-            f64::INFINITY
-        }))));
-    }
-    if lower == "nan" {
-        return Value::Ok(Rc::new(Value::Float(F64(f64::NAN))));
-    }
     let mut mant = String::new();
     let mut frac_len: i64 = 0;
     let mut exp: i64 = 0;
@@ -2797,6 +2807,9 @@ fn parse_f64_pure(s: &str) -> Value {
     }
     let scale = exp - frac_len;
     let v = crate::fmtfloat::parse_decimal(&mant, scale);
+    if finite_only && v.is_infinite() {
+        return Value::Err(Rc::new(Value::str("float literal out of range")));
+    }
     Value::Ok(Rc::new(Value::Float(F64(if neg { -v } else { v }))))
 }
 
@@ -2816,9 +2829,11 @@ pub fn int_parse_t8(s: &str) -> Result<i64, String> {
     }
 }
 
-/// float.parse (ALS-T2) as a plain Result — same passthrough discipline
+/// float.parse (ALS-T2) as a plain Result for the json number token — same
+/// passthrough discipline, except that an overflowing literal stays ±inf
+/// (json.parse never refused it; only float.parse is finite-only, C-413)
 pub fn float_parse_t2(s: &str) -> Result<f64, String> {
-    match parse_f64_pure(s) {
+    match parse_f64_pure(s, false) {
         Value::Ok(v) => match &*v {
             Value::Float(f) => Ok(f.0),
             _ => Err("float.parse: non-float payload".into()),

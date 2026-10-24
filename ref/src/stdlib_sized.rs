@@ -81,6 +81,13 @@ pub const SIZED_FNS: &[&str] = &[
     "uint32.min_value",
     "uint64.max_value",
     "uint64.min_value",
+    "int8.parse",
+    "int16.parse",
+    "int32.parse",
+    "uint8.parse",
+    "uint16.parse",
+    "uint32.parse",
+    "uint64.parse",
 ];
 
 fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
@@ -240,6 +247,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 sized_unsigned(*bits, v) as i64
             };
             return Ok(Value::Int(n));
+        }
+    }
+    // <sized>.parse (C-413): int.parse's grammar and ASCII-only trim, then the
+    // width's range; an unsigned width refuses a leading '-' first
+    for (module, bits, signed) in SIZED_MODULES {
+        if name == format!("{module}.parse") {
+            arity(name, &args, 1)?;
+            let s = match &args[0] {
+                Value::Str(s) => s.to_string(),
+                other => {
+                    return Err(Flow::Fatal(format!(
+                        "{name}: expected String, got {other:?}"
+                    )))
+                }
+            };
+            return Ok(match parse_sized_text(&s, *bits, *signed) {
+                Ok(v) => Value::Ok(Rc::new(sized(*bits, *signed, v))),
+                Err(e) => Value::Err(Rc::new(Value::str(&e))),
+            });
         }
     }
     // <sized>.min_value / max_value — the carrier's own declared bounds
@@ -444,4 +470,72 @@ fn parse_sized(s: &str) -> Option<(u8, bool)> {
         "uint64" => (64, false),
         _ => return None,
     })
+}
+
+/// `<sized>.parse`: the stdlib bodies' rule, over int.parse (ALS-T8, C-413).
+/// Int8/16/32 range-check its answer; UInt8/16/32 first refuse a '-' after
+/// the ALS-T1 trim, then check the top; UInt64 trims the ASCII set itself,
+/// refuses '-', and reads 2^63..2^64-1 as head * 10 + last digit.
+fn parse_sized_text(s: &str, bits: u8, signed: bool) -> Result<i64, String> {
+    let int_parse = crate::stdlib::int_parse_t8;
+    const NEG: &str = "invalid digit found in string";
+    const BIG: &str = "number too large to fit in target type";
+    const SMALL: &str = "number too small to fit in target type";
+    if signed {
+        let n = int_parse(s)?;
+        let min = -(1i64 << (bits as u32 - 1));
+        let max = (1i64 << (bits as u32 - 1)) - 1;
+        return if n < min {
+            Err(SMALL.into())
+        } else if n > max {
+            Err(BIG.into())
+        } else {
+            Ok(n)
+        };
+    }
+    if bits < 64 {
+        if trim_by(s, crate::stdlib::is_als_whitespace).starts_with('-') {
+            return Err(NEG.into());
+        }
+        let n = int_parse(s)?;
+        let max = (u64::MAX >> (64 - bits as u32)) as i64;
+        return if n > max { Err(BIG.into()) } else { Ok(n) };
+    }
+    let t = trim_by(s, crate::stdlib::is_parse_trim_ws);
+    let t = t.as_str();
+    if t.starts_with('-') {
+        return Err(NEG.into());
+    }
+    match int_parse(t) {
+        Ok(n) => Ok(n),
+        Err(e) => {
+            let cs: Vec<char> = t.chars().collect();
+            let n = cs.len();
+            let (head, last) = if n == 0 {
+                (String::new(), String::new())
+            } else {
+                (cs[..n - 1].iter().collect(), cs[n - 1..].iter().collect())
+            };
+            match (int_parse(&head), int_parse(&last)) {
+                (Ok(h), Ok(d)) if h < 1844674407370955161 || h == 1844674407370955161 && d <= 5 => {
+                    Ok((h as u64).wrapping_mul(10).wrapping_add(d as u64) as i64)
+                }
+                _ => Err(e),
+            }
+        }
+    }
+}
+
+/// Both ends of `s` with every char `ws` holds dropped.
+fn trim_by(s: &str, ws: fn(char) -> bool) -> String {
+    let cs: Vec<char> = s.chars().collect();
+    let mut lo = 0;
+    let mut hi = cs.len();
+    while lo < hi && ws(cs[lo]) {
+        lo += 1;
+    }
+    while hi > lo && ws(cs[hi - 1]) {
+        hi -= 1;
+    }
+    cs[lo..hi].iter().collect()
 }
