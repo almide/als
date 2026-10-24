@@ -1,6 +1,6 @@
 # ALS §T — Text and Number Semantics (normative)
 
-> Last updated: 2026-10-18
+> Last updated: 2026-10-24
 
 > **Status**: normative. これらの節は実装から独立した**規範**であり、v0（native）と
 > v1（MIR/wasm）の両実装がこの節に適合する義務を負う。適合の証拠は
@@ -42,17 +42,57 @@ Fixture: `spec/wasm_cross/float_parse.almd`。
 
 ## ALS-T3 `json.parse`
 
-受理文法は RFC 8259 に、次の**裁定**を加えたもの:
+受理文法は RFC 8259 に I-JSON（RFC 7493）の制約を加えたもので、**厳格**に読む。
+入力全体が、JSON の空白（`%x20`・`%x09`・`%x0A`・`%x0D` の 4 バイトだけ）に挟まれた
+**ちょうど 1 つの値**でなければならない。外れた入力はどれも err で、場合ごとに
+文言は 1 つ、どのレグでも同じである（almide/almide#4111、#4112）。位置 `N` は
+**文字単位**（バイトでなくコードポイント index）で数える。
 
-- 数値は ALS-T2 の値規範で binary64 化する
-- 文字列のサロゲートペア（`\uD800`–`\uDBFF` + `\uDC00`–`\uDFFF`）は合成する。
-  不対サロゲートは**黙って落ちる**（寛容 — `json_string_span.almd` が
-  両ターゲット同一で pin。厳格拒否は不採用）
-- 先頭が値として読める入力は**前置 parse**で受理される（`"[1] x"` →
-  `ok([1])` — RFC 8259 の全文一致要求への寛容拡張、0.59.1 実測）
-- エラー報告は**文字単位の位置**（バイトでなくコードポイント index）を含む
+- 数値は `-? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?` に全体が一致する。
+  数値トークンは値の位置から `0-9 + - . e E` が続く限りの並びで、一致しなければ
+  `json: invalid number at pos N`（`N` はトークンの先頭）。小数部か指数部がある
+  トークンは ALS-T2 の値規範で binary64 化し、無いものは `int.parse` で読む
+  （範囲外の整数は `int.parse` の err 文言がそのまま返る）
+- 文字列のサロゲートペア（`\uD800`–`\uDBFF` の直後に `\uDC00`–`\uDFFF`）は合成する。
+  ペアにならないサロゲートは `json: lone surrogate at pos N`、`"\/bfnrtu` 以外の
+  エスケープは `json: unknown escape at pos N`、`\u` の後に 16 進 4 桁が無ければ
+  `json: invalid unicode escape at pos N`（どれも `N` はそのエスケープの `\`）。
+  エスケープされていない U+0000–U+001F は
+  `json: control character in string at pos N`、非文字（U+FDD0–U+FDEF と各面の
+  U+xFFFE・U+xFFFF。エスケープでも生でも）は `json: noncharacter at pos N`。
+  閉じ引用符の前に入力が尽きれば（最後の文字が `\` の場合を含む）
+  `json: unterminated string at pos N`（`N` は開き引用符）。文字が**黙って落ちる**
+  ことは無い — 以前は不対サロゲートと未知のエスケープが何も書かずに消え、
+  `ad\ud800min` が `admin` になった
+- オブジェクトのキーは文字列で、`"` 以外で始まるメンバーは
+  `json: unquoted key at pos N`。同じオブジェクトに同じキー（復号後の文字列が等しい
+  もの）が 2 度現れれば、2 度目の開き引用符の位置で `json: duplicate key at pos N`
+  （I-JSON §2.3。先勝ちも後勝ちも採らない）。キーの後に `:` が無ければ
+  `json: expected ':' at pos N`
+- `,` の直後（空白を挟んでよい）に `]` か `}` が来れば、その `,` の位置で
+  `json: trailing comma at pos N`。要素やメンバーの後が `,` でも閉じ括弧でもなければ
+  `json: expected ',' or ']' at pos N` / `json: expected ',' or '}' at pos N`
+- 最上位の値と後続の空白の後に入力が残れば `json: trailing data at pos N`
+  （2 つ目の値もこれ）
+- 値が要る位置で入力が尽きれば `unexpected end of input`、値を始められない文字なら
+  `unexpected char 'c' at pos N`、`t`・`f`・`n` で始まって `true`・`false`・`null`
+  でなければ `expected bool` / `expected null`
+- 入れ子は 1000 段まで（C-391）
 
-Fixture: `spec/wasm_cross/json_*.almd` 群（`json_string_span.almd` 含む）。
+どの `Value` もオブジェクトのキーを 2 度持たない。`value.object(pairs)` は同じキーを
+繰り返す組の列を、組ごとの upsert として畳む（キーは最初に現れた**位置**を保ち、
+最後の**値**を取る — `json.to_map` の規則、C-380）。キーの綴りを変える
+`value.to_camel_case`・`value.to_snake_case` も同じく畳む。ゆえに `value.field`・
+`value.keys`・`json.to_map`・`json.stringify`・`json.stringify_pretty`・
+`value.stringify` はどれも 1 つの項目を見て、直列化が同じキーを 2 度書くことは
+ない。`value.pick(v, keys)` はオブジェクトでない `v` に対して空のオブジェクトを
+返す（許可リストは何も通さない。以前は `v` をそのまま返した）。`value.omit` と
+`value.merge` のオブジェクトでない値の扱いは変わらない。
+
+Fixture: `spec/wasm_cross/json_*.almd` 群（`json_parse_strict_strings.almd`・
+`json_parse_strict_structure.almd`・`json_parse_lenient_edges.almd`・
+`json_string_span.almd` 含む）と `spec/wasm_cross/value_object_unique_keys.almd`。
+Contracts: C-087、C-400、C-401。
 
 ## ALS-T4 `list.chunk` / `list.windows`
 
@@ -533,20 +573,55 @@ err の文字列は次のとおり（先に違反した欄が勝つ）:
 
 ## ALS-T27 url.parse の authority 規範
 
-`url.parse(s)` は `scheme://host[:port][/path][?query][#fragment]` を読み、
-**host** を（authority ではなく）検査する。host が空なら
-`url.parse: empty host` — `http://:8` のように port だけがある綴りも同じく空
-host である。port は ASCII 数字のみ・0..=65535 で、数字以外は
-`url.parse: invalid port: <text>`（`+80`・`-0`・` 80` を含む）、範囲外は
-`url.parse: port out of range: <text>`。scope 外と文書化されている二つの形は、
-host として読まずに名指しで拒否する: userinfo は
-`url.parse: userinfo is not supported: <authority>`、IPv6 リテラルは
-`url.parse: IPv6 hosts are not supported: <authority>`。RFC 3986 の reg-name
-文字集合（unreserved / sub-delims / `%`）外を含む host は
-`url.parse: invalid host: <host>`。受理された URL は `to_string` で往復する。
+`url.parse(s)` は `scheme://host[:port][/path][?query][#fragment]` を読む。
+ブラウザ（WHATWG URL）と行き先の読みが分かれうる箇所は、ブラウザと同じに読むか、
+読まずに拒否する（almide/almide#4116）。
+
+- **入力の掃除**: 先頭と末尾の C0 制御文字と空白（U+0000–U+0020）を取り除き、
+  タブ・LF・CR はどこにあっても取り除く（WHATWG と同じ）。残りに制御文字
+  （U+0000–U+001F、U+007F）があれば `url.parse: control character in URL`、
+  `\` があれば `url.parse: backslash in URL`（WHATWG は特別なスキームで `\` を
+  `/` と読むが、ここでは拒否する）
+- **scheme**: 最初の `:` の前で、`ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )` に
+  一致しなければ `url.parse: invalid scheme: <text>`、`:` が先頭なら
+  `url.parse: empty scheme`、`:` が無いか `:` の直後が `//` でなければ
+  `url.parse: missing '://' scheme separator`。scheme は ASCII 小文字にする
+- **host** は（authority ではなく）検査する。host が空なら `url.parse: empty host`
+  — `http://:8` のように port だけがある綴りも同じく空 host である。port は ASCII
+  数字のみ・0..=65535 で、数字以外は `url.parse: invalid port: <text>`（`+80`・
+  `-0`・` 80` を含む）、範囲外は `url.parse: port out of range: <text>`。scope 外と
+  文書化されている二つの形は、host として読まずに名指しで拒否する: userinfo は
+  `url.parse: userinfo is not supported: <authority>`、IPv6 リテラルは
+  `url.parse: IPv6 hosts are not supported: <authority>`。unreserved と sub-delims
+  以外（`%` を含む）を含む host は `url.parse: invalid host: <host>`。最後のラベル
+  （末尾の空ラベル 1 つは除く）が数字だけか `0x`/`0X` と 16 進数字だけの host
+  （WHATWG の ends-in-a-number）は、0–255 の 10 進数（先頭 0 なし）4 つを `.` で
+  つないだ正規形でなければ `url.parse: non-canonical IPv4 host: <host>` —
+  `0x7f.0.0.1`・`127.1`・`2130706433`・`0177.0.0.1` を WHATWG は `127.0.0.1` と
+  読むが、ここでは拒否する。host は ASCII 小文字にする
+- **path** のドットセグメントは取り除く。`.` と `%2e`（大小問わず）が 1 点、
+  `..`・`.%2e`・`%2e.`・`%2e%2e` が 2 点のセグメントで、2 点は直前のセグメントを
+  落とし、どちらも最後のセグメントなら path は `/` で終わる（WHATWG の path 状態と
+  同じ）。query と fragment はそのまま
+- 受理された URL は `to_string` で往復する
+
+`url.resolve(base, ref)` は ref を同じ規則で掃除し（err の接頭辞は
+`url.resolve:`）、RFC 3986 §5.2 で解決する: 先頭が scheme と `:` なら ref だけを
+`url.parse` で読み、`//` で始まれば base の scheme を付けて `url.parse` で読み、
+それ以外は base の path・query・fragment を置き換える。path はどれも上の同じ
+ドットセグメント規則を通る。
+
+HTTP クライアントが要求の URL を分ける規則（`http.get` 族、呼び出しハンドル、
+プロキシ）も、ブラウザと行き先の読みが分かれうる箇所では同じである: 同じ掃除をし、
+`\` と残った制御文字を拒否し（`http://allowed.example\@127.0.0.1/` は 127.0.0.1 に
+つながず err）、正規形でない数値 host を拒否し、送る target の path から同じ規則で
+ドットセグメントを取り除く。クライアントは userinfo・IPv6・国際化ドメインを
+受け付ける点で `url.parse` より広い。テスト: 実装側の
+`crates/almide-rt-core/tests/almide_rt_core_http.rs`。
 
 テスト: `spec/wasm_cross/url_authority_edges.almd`、
-`spec/stdlib/url_test.almd`。Contracts: C-361。
+`spec/wasm_cross/url_whatwg_probes.almd`、`spec/stdlib/url_test.almd`。
+Contracts: C-361、C-402、C-403。
 
 ## ALS-T28 Float32 演算の binary32 丸め
 

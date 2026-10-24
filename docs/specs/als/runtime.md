@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-10-17
+> Last updated: 2026-10-24
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -152,9 +152,20 @@ HTTP/2 と HTTP/3 は理由句を持たず（RFC 9113 §8.3.2、RFC 9114 §4.3.2
 HTTP ライブラリは自分の理由句を書く（native コアは `418 OK`、hyper は
 `418 I'm a teapot`。almide/almide#2659 の試作で測定）。`req_method`・`req_path`・
 `req_body`・`req_header`（最初の一致、ASCII 大小無視）・`query_params`（最初の
-`?` 以降を `&` で分け、各組を最初の `=` で分け、`=` の無い組は捨て、`+` と `%XX`
-を復号し、後のキーが勝つ）は同じ値を返す。ハンドラの `err(m)` は本文
-`Internal error: <m>`、`Content-Type: text/plain` の `500` になる。export ホスト
+`?` 以降を `url.parse_query` と同じ一つの復号器で読む: `&` で分け、空の組は捨て、
+各組を最初の `=` で分け、`=` の無い組の値は `""`、`+` を空白にして `%XX` を厳格な
+UTF-8 として復号する。組は到着順にすべて残り、同じキーは何度でも現れる。不正な
+エスケープと不正な UTF-8 は `http.query_params: <理由>` の err。almide/almide#4117）
+は同じ値を返す。ハンドラの `err(m)` は、`m` をクライアントに見せない
+（almide/almide#4150、CWE-209。`m` にはパス・引数・errno の文言やプログラムが
+埋め込んだものが入る）: 本文は固定の `Internal Server Error (request <n>)`、
+`Content-Type: text/plain` の `500` で、`n` はその serve ループがハンドラに渡した
+要求の通し番号（1 から）である。`m` は同じ番号で stderr に 1 行
+`http.serve: request <n>: handler error: <m を引用したもの>` として書く。引用は
+`"` で囲み、`\` と `"` を前置し、制御文字（U+0000–U+001F、U+007F–U+009F）を
+`\u{hex}` にするので、入力が混じった文言でもログの行を偽造できない。
+レスポンスの拒否（下記の非 token 名・制御文字・非最終 status）の本文も固定の
+`Internal Server Error` である（理由は stderr の 1 行だけに書く）。export ホスト
 （C-375 の成果物を走らせる `wasmtime serve`）では、ハンドラの trap や中断には
 ホスト自身の `500` が答え、そのインスタンスは捨てられる。ソケットホスト（native と
 埋め込みレーン）では、bind の失敗は、呼び出しがどの位置にあっても実行を中断し、stderr に
@@ -213,6 +224,39 @@ serve の形のプログラム（`main` の本体がちょうど 1 つの `http.
 で serve し、native でも走らせ、同じ要求列を再生して各応答の status コード・ヘッダ
 集合・フレーミングを外した本文を比べ、成果物に上限超えの本文と長すぎる要求行を送り、
 最後に `/trap` を要求する）
+
+ソケットホスト（native と埋め込みレーン）の共有サーバーコアは、要求の頭部を
+RFC 9112 のとおりに読み、外れたものにはハンドラを呼ばずに `400` で答える
+（almide/almide#4112）。行は CRLF で終わり、それ以外の場所の CR と、LF だけの行末は
+`400`（§2.2）。要求行は単一の空白で区切った 3 つの部分で、メソッドは token、
+バージョンは `HTTP/1.1` か `HTTP/1.0`、target は origin-form（`/` で始まり、制御文字と
+DEL を含まない）か、`http://`・`https://` の absolute-form（その path と query の
+origin-form に直して渡す）。asterisk-form（`OPTIONS *`）と authority-form
+（`CONNECT h:p`）は `400`（§3）。最初の行が空なら答えずに閉じる。ヘッダ
+フィールド行は、フィールド名と `:` の間に空白がある行（`Transfer-Encoding :
+chunked`、§5.1）、`:` の無い行、名前が token でない行、空白かタブで始まる継続行
+（obs-fold、§5.2）が `400`。ヘッダ部は空の行で終わり、空白だけの行は空の行では
+ない。`Host` フィールドが 2 つ以上ある要求と、`Host` の無い HTTP/1.1 の要求は
+`400`（§3.2）。以前は空白で分けた 2 番目を target として読み、メソッドと
+バージョンを見ず、名前の前後を切り詰め、`:` の無い行を読み飛ばしていたので、前段の
+プロキシと要求の読みが分かれた。テスト: `spec/serve_cross/http_serve_limits.almd`
+（実装側のドライバが両レグに外れた頭部を送り、どちらも `400` で答えることを比べる）。
+Contracts: C-405。
+
+ソケットホストと export ホストの応答は、ハンドラが自分で
+`X-Content-Type-Options` を付けない限り `X-Content-Type-Options: nosniff` を持つ
+（almide/almide#4134。コアが自分で答える `400`・`413`・`500` も同じ）。テスト:
+`spec/serve_cross/http_serve_limits.almd`。Contracts: C-407。
+
+バッファする HTTP クライアント（`http.get` 族・`request_response`）は、枠付けの
+途中で終わった応答を ok にしない（almide/almide#4137）: 頭部が揃わない（空行が
+無い）応答、Content-Length より短い本文、0 チャンクで終わらないチャンク本文は、
+呼び出しハンドルのクライアント（`http.start` + `http.wait`）と同じ
+`malformed or incomplete response from "<url>"` の err である。Content-Length より
+長い本文はその長さで切る。HEAD への応答と `204`・`304` は本文を持たない。どちらの
+枠付けフィールドも無い本文は接続の終わりまでである。最終応答の頭部が 1 MiB
+（`HTTP_MAX_HEAD_BYTES`）以内に揃わなければ同じ err。テスト: 実装側の
+`crates/almide-rt-core/tests/almide_rt_core_http.rs`。Contracts: C-408。
 
 `net.tcp_*` 族（`tcp_listen`・`tcp_accept`・`tcp_connect`・`tcp_read`・
 `tcp_read_exact`・`tcp_read_timeout`・`tcp_write`・`tcp_available`・
@@ -411,7 +455,17 @@ target, body, headers)` はソケットなしでリクエストを作り、読�
 - ルートは `"METHOD /path"`（メソッド省略は全メソッド）で、`{name}` は 1
   セグメントを束縛し、最後の `{name...}` は残りのパス（空でもよい）を束縛する。
   束縛値はパーセントデコードされ、`+` は `+` のまま残る。照合はクエリ文字列を
-  除いたパスで行い、空のセグメントは数えない。
+  除いたパスで行い、末尾の空のセグメントは数えない。
+- ルーターとその前のミドルウェアは**一つの正規パス**を読む（almide/almide#4133）:
+  内側に空のセグメントがあるパス（`//admin`）、`.`・`..` のセグメント、パーセント
+  エンコードされた unreserved 文字（`%61dmin`・`%2e`）、`\`、制御文字を含むパスは
+  `400 Bad Request: the path is not in canonical form` である。ゆえにルーターを
+  通ってハンドラに届く要求のパスは、ミドルウェアが `req_path` で確かめたパスと同じ
+  である。`%2F` はエンコードされたまま（区切りではない）。
+- 束縛値が `.`・`..` にデコードされるか `/`・`\`・NUL を含むパラメータは
+  `400 Bad Request: a path parameter is a dot segment or holds a /, \ or NUL`
+  （almide/almide#4134）。`{name...}` はセグメントごとに確かめ、mount の無名の
+  `{...}` は sub 側のルーターが確かめる。
 - 一致したルートのうち**最も具体的なもの**が応答し、登録順は結果に影響しない。
   ルート A が一致するパスをすべて B も一致するとき A は B 以上に具体的であり、
   メソッドを持つルートは同じパスのメソッドなしルートより具体的である。
@@ -432,7 +486,7 @@ target, body, headers)` はソケットなしでリクエストを作り、読�
   ハンドラの `err` は `err` のまま呼び出し側に返る。
 
 テスト: `spec/stdlib/http_router_test.almd`。
-Contracts: C-275, C-368。
+Contracts: C-275, C-368, C-406。
 
 ## ALS-R9 プロセス終了コードの値域
 
