@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 394 contracts: **requirements-first 89** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 403 contracts: **requirements-first 98** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-394 contracts
+403 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -429,4 +429,13 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-392 | fs.open_root's family keeps every path inside its root: a path that leaves it by .., an absolute path or a symlink is refused with one message on every target | 0.69.0 | active | fixture | 1 |
 | C-393 | [permissions] fs bounds every fs call to the granted directories, symlinks resolved, with one refusal on native and the embedded wasm host | 0.69.0 | active | fixture | 0 |
 | C-394 | random.bytes draws n bytes from the platform CSPRNG: n = 0 is empty, a negative n aborts with one text on every leg | 0.69.0 | active | fixture | 2 |
+| C-420 | hash.hmac_sha256/512 equal the RFC 4231 vectors on every leg, key first, and is_valid_ accepts exactly the right tag | 0.69.0 | active | fixture | 1 |
+| C-421 | bytes/string.is_equal_constant_time answer equality with no data-dependent branch | 0.69.0 | active | fixture | 1 |
+| C-422 | --profile critical refuses a call to an @insecure_digest fn (md5, sha1) with E100 | 0.69.0 | active | fixture | 0 |
+| C-423 | A value prints through its type's declared repr wherever it is rendered; a Secret prints Secret(***) on every path | 0.69.0 | active | fixture | 1 |
+| C-424 | == on Secret[String] and Secret[Bytes] compares the revealed values; any other Secret, and a variant or map holding one, is E103 | 0.69.0 | active | fixture | 1 |
+| C-425 | A Codec record decodes a Secret field from its value's wire form and derives no encode (E023) | 0.69.0 | active | fixture | 1 |
+| C-426 | A `@skip` record field is neither decoded nor encoded and a `@skip_decode` field is never decoded but still encoded; both need a default | 0.69.0 | active | fixture | 1 |
+| C-427 | A derived `T.decode_strict` refuses the first key outside the record's decoded fields with `unknown key '<k>'`; `T.decode` stays lenient | 0.69.0 | active | fixture | 1 |
+| C-428 | An attribute on a record field that the compiler does not read is a check error (E053); the field vocabulary is @builtin, @location, @skip, @skip_decode | 0.69.0 | active | fixture | 0 |
 
