@@ -5022,3 +5022,14 @@ evidence  = [
   { path = "spec/wasm_cross/base64_decode_canonical.almd", class = "fixture" },
   { path = "spec/stdlib/encoding_test.almd", class = "fixture" },
 ]
+
+[[contract]]
+id        = "C-415"
+spec      = "ALS-R5"
+title     = "random.int, float, choice and shuffle draw from OS entropy on native and the embedded wasm lane: draws in one clock tick differ, and threads started together draw different streams"
+statement = "ALS-R5 (almide/almide#4122): `random.int`, `random.float`, `random.choice` and `random.shuffle` take their randomness from the operating system, never from a clock, on every leg. On wasm every draw reads `prim.random_get`: the stock artifact's WASI `random_get` (served by the runtime from the OS) and the EMBEDDED host's fs op 32, which answers from the OS CSPRNG (`getrandom` on Linux, `getentropy` on macOS). On native each thread's generator is seeded once from the OS entropy std's `RandomState` keys draw per thread, so two threads (two `fan` arms) draw different streams however close together they start. Consequently 1,000 consecutive `random.int(0, 1_000_000_000)` draws hold at least 990 distinct values and no two equal neighbours, and eight `fan` arms drawing four values each answer eight different lists, on native and on the embedded lane. These four functions remain not for secrets (only `random.bytes` is a CSPRNG promise); the drawn values themselves are not an observable. NOT covered: the quality of the native generator beyond its seed (an xorshift); the stock runtime's entropy source, which is host configuration."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/embedded_cross/random_entropy_streams.almd", class = "fixture" },
+]
