@@ -51,9 +51,7 @@ pub const EXT2_FNS: &[&str] = &[
     "hash.hmac_sha512",
     "hash.hmac_sha512_hex",
     "hash.is_valid_hmac_sha256",
-    "hash.is_valid_hmac_sha256_hex",
     "hash.is_valid_hmac_sha512",
-    "hash.is_valid_hmac_sha512_hex",
     "bytes.is_equal_constant_time",
     "string.is_equal_constant_time",
     "secret.new",
@@ -528,24 +526,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 bytes_val(mac)
             })
         }
-        // The verify cells answer whether `tag` is the MAC of b under key. A
-        // `_hex` tag is hex in either case; a tag that is not hex, or whose
-        // length differs from the MAC's, answers false. Timing is not an
-        // observable the reference can judge; the answer is.
-        "hash.is_valid_hmac_sha256"
-        | "hash.is_valid_hmac_sha256_hex"
-        | "hash.is_valid_hmac_sha512"
-        | "hash.is_valid_hmac_sha512_hex" => {
+        // The verify cells answer whether `tag` is the MAC of b under key; a
+        // tag whose length differs from the MAC's answers false. Timing is
+        // not an observable the reference can judge; the answer is.
+        "hash.is_valid_hmac_sha256" | "hash.is_valid_hmac_sha512" => {
             arity(name, &args, 3)?;
             let key = want_bytes(name, &args[0])?.borrow().clone();
             let msg = want_bytes(name, &args[1])?.borrow().clone();
             let mac = hmac(name.contains("512"), &key, &msg);
-            let tag: Option<Vec<u8>> = if name.ends_with("_hex") {
-                hex_decode_any_case(want_str(name, &args[2])?)
-            } else {
-                Some(want_bytes(name, &args[2])?.borrow().clone())
-            };
-            Ok(Value::Bool(tag.is_some_and(|t| t == mac)))
+            let tag = want_bytes(name, &args[2])?.borrow().clone();
+            Ok(Value::Bool(tag == mac))
         }
         // Constant-time equality: the answer is plain equality of the bytes
         // (a String compares its UTF-8); lengths are public.
@@ -2012,25 +2002,6 @@ fn hmac(wide: bool, key: &[u8], msg: &[u8]) -> Vec<u8> {
     let mut outer: Vec<u8> = k.iter().map(|x| x ^ 0x5c).collect();
     outer.extend_from_slice(&digest(&inner));
     digest(&outer)
-}
-
-/// Hex in either case to bytes; None for an odd length or a non-hex char.
-fn hex_decode_any_case(s: &str) -> Option<Vec<u8>> {
-    let b = s.as_bytes();
-    if !b.len().is_multiple_of(2) {
-        return None;
-    }
-    let nib = |c: u8| -> Option<u8> {
-        match c {
-            b'0'..=b'9' => Some(c - b'0'),
-            b'a'..=b'f' => Some(c - b'a' + 10),
-            b'A'..=b'F' => Some(c - b'A' + 10),
-            _ => None,
-        }
-    };
-    b.chunks(2)
-        .map(|p| Some(nib(p[0])? << 4 | nib(p[1])?))
-        .collect()
 }
 
 /// The Lanczos core of `math.log_gamma` (g=7, n=9), valid for x >= 0.5:
