@@ -158,10 +158,12 @@ UTF-8 として復号する。組は到着順にすべて残り、同じキー�
 エスケープと不正な UTF-8 は `http.query_params: <理由>` の err。almide/almide#4117）
 は同じ値を返す。ハンドラの `err(m)` は、`m` をクライアントに見せない
 （almide/almide#4150、CWE-209。`m` にはパス・引数・errno の文言やプログラムが
-埋め込んだものが入る）: 本文は固定の `Internal Server Error (request <n>)`、
-`Content-Type: text/plain` の `500` で、`n` はその serve ループがハンドラに渡した
-要求の通し番号（1 から）である。`m` は同じ番号で stderr に 1 行
-`http.serve: request <n>: handler error: <m を引用したもの>` として書く。引用は
+埋め込んだものが入る）: 本文は固定の `Internal Server Error (request <id>)`、
+`Content-Type: text/plain` の `500` で、`id` は要求の `method`・空白・target・LF・
+本文をつないだバイト列の 32 bit FNV-1a（`hash.fnv1a32`）を小文字 16 進 8 桁にした
+もの（どのレーンでも同じ要求は同じ id になる。stock の `wasmtime serve` は要求ごとに
+インスタンスを作るので、通し番号では揃わない）。`m` は同じ id で stderr に 1 行
+`http.serve: request <id>: handler error: <m を引用したもの>` として書く。引用は
 `"` で囲み、`\` と `"` を前置し、制御文字（U+0000–U+001F、U+007F–U+009F）を
 `\u{hex}` にするので、入力が混じった文言でもログの行を偽造できない。
 レスポンスの拒否（下記の非 token 名・制御文字・非最終 status）の本文も固定の
