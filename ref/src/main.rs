@@ -118,11 +118,11 @@ fn main() {
                         let _ = writeln!(
                             so,
                             "{{\"exit\": {exit}, \"stdout\": {}, \"stderr\": {}}}",
-                            json_str(&stdout),
+                            json_str(&String::from_utf8_lossy(&stdout)),
                             json_str(&stderr)
                         );
                     } else {
-                        let _ = so.write_all(stdout.as_bytes());
+                        let _ = so.write_all(&stdout);
                         let _ = so.flush();
                         let _ = std::io::stderr().write_all(stderr.as_bytes());
                         std::process::exit(exit);
