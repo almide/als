@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 394 contracts: **requirements-first 89** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 404 contracts: **requirements-first 99** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-394 contracts
+404 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -429,4 +429,14 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-392 | fs.open_root's family keeps every path inside its root: a path that leaves it by .., an absolute path or a symlink is refused with one message on every target | 0.69.0 | active | fixture | 1 |
 | C-393 | [permissions] fs bounds every fs call to the granted directories, symlinks resolved, with one refusal on native and the embedded wasm host | 0.69.0 | active | fixture | 0 |
 | C-394 | random.bytes draws n bytes from the platform CSPRNG: n = 0 is empty, a negative n aborts with one text on every leg | 0.69.0 | active | fixture | 2 |
+| C-400 | json.parse refuses a lone surrogate, an unknown or short escape, a raw control character, a noncharacter and an unterminated string, never deleting input | 0.69.0 | active | fixture | 2 |
+| C-401 | json.parse accepts exactly one RFC 8259 value: a duplicate key, trailing data, an unquoted key, a trailing comma, a missing separator, non-JSON whitespace and a malformed number are errs | 0.69.0 | active | fixture | 3 |
+| C-402 | url.parse cleans the input as WHATWG does, validates the scheme at the start, refuses a backslash, a control character, a % in the host and a non-canonical numeric host, and removes dot segments, %2e included | 0.69.0 | active | fixture | 2 |
+| C-403 | url.resolve cleans the reference by url.parse's rules and runs every path through the one dot-segment rule, %2e included | 0.69.0 | active | fixture | 1 |
+| C-404 | http.query_params is url.parse_query of the target after its first ?, one decoder on every leg, every pair kept in order and a bad escape an err | 0.69.0 | active | fixture | 1 |
+| C-405 | the socket host answers 400 to a request head RFC 9112 refuses: a bare LF or CR, a malformed request line, a non-origin target, whitespace before a header colon, a colon-less line, obs-fold, a missing or repeated Host | 0.69.0 | active | fixture | 0 |
+| C-406 | the router and the middleware before it read one canonical path: a non-canonical path and a parameter that decodes to a traversal are 400 | 0.69.0 | active | fixture | 0 |
+| C-407 | every http.serve response carries X-Content-Type-Options: nosniff unless the handler set the field | 0.69.0 | active | fixture | 0 |
+| C-408 | the buffered http client refuses a response that ended before its framing did, and caps the response head, as the call-handle client does | 0.69.0 | active | fixture | 0 |
+| C-409 | a handler's err never reaches the client: a fixed 500 body names the request's number, and stderr gets the err quoted under it | 0.69.0 | active | fixture | 0 |
 
