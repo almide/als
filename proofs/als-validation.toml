@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:1faf2afe6a44"
+hash = "sha256:2bcacc9441ca"
 reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: query_params as url.parse_query (#4117), the RFC 9112 request head (#4112), nosniff (#4134), the buffered client's completeness and head cap (#4137) and the handler-err disclosure fix (#4150); checked against C-367 / C-404 / C-405 / C-407 / C-408 / C-409, spec/wasm_cross/http_query_params_decoder on the reference evaluator, native and wasm, and the serve fixtures' driver and rt-core tests named in those contracts)"
+by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: query_params as url.parse_query (#4117), the RFC 9112 request head (#4112), nosniff (#4134), the buffered client's completeness and head cap (#4137) and the handler-err disclosure fix (#4150, the request id computed from the request so native, the embedded lane and wasmtime serve agree); checked against C-367 / C-404 / C-405 / C-407 / C-408 / C-409, spec/wasm_cross/http_query_params_decoder on the reference evaluator, native and wasm, and the serve fixtures' driver and rt-core tests named in those contracts)"
 independent = "no"
 verdict = "accurate"
 
