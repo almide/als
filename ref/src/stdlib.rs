@@ -2739,8 +2739,8 @@ fn parse_f64(_it: &mut Interp, s: &str) -> Result<Value, Flow> {
     Ok(parse_f64_pure(s, true))
 }
 
-/// `finite_only` is float.parse (C-413: a literal past f64::MAX is refused);
-/// json.parse's number token keeps the overflow-to-±inf reading.
+/// `finite_only` is float.parse (C-413: a literal past f64::MAX is refused),
+/// and json.parse's float token reads the same way (ALS-T3 via ALS-T2).
 fn parse_f64_pure(s: &str, finite_only: bool) -> Value {
     // ws* sign? number ws* — ws per C-413's ASCII set; no inf / nan spelling
     // (C-413: they fall to the digit grammar and are `invalid float literal`)
@@ -2832,11 +2832,12 @@ pub fn int_parse_t8(s: &str) -> Result<i64, String> {
     }
 }
 
-/// float.parse (ALS-T2) as a plain Result for the json number token — same
-/// passthrough discipline, except that an overflowing literal stays ±inf
-/// (json.parse never refused it; only float.parse is finite-only, C-413)
+/// float.parse (ALS-T2) as a plain Result for the json number token — the same
+/// passthrough discipline, an overflowing literal included: it is
+/// `float literal out of range` there too (ALS-T3 reads a float token by
+/// ALS-T2; I-JSON, RFC 7493 §2.2)
 pub fn float_parse_t2(s: &str) -> Result<f64, String> {
-    match parse_f64_pure(s, false) {
+    match parse_f64_pure(s, true) {
         Value::Ok(v) => match &*v {
             Value::Float(f) => Ok(f.0),
             _ => Err("float.parse: non-float payload".into()),
