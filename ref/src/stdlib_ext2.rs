@@ -490,7 +490,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             })
         }
 
-        // ═══ base64 (RFC 4648, canonical padded; url = -_ unpadded-tolerant) ═══
+        // ═══ base64 (RFC 4648, canonical padded; one alphabet per decoder) ═══
         "base64.encode" | "base64.encode_url" => {
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
@@ -1302,6 +1302,10 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
     };
     let (y, mo, dd) = (d[0], d[1], d[2]);
     let (h, mi, sec) = (tm[0], tm[1], tm[2]);
+    // RFC 3339's four-digit year; checked first, so no later step can wrap.
+    if !(0..=9999).contains(&y) {
+        return Err(format!("year out of range: {y}"));
+    }
     if !(1..=12).contains(&mo) {
         return Err(format!("month out of range: {mo}"));
     }
@@ -1551,31 +1555,33 @@ fn b64_encode(data: &[u8], url: bool) -> String {
     out
 }
 
-/// decode errors pinned by encoding_base64: length ≢ 0 (mod 4) →
-/// "invalid base64 length: N" (N = the input length); any character
-/// outside the table — '=' in a non-tail slot included — →
-/// "invalid base64 character". Padding: 1 or 2 trailing '='.
+/// ALS-T11's canonical decode, the first failing rule wins: the UTF-8 byte
+/// length ≢ 0 (mod 4) → "invalid base64 length: N"; more than two trailing
+/// '=' → "invalid base64 padding"; any other byte outside THIS function's
+/// table — a '=' before the trailing run, or the other alphabet's 62/63
+/// pair — → "invalid base64 character"; a nonzero bit under the padding (the
+/// low 2 bits of the last symbol for one '=', the low 4 for two) →
+/// "invalid base64 trailing bits".
 fn b64_decode(s: &str, url: bool) -> Result<Vec<u8>, String> {
     let table = if url { B64_URL } else { B64_STD };
-    let cs: Vec<char> = s.chars().collect();
-    if !cs.len().is_multiple_of(4) {
-        return Err(format!("invalid base64 length: {}", cs.len()));
+    let bs = s.as_bytes();
+    if !bs.len().is_multiple_of(4) {
+        return Err(format!("invalid base64 length: {}", bs.len()));
+    }
+    let pad = bs.iter().rev().take_while(|&&b| b == b'=').count();
+    if pad > 2 {
+        return Err("invalid base64 padding".into());
     }
     let mut vals: Vec<u8> = Vec::new();
-    let mut pad = 0usize;
-    for (i, &c) in cs.iter().enumerate() {
-        if c == '=' {
-            // only the last one or two positions may be padding
-            if i + 2 < cs.len() || cs[i..].iter().any(|&x| x != '=') {
-                return Err("invalid base64 character".into());
-            }
-            pad = cs.len() - i;
-            break;
-        }
-        match table.iter().position(|&t| t as char == c) {
+    for &c in &bs[..bs.len() - pad] {
+        match table.iter().position(|&t| t == c) {
             Some(idx) => vals.push(idx as u8),
             None => return Err("invalid base64 character".into()),
         }
+    }
+    let under_pad: u8 = [0, 0b11, 0b1111][pad];
+    if vals.last().is_some_and(|v| v & under_pad != 0) {
+        return Err("invalid base64 trailing bits".into());
     }
     let mut out = Vec::new();
     for chunk in vals.chunks(4) {
@@ -1591,7 +1597,6 @@ fn b64_decode(s: &str, url: bool) -> Result<Vec<u8>, String> {
             out.push(n as u8);
         }
     }
-    let _ = pad;
     Ok(out)
 }
 
