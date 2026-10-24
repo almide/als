@@ -39,6 +39,9 @@ pub enum Callable {
     /// derived Codec entry on a `: Codec` type — `T.decode` / `T.encode`
     /// (ALS-D6); the bool is true for decode, the fallible direction
     Codec(String, bool),
+    /// derived `T.decode_strict` on a `: Codec` record type (C-427): the
+    /// first key outside the decoded fields is refused before any field
+    CodecStrict(String),
     /// a callable bound into an `effect (A) -> B` slot (ALS-M15): its calls
     /// answer the carrier `Result[B, String]` — a bare value tail is lifted
     /// to `ok(...)`, an existing Result passes through
