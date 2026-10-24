@@ -170,6 +170,8 @@ const FLOAT_FNS: &[&str] = &[
     "float.to_string",
     "float.to_int",
     "float.to_int64_checked",
+    "float.to_int_checked",
+    "float.to_int_saturating",
     "float.round",
     "float.floor",
     "float.ceil",
@@ -1840,13 +1842,14 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 name, &args[0],
             )?))))
         }
-        "float.to_int" => {
+        "float.to_int" | "float.to_int_saturating" => {
             arity(name, &args, 1)?;
             // ALS-T24: truncate toward zero, saturate, NaN → 0 (Rust `as` semantics)
             let x = want_float(name, &args[0])?;
             Ok(Value::Int(x as i64))
         }
-        "float.to_int64_checked" => {
+        // ALS-T24: Some iff x is an integer in the 64-bit range (Int is 64-bit)
+        "float.to_int64_checked" | "float.to_int_checked" => {
             arity(name, &args, 1)?;
             let x = want_float(name, &args[0])?;
             Ok(
