@@ -596,6 +596,21 @@ pub fn render(v: &Value) -> Option<String> {
             out.push_str("])");
             out
         }
+        // C-423: a Secret prints `Secret(***)`, and a declared repr's text
+        // (`declared_text`) prints as written, at any depth
+        Value::Record {
+            type_name: Some(t),
+            fields,
+        } if &**t == SECRET_TYPE || &**t == DECLARED_TYPE => {
+            if &**t == SECRET_TYPE {
+                "Secret(***)".to_string()
+            } else {
+                match fields.first() {
+                    Some((_, Value::Str(text))) => text.to_string(),
+                    _ => return None,
+                }
+            }
+        }
         Value::Record { type_name, fields } => {
             let mut out = match type_name {
                 Some(t) => format!("{t} {{ "),
@@ -681,4 +696,26 @@ fn quote_str(s: &str) -> String {
     }
     out.push('"');
     out
+}
+
+/// The internal type name of a `secret.Secret[A]` value (C-423..C-425): a
+/// one-field record `{ hidden: A }` no user type can spell.
+pub const SECRET_TYPE: &str = "secret.Secret";
+/// The internal marker of a declared repr's already-rendered text.
+const DECLARED_TYPE: &str = "\u{0}repr";
+
+/// `secret.new(x)`
+pub fn secret_of(x: Value) -> Value {
+    Value::Record {
+        type_name: Some(Rc::from(SECRET_TYPE)),
+        fields: Rc::new(vec![(Rc::from("hidden"), x)]),
+    }
+}
+
+/// A declared repr's text, rendered verbatim in every position.
+pub fn declared_text(text: &str) -> Value {
+    Value::Record {
+        type_name: Some(Rc::from(DECLARED_TYPE)),
+        fields: Rc::new(vec![(Rc::from(""), Value::str(text))]),
+    }
 }

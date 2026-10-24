@@ -56,6 +56,8 @@ pub const EXT2_FNS: &[&str] = &[
     "hash.is_valid_hmac_sha512_hex",
     "bytes.is_equal_constant_time",
     "string.is_equal_constant_time",
+    "secret.new",
+    "secret.reveal",
     "base64.encode",
     "base64.encode_url",
     "base64.decode",
@@ -558,6 +560,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let a = want_str(name, &args[0])?.clone();
             let b = want_str(name, &args[1])?.clone();
             Ok(Value::Bool(a.as_bytes() == b.as_bytes()))
+        }
+
+        // ═══ secret (C-423..C-425): an opaque holder; reveal is the one way out
+        "secret.new" => {
+            arity(name, &args, 1)?;
+            Ok(crate::value::secret_of(args.into_iter().next().unwrap()))
+        }
+        "secret.reveal" => {
+            arity(name, &args, 1)?;
+            match &args[0] {
+                Value::Record {
+                    type_name: Some(t),
+                    fields,
+                } if &**t == crate::value::SECRET_TYPE => Ok(fields[0].1.clone()),
+                other => Err(Flow::Fatal(format!(
+                    "secret.reveal: expected Secret, got {}",
+                    other.type_name()
+                ))),
+            }
         }
 
         // ═══ base64 (RFC 4648, canonical padded; url = -_ unpadded-tolerant) ═══

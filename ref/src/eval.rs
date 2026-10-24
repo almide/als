@@ -176,7 +176,7 @@ const STD_MODULES: &[&str] = &[
     "uint32", "uint64", "int64", "float32", "json", "fs", "http", "env", "io", "random", "regex",
     "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "fan", "compute",
     "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple",
-    "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml",
+    "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml", "secret",
 ];
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
@@ -1670,6 +1670,7 @@ impl Interp {
                         StrSeg::Expr(x) => {
                             let v = self.eval(env, x)?;
                             let v = self.force(v)?;
+                            let v = self.declared_view(&v)?;
                             match render(&v) {
                                 Some(s) => out.push_str(&s),
                                 None => {
@@ -3442,6 +3443,82 @@ impl Interp {
         }
     }
 
+    /// C-423: the value as every renderer shows it. A record or variant
+    /// whose type declares `fn T.repr` is replaced, at any depth, by that
+    /// repr's text (`value::declared_text`); everything else is unchanged.
+    pub(crate) fn declared_view(&mut self, v: &Value) -> R {
+        if !self.methods.keys().any(|(_, m)| m == "repr") {
+            return Ok(v.clone());
+        }
+        let list = |me: &mut Self, xs: &Rc<Vec<Value>>| -> Result<Rc<Vec<Value>>, Flow> {
+            let mut out = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                out.push(me.declared_view(x)?);
+            }
+            Ok(Rc::new(out))
+        };
+        let fields = |me: &mut Self, fs: &Fields| -> Result<Fields, Flow> {
+            let mut out = Vec::with_capacity(fs.len());
+            for (n, x) in fs.iter() {
+                out.push((n.clone(), me.declared_view(x)?));
+            }
+            Ok(Rc::new(out))
+        };
+        let owner = match v {
+            Value::Record {
+                type_name: Some(t), ..
+            } => Some(t.to_string()),
+            Value::Variant { type_name, .. } => Some(type_name.to_string()),
+            _ => None,
+        };
+        if let Some(t) = owner {
+            if let Some(f) = self.methods.get(&(t, "repr".to_string())).cloned() {
+                let r = self.call_fn(&f, vec![v.clone()], vec![])?;
+                let r = self.force(r)?;
+                return match r {
+                    Value::Str(text) => Ok(crate::value::declared_text(&text)),
+                    other => mismatch_repr(&other),
+                };
+            }
+        }
+        Ok(match v {
+            Value::List(xs) => Value::List(list(self, xs)?),
+            Value::Tuple(xs) => Value::Tuple(list(self, xs)?),
+            Value::Set(xs) => Value::Set(list(self, xs)?),
+            Value::Some(x) => Value::Some(Rc::new(self.declared_view(x)?)),
+            Value::Ok(x) => Value::Ok(Rc::new(self.declared_view(x)?)),
+            Value::Err(x) => Value::Err(Rc::new(self.declared_view(x)?)),
+            Value::Map(kvs) => {
+                let mut out = Vec::with_capacity(kvs.len());
+                for (k, x) in kvs.iter() {
+                    out.push((self.declared_view(k)?, self.declared_view(x)?));
+                }
+                Value::Map(Rc::new(out))
+            }
+            Value::Record {
+                type_name,
+                fields: fs,
+            } => Value::Record {
+                type_name: type_name.clone(),
+                fields: fields(self, fs)?,
+            },
+            Value::Variant {
+                type_name,
+                case,
+                payload,
+            } => Value::Variant {
+                type_name: type_name.clone(),
+                case: case.clone(),
+                payload: match payload {
+                    Payload::Unit => Payload::Unit,
+                    Payload::Tuple(xs) => Payload::Tuple(list(self, xs)?),
+                    Payload::Record(fs) => Payload::Record(fields(self, fs)?),
+                },
+            },
+            other => other.clone(),
+        })
+    }
+
     /// C-427: the first object key (document order) that is not the wire
     /// key of a decoded field; a non-object or a variant answers None and
     /// falls through to `decode`'s own result
@@ -3658,6 +3735,13 @@ impl Interp {
                     _ => Err("expected Bool".into()),
                 }),
                 ("Value", []) => Ok(Ok(Value::Dyn(d.clone()))),
+                // C-425: a Secret field decodes from its value's wire form
+                ("Secret", [inner]) => {
+                    let inner = inner.clone();
+                    Ok(self
+                        .codec_decode_ty(&inner, d)?
+                        .map(crate::value::secret_of))
+                }
                 ("List", [elem]) => {
                     let Dyn::A(items) = d else {
                         return Ok(Err("expected Array".into()));
@@ -4106,4 +4190,11 @@ fn compile_int_expr(
 /// C-426: a field carrying `@skip` or `@skip_decode` is never decoded
 fn field_skips_decode(fd: &FieldDecl) -> bool {
     fd.attrs.iter().any(|a| a == "skip" || a == "skip_decode")
+}
+
+fn mismatch_repr(v: &Value) -> R {
+    Err(Flow::Fatal(format!(
+        "a declared `repr` answered a {}, not a String",
+        v.type_name()
+    )))
 }
