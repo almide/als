@@ -978,6 +978,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             let b = b.borrow();
             let n0 = want_int(name, &args[1])?;
+            // An EMPTY base is empty at ANY count (almide#2690): the extend
+            // loop below would otherwise run `n` times for nothing, so
+            // `repeat(empty, i64::MAX)` never returned.
+            if b.is_empty() {
+                return Ok(Ok(bytes_val(Vec::new())));
+            }
             if n0 > 0 && (b.len() as i128) * (n0 as i128) > (1i128 << 31) {
                 return Ok(Err(Flow::Abort("repeat result too large".into())));
             }
