@@ -61,7 +61,9 @@ pub type Args = (Vec<Value>, Vec<(String, Value)>);
 pub enum Outcome {
     Ran {
         exit: i32,
-        stdout: String,
+        /// Raw bytes: a byte writer (`io.write` / `io.write_bytes`) emits
+        /// exactly its bytes, UTF-8 or not (C-417).
+        stdout: Vec<u8>,
         stderr: String,
     },
     Abstain {
@@ -143,7 +145,7 @@ pub struct Interp {
     /// case name → (type name, shape)
     ctors: BTreeMap<String, (String, CaseShape)>,
     globals: Rc<Env>,
-    pub stdout: String,
+    pub stdout: Vec<u8>,
     /// env.set overlay (read before the host env; never written back to the host)
     pub env_overlay: Vec<(String, String)>,
     /// fixed-seed splitmix64 for the entropy floor (value nondeterminism is
@@ -296,7 +298,7 @@ impl Interp {
                 m
             },
             globals: Env::new(None),
-            stdout: String::new(),
+            stdout: Vec::new(),
             env_overlay: Vec::new(),
             rand_state: 0x243F6A8885A308D3,
             stderr: String::new(),

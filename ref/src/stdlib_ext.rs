@@ -1485,7 +1485,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "io.print" => {
             arity(name, &args, 1)?;
             let s = want_str(name, &args[0])?.to_string();
-            it.stdout.push_str(&s);
+            it.stdout.extend_from_slice(s.as_bytes());
             Ok(Value::Unit)
         }
         "process.exit" => {
