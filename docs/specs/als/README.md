@@ -161,7 +161,7 @@
 | [ALS-T2](./text-and-numbers.md#als-t2-floatparse) | `float.parse` | C-024, C-210, C-300, C-301 |
 | [ALS-T3](./text-and-numbers.md#als-t3-jsonparse) | `json.parse` | C-087, C-298, C-299, C-391 |
 | [ALS-T4](./text-and-numbers.md#als-t4-listchunk--listwindows) | `list.chunk` / `list.windows` | C-129, C-171 |
-| [ALS-T5](./text-and-numbers.md#als-t5-stringto_upper--stringto_lower) | `string.to_upper` / `string.to_lower` | C-020, C-162 |
+| [ALS-T5](./text-and-numbers.md#als-t5-stringto_upper--stringto_lower) | `string.to_upper` / `string.to_lower` | C-020, C-162, C-417 |
 | [ALS-T6](./text-and-numbers.md#als-t6-整数演算の終了規約（termination-convention）) | 整数演算の終了規約（termination convention） | C-001, C-002, C-047, C-067, C-154, C-155, C-161, C-169, C-184, C-196, C-197, C-198, C-200, C-219, C-353 |
 | [ALS-T7](./text-and-numbers.md#als-t7-トップレベル-let-の評価時機) | トップレベル let の評価時機 | C-007, C-077, C-111 |
 | [ALS-T8](./text-and-numbers.md#als-t8-整数パースの文法とエラー規範) | 整数パースの文法とエラー規範 | C-028, C-029 |

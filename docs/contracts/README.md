@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 394 contracts: **requirements-first 89** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 395 contracts: **requirements-first 90** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-394 contracts
+395 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -429,4 +429,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-392 | fs.open_root's family keeps every path inside its root: a path that leaves it by .., an absolute path or a symlink is refused with one message on every target | 0.69.0 | active | fixture | 1 |
 | C-393 | [permissions] fs bounds every fs call to the granted directories, symlinks resolved, with one refusal on native and the embedded wasm host | 0.69.0 | active | fixture | 0 |
 | C-394 | random.bytes draws n bytes from the platform CSPRNG: n = 0 is empty, a negative n aborts with one text on every leg | 0.69.0 | active | fixture | 2 |
+| C-417 | io.write and io.write_bytes emit exactly their bytes on every target and host | 0.68.0 | active | fixture | 1 |
 
