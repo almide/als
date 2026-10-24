@@ -1106,7 +1106,7 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T31"
-hash = "sha256:d52ea4617064"
+hash = "sha256:4db598cfdbee"
 reviewed = "2026-10-24"
 by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-420..C-428 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
