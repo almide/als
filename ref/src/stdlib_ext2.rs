@@ -40,6 +40,8 @@ pub const EXT2_FNS: &[&str] = &[
     "datetime.parse_iso",
     "url.parse",
     "url.to_string",
+    "url.resolve",
+    "url.parse_query",
     "hash.fnv1a32",
     "hash.fnv1a32_bytes",
     "hash.sha256",
@@ -96,6 +98,8 @@ pub const EXT2_FNS: &[&str] = &[
     "bytes.write_string_be",
     "http.response",
     "http.json",
+    "http.new_request",
+    "http.query_params",
     "http.redirect",
     "http.with_headers",
     "http.get_header",
@@ -416,6 +420,22 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let raw = want_str(name, &args[0])?.to_string();
             Ok(match url_parse(&raw) {
                 Ok(v) => Value::Ok(Rc::new(v)),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
+        }
+        "url.resolve" => {
+            arity(name, &args, 2)?;
+            let raw = want_str(name, &args[1])?.to_string();
+            Ok(match url_resolve(&args[0], &raw) {
+                Ok(v) => Value::Ok(Rc::new(v)),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
+        }
+        "url.parse_query" => {
+            arity(name, &args, 1)?;
+            let raw = want_str(name, &args[0])?.to_string();
+            Ok(match url_parse_query(&raw, "url.parse_query") {
+                Ok(ps) => Value::Ok(Rc::new(pairs_value(ps))),
                 Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
             })
         }
@@ -918,6 +938,48 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 vec![("Content-Type".into(), ct.into())],
             ))
         }
+        // ALS-R5: a request built in code; query_params reads the target
+        // after its FIRST `?` by url.parse_query's rules.
+        "http.new_request" => {
+            arity(name, &args, 4)?;
+            let method = want_str(name, &args[0])?.to_string();
+            let target = want_str(name, &args[1])?.to_string();
+            let body = want_str(name, &args[2])?.to_string();
+            Ok(Value::Record {
+                type_name: Some(Rc::from("HttpRequest")),
+                fields: Rc::new(vec![
+                    (Rc::from("method"), Value::str(&method)),
+                    (Rc::from("path"), Value::str(&target)),
+                    (Rc::from("body"), Value::str(&body)),
+                    (Rc::from("headers"), args[3].clone()),
+                ]),
+            })
+        }
+        "http.query_params" => {
+            arity(name, &args, 1)?;
+            let target = match &args[0] {
+                Value::Record {
+                    type_name: Some(tn),
+                    fields,
+                } if &**tn == "HttpRequest" => fields
+                    .iter()
+                    .find(|(k, _)| &**k == "path")
+                    .and_then(|(_, v)| match v {
+                        Value::Str(s) => Some(s.to_string()),
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                other => return mismatch(name, "HttpRequest", other),
+            };
+            let cs: Vec<char> = target.chars().collect();
+            let (_, query, _) = split_once_char(&cs, '?');
+            Ok(
+                match url_parse_query(&str_of(&query), "http.query_params") {
+                    Ok(ps) => Value::Ok(Rc::new(pairs_value(ps))),
+                    Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+                },
+            )
+        }
         "http.redirect" => {
             arity(name, &args, 1)?;
             let loc = want_str(name, &args[0])?.to_string();
@@ -1320,7 +1382,7 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
     Ok(iso_epoch(y, mo, dd, h, mi, sec) - offset)
 }
 
-/// RFC 3986 reg-name: unreserved / sub-delims / `%` (ALS-T27).
+/// RFC 3986 reg-name without pct-encoded: unreserved / sub-delims (ALS-T27).
 fn url_host_char(c: char) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
@@ -1328,7 +1390,6 @@ fn url_host_char(c: char) -> bool {
             '-' | '.'
                 | '_'
                 | '~'
-                | '%'
                 | '!'
                 | '$'
                 | '&'
@@ -1408,23 +1469,159 @@ fn url_parts(name: &str, v: &Value) -> Result<UrlParts, Flow> {
     }
 }
 
+/// ALS-T27, over chars: the input is cleaned as the WHATWG URL parser cleans
+/// it (leading and trailing C0 control or space stripped, every tab, LF and CR
+/// removed), then a remaining control character or a backslash is refused.
+fn url_clean(raw: &str, who: &str) -> Result<Vec<char>, String> {
+    let cs: Vec<char> = raw.chars().collect();
+    let c0_or_space = |c: &char| (*c as u32) <= 0x20;
+    let start = cs.iter().position(|c| !c0_or_space(c)).unwrap_or(cs.len());
+    let end = cs
+        .iter()
+        .rposition(|c| !c0_or_space(c))
+        .map_or(start, |i| i + 1);
+    let kept: Vec<char> = cs[start..end]
+        .iter()
+        .copied()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .collect();
+    if kept.iter().any(|c| (*c as u32) < 0x20 || *c as u32 == 0x7f) {
+        return Err(format!("{who}: control character in URL"));
+    }
+    if kept.contains(&'\\') {
+        return Err(format!("{who}: backslash in URL"));
+    }
+    Ok(kept)
+}
+
+/// `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`.
+fn url_scheme_ok(cs: &[char]) -> bool {
+    !cs.is_empty()
+        && cs[0].is_ascii_alphabetic()
+        && cs
+            .iter()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+}
+
+fn url_ascii_lower(cs: &[char]) -> String {
+    cs.iter()
+        .map(|c| {
+            if c.is_ascii_uppercase() {
+                char::from_u32(*c as u32 + 32).unwrap_or(*c)
+            } else {
+                *c
+            }
+        })
+        .collect()
+}
+
+/// WHATWG's ends-in-a-number test: the last label (a single trailing empty
+/// label dropped) is all ASCII digits, or `0x`/`0X` and hex digits.
+fn url_ends_in_number(host: &[char]) -> bool {
+    let mut labels = split_char(host, '.');
+    if labels.len() > 1 && labels.last().is_some_and(|l| l.is_empty()) {
+        labels.pop();
+    }
+    let last = labels.last().cloned().unwrap_or_default();
+    if all_digits(&last) {
+        return true;
+    }
+    last.len() >= 2
+        && last[0] == '0'
+        && (last[1] == 'x' || last[1] == 'X')
+        && last[2..].iter().all(|c| c.is_ascii_hexdigit())
+}
+
+/// Four decimal labels, each `0` or a non-zero-led number up to 255.
+fn url_canonical_ipv4(host: &[char]) -> bool {
+    let labels = split_char(host, '.');
+    labels.len() == 4
+        && labels.iter().all(|l| {
+            all_digits(l)
+                && l.len() <= 3
+                && (l.len() == 1 || l[0] != '0')
+                && digits_to_i64(l).is_some_and(|n| n <= 255)
+        })
+}
+
+/// The dot-segment rule (WHATWG path state): `.` and `%2e` (any case) are a
+/// single-dot segment; `..`, `.%2e`, `%2e.` and `%2e%2e` are a double-dot
+/// segment. A double-dot drops the segment before it; either kind, as the
+/// last segment, leaves the path ending in `/`.
+fn url_dot_kind(seg: &[char]) -> u8 {
+    let lower = url_ascii_lower(seg);
+    match lower.as_str() {
+        "." | "%2e" => 1,
+        ".." | ".%2e" | "%2e." | "%2e%2e" => 2,
+        _ => 0,
+    }
+}
+
+fn url_remove_dots(path: &str) -> String {
+    let cs: Vec<char> = path.chars().collect();
+    if cs.is_empty() {
+        return String::new();
+    }
+    let rooted = cs[0] == '/';
+    let body = if rooted { &cs[1..] } else { &cs[..] };
+    let segs = split_char(body, '/');
+    let n = segs.len();
+    let mut out: Vec<Vec<char>> = Vec::new();
+    for (i, seg) in segs.iter().enumerate() {
+        let last = i + 1 == n;
+        match url_dot_kind(seg) {
+            2 => {
+                out.pop();
+                if last {
+                    out.push(Vec::new());
+                }
+            }
+            1 => {
+                if last {
+                    out.push(Vec::new());
+                }
+            }
+            _ => out.push(seg.clone()),
+        }
+    }
+    let mut s = String::new();
+    if rooted {
+        s.push('/');
+    }
+    for (i, seg) in out.iter().enumerate() {
+        if i > 0 {
+            s.push('/');
+        }
+        s.push_str(&str_of(seg));
+    }
+    s
+}
+
 /// ALS-T27, over chars.
 fn url_parse(raw: &str) -> Result<Value, String> {
-    let cs: Vec<char> = raw.chars().collect();
-    let sep: Vec<char> = "://".chars().collect();
-    let Some(i) = (0..cs.len()).find(|&i| i + 3 <= cs.len() && cs[i..i + 3] == sep[..]) else {
+    let cs = url_clean(raw, "url.parse")?;
+    let Some(colon) = cs.iter().position(|c| *c == ':') else {
         return Err("url.parse: missing '://' scheme separator".to_string());
     };
-    if i == 0 {
+    if colon == 0 {
         return Err("url.parse: empty scheme".to_string());
     }
-    let scheme = str_of(&cs[..i]);
-    let rest = cs[i + 3..].to_vec();
+    if !url_scheme_ok(&cs[..colon]) {
+        return Err(format!(
+            "url.parse: invalid scheme: {}",
+            str_of(&cs[..colon])
+        ));
+    }
+    if cs.get(colon + 1) != Some(&'/') || cs.get(colon + 2) != Some(&'/') {
+        return Err("url.parse: missing '://' scheme separator".to_string());
+    }
+    let scheme = url_ascii_lower(&cs[..colon]);
+    let rest = cs[colon + 3..].to_vec();
     let (before_frag, fragment, _) = split_once_char(&rest, '#');
     let (before_query, query, _) = split_once_char(&before_frag, '?');
     let (authority, after_slash, had_slash) = split_once_char(&before_query, '/');
     let path = if had_slash {
-        format!("/{}", str_of(&after_slash))
+        url_remove_dots(&format!("/{}", str_of(&after_slash)))
     } else {
         String::new()
     };
@@ -1445,6 +1642,9 @@ fn url_parse(raw: &str) -> Result<Value, String> {
     if !host.iter().all(|c| url_host_char(*c)) {
         return Err(format!("url.parse: invalid host: {host_text}"));
     }
+    if url_ends_in_number(&host) && !url_canonical_ipv4(&host) {
+        return Err(format!("url.parse: non-canonical IPv4 host: {host_text}"));
+    }
     let port_text = str_of(&port_field);
     let port = if had_port {
         match digits_to_i64(&port_field) {
@@ -1457,11 +1657,119 @@ fn url_parse(raw: &str) -> Result<Value, String> {
     };
     Ok(url_record(
         &scheme,
-        &host_text,
+        &url_ascii_lower(&host),
         port,
         &path,
         &str_of(&query),
         &str_of(&fragment),
+    ))
+}
+
+/// ALS-T27 resolve (RFC 3986 §5.2 over the cleaned reference): a reference
+/// with a scheme is parsed alone, `//` takes the base's scheme, anything
+/// else replaces the base's path / query / fragment, every path through the
+/// one dot-segment rule.
+fn url_resolve(base: &Value, raw: &str) -> Result<Value, String> {
+    let (scheme, host, port, bpath, bquery, _) =
+        url_parts("url.resolve", base).map_err(|_| "url.resolve: expected a Url".to_string())?;
+    let cs = url_clean(raw, "url.resolve")?;
+    let colon = cs.iter().position(|c| *c == ':');
+    if colon.is_some_and(|i| url_scheme_ok(&cs[..i])) {
+        return url_parse(&str_of(&cs));
+    }
+    if cs.len() >= 2 && cs[0] == '/' && cs[1] == '/' {
+        return url_parse(&format!("{scheme}:{}", str_of(&cs)));
+    }
+    let (before_frag, fragment, _) = split_once_char(&cs, '#');
+    let (rpath, query, had_query) = split_once_char(&before_frag, '?');
+    let path = if rpath.is_empty() {
+        bpath.clone()
+    } else if rpath[0] == '/' {
+        url_remove_dots(&str_of(&rpath))
+    } else {
+        let merged = if bpath.is_empty() {
+            format!("/{}", str_of(&rpath))
+        } else {
+            let bp: Vec<char> = bpath.chars().collect();
+            let cut = bp.iter().rposition(|c| *c == '/').map_or(0, |i| i + 1);
+            format!("{}{}", str_of(&bp[..cut]), str_of(&rpath))
+        };
+        url_remove_dots(&merged)
+    };
+    let query = if rpath.is_empty() && !had_query {
+        bquery
+    } else {
+        str_of(&query)
+    };
+    Ok(url_record(
+        &scheme,
+        &host,
+        port,
+        &path,
+        &query,
+        &str_of(&fragment),
+    ))
+}
+
+fn url_hex(c: char) -> Option<u8> {
+    c.to_digit(16).map(|d| d as u8)
+}
+
+/// url.decode_component: a run of `%XX` is strict UTF-8; a `%` without two
+/// following chars is truncated, one without two hex digits is invalid.
+fn url_decode_component(s: &str, who: &str) -> Result<String, String> {
+    let cs: Vec<char> = s.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < cs.len() {
+        if cs[i] != '%' {
+            out.push(cs[i]);
+            i += 1;
+            continue;
+        }
+        let mut run: Vec<u8> = Vec::new();
+        while i < cs.len() && cs[i] == '%' {
+            if i + 3 > cs.len() {
+                return Err(format!("{who}: truncated percent escape"));
+            }
+            match (url_hex(cs[i + 1]), url_hex(cs[i + 2])) {
+                (Some(h), Some(l)) => run.push(h * 16 + l),
+                _ => return Err(format!("{who}: invalid percent escape")),
+            }
+            i += 3;
+        }
+        match std::str::from_utf8(&run) {
+            Ok(t) => out.push_str(t),
+            Err(_) => return Err(format!("{who}: invalid UTF-8 in percent data")),
+        }
+    }
+    Ok(out)
+}
+
+/// url.parse_query: `&`-separated, empty segments dropped, each split at its
+/// first `=` (none → value ""), both sides `+` → space then decoded.
+fn url_parse_query(q: &str, who: &str) -> Result<Vec<(String, String)>, String> {
+    let cs: Vec<char> = q.chars().collect();
+    let mut out: Vec<(String, String)> = Vec::new();
+    for part in split_char(&cs, '&') {
+        if part.is_empty() {
+            continue;
+        }
+        let (k, v, _) = split_once_char(&part, '=');
+        let plus =
+            |x: &[char]| -> String { x.iter().map(|c| if *c == '+' { ' ' } else { *c }).collect() };
+        let k = url_decode_component(&plus(&k), who)?;
+        let v = url_decode_component(&plus(&v), who)?;
+        out.push((k, v));
+    }
+    Ok(out)
+}
+
+fn pairs_value(ps: Vec<(String, String)>) -> Value {
+    Value::List(Rc::new(
+        ps.into_iter()
+            .map(|(k, v)| Value::Tuple(Rc::new(vec![Value::str(&k), Value::str(&v)])))
+            .collect(),
     ))
 }
 
