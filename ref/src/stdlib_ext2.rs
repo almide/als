@@ -740,7 +740,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
             let raw = b.borrow().clone();
-            it.stdout.push_str(&String::from_utf8_lossy(&raw));
+            it.stdout.extend_from_slice(&raw);
             Ok(Value::Unit)
         }
         "io.write_bytes" => {
@@ -750,7 +750,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             for x in xs.iter() {
                 b.push(want_int(name, x)? as u8);
             }
-            it.stdout.push_str(&String::from_utf8_lossy(&b));
+            it.stdout.extend_from_slice(&b);
             Ok(Value::Unit)
         }
         "io.read_n_bytes" => {

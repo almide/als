@@ -513,13 +513,13 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "println" | "eprintln" => {
             arity(name, &args, 1)?;
             let s = render_arg(&args[0])?;
-            let sink = if name == "println" {
-                &mut it.stdout
+            if name == "println" {
+                it.stdout.extend_from_slice(s.as_bytes());
+                it.stdout.push(b'\n');
             } else {
-                &mut it.stderr
-            };
-            sink.push_str(&s);
-            sink.push('\n');
+                it.stderr.push_str(&s);
+                it.stderr.push('\n');
+            }
             Ok(Value::Unit)
         }
         "assert" => {
