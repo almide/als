@@ -64,6 +64,7 @@ pub const EXT2_FNS: &[&str] = &[
     "args.positional",
     "args.positional_at",
     "random.int",
+    "random.bytes",
     "io.write",
     "io.write_bytes",
     "io.read_n_bytes",
@@ -642,6 +643,29 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             } else {
                 min.wrapping_add(rpos % span)
             }))
+        }
+
+        // C-394: the CSPRNG surface. The bytes are sanctioned nondeterminism
+        // (the ref draws them from its splitmix64); ALS asserts the length,
+        // the empty case, two draws differing, and the negative-length abort.
+        "random.bytes" => {
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            if n < 0 {
+                return Ok(Err(Flow::Abort(format!(
+                    "random.bytes: negative length {n}"
+                ))));
+            }
+            if n > (1i64 << 31) {
+                return Ok(Err(Flow::Abort("out of memory".into())));
+            }
+            let mut b = Vec::with_capacity(n as usize);
+            while b.len() < n as usize {
+                let r = it.next_rand().to_le_bytes();
+                let take = (n as usize - b.len()).min(8);
+                b.extend_from_slice(&r[..take]);
+            }
+            Ok(bytes_val(b))
         }
 
         // ═══ io ══════════════════════════════════════════════════════════
