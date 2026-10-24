@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 409 contracts: **requirements-first 104** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 418 contracts: **requirements-first 113** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-409 contracts
+418 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -444,4 +444,13 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-407 | every http.serve response carries X-Content-Type-Options: nosniff unless the handler set the field | 0.69.0 | active | fixture | 0 |
 | C-408 | the buffered http client refuses a response that ended before its framing did, and caps the response head, as the call-handle client does | 0.69.0 | active | fixture | 0 |
 | C-409 | a handler's err never reaches the client: a fixed 500 body names the request's number, and stderr gets the err quoted under it | 0.69.0 | active | fixture | 0 |
+| C-410 | datetime.parse_iso refuses a year outside 0..=9999 by name instead of answering a wrapped instant | 0.69.0 | active | fixture | 1 |
+| C-411 | base64.decode and decode_url accept only the canonical padded form of their own alphabet | 0.69.0 | active | fixture | 1 |
+| C-412 | Case mapping never folds a non-ASCII scalar into ASCII: string.to_upper, to_lower and capitalize leave such a scalar unchanged | 0.69.0 | active | fixture | 2 |
+| C-413 | int.parse and float.parse accept only finite decimal text trimmed of ASCII whitespace | 0.69.0 | active | fixture | 6 |
+| C-414 | float.to_int_checked and float.to_int_saturating complete the Float to Int conversion trio | 0.69.0 | active | fixture | 1 |
+| C-415 | random.int, float, choice and shuffle draw from OS entropy on native and the embedded wasm lane: draws in one clock tick differ, and threads started together draw different streams | 0.69.0 | active | fixture | 0 |
+| C-416 | net reads and received descriptors are bounded: a read never pre-allocates its length, and at most 28 untaken descriptors wait per Unix socket | 0.69.0 | active | fixture | 0 |
+| C-417 | process.kill and process.is_alive ask the kernel with kill(2), refuse a pid outside 1..=2147483647, answer fixed err texts, and are bounded by [permissions] proc as the kill command | 0.69.0 | active | fixture | 0 |
+| C-418 | a runtime error text escapes the control and bidi characters of the user data it embeds, with one rule and the same bytes on every leg | 0.69.0 | active | fixture | 1 |
 
