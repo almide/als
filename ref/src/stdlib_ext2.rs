@@ -57,6 +57,10 @@ pub const EXT2_FNS: &[&str] = &[
     "path.dirname",
     "path.extension",
     "path.is_absolute",
+    "path.from_string",
+    "path.trusted",
+    "path.to_string",
+    "path.join_within",
     "args.raw",
     "args.flag",
     "args.option",
@@ -177,6 +181,35 @@ fn want_bytes(name: &str, v: &Value) -> Result<Rc<std::cell::RefCell<Vec<u8>>>, 
 
 fn bytes_val(v: Vec<u8>) -> Value {
     Value::Bytes(Rc::new(std::cell::RefCell::new(v)))
+}
+
+/// C-432: the path stays inside the directory it is joined to.
+fn path_stays_inside(s: &str) -> bool {
+    let cs: Vec<char> = s.chars().collect();
+    if matches!(cs.first(), Some('/' | '\\' | '~')) || cs.contains(&'\0') {
+        return false;
+    }
+    // The first segment (up to either separator) is a drive when its second
+    // char is `:`.
+    let first_len = cs
+        .iter()
+        .position(|c| *c == '/' || *c == '\\')
+        .unwrap_or(cs.len());
+    if first_len >= 2 && cs[1] == ':' {
+        return false;
+    }
+    let mut seg: Vec<char> = Vec::new();
+    for c in cs.iter().chain(std::iter::once(&'/')) {
+        if *c == '/' || *c == '\\' {
+            if seg.len() == 2 && seg[0] == '.' && seg[1] == '.' {
+                return false;
+            }
+            seg.clear();
+        } else {
+            seg.push(*c);
+        }
+    }
+    true
 }
 
 fn ok(v: Value) -> Value {
@@ -610,6 +643,40 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "path.is_absolute" => {
             arity(name, &args, 1)?;
             Ok(Value::Bool(want_str(name, &args[0])?.starts_with('/')))
+        }
+        // SafePath (C-432): admitted only when the path stays inside the
+        // directory it is joined to — relative (no leading `/` or `\`, no
+        // `X:` drive, no leading `~`), no NUL, no `..` segment on either
+        // separator. A SafePath is its string.
+        "path.from_string" | "path.join_within" => {
+            let (base, s) = if name == "path.from_string" {
+                arity(name, &args, 1)?;
+                (None, want_str(name, &args[0])?.to_string())
+            } else {
+                arity(name, &args, 2)?;
+                (
+                    Some(want_str(name, &args[0])?.to_string()),
+                    want_str(name, &args[1])?.to_string(),
+                )
+            };
+            Ok(if !path_stays_inside(&s) {
+                err_str(&format!("path traversal rejected: {s}"))
+            } else {
+                ok(match base {
+                    None => Value::str(&s),
+                    Some(a) => Value::str(&if a.is_empty() {
+                        s
+                    } else if a.ends_with('/') {
+                        format!("{a}{s}")
+                    } else {
+                        format!("{a}/{s}")
+                    }),
+                })
+            })
+        }
+        "path.trusted" | "path.to_string" => {
+            arity(name, &args, 1)?;
+            Ok(Value::str(want_str(name, &args[0])?))
         }
 
         // ═══ args (stdlib/args.almd over env.args(); ref argv is empty) ═══
