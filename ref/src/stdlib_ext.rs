@@ -356,9 +356,57 @@ fn io_err(e: std::io::Error) -> Value {
     err_str(&e.to_string())
 }
 
+/// C-418: `"s"` with every C0 (U+0000..=U+001F), DEL, C1 (U+0080..=U+009F)
+/// and bidirectional control (U+061C, U+200E, U+200F, U+202A..=U+202E,
+/// U+2066..=U+2069) written `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every
+/// other character, quote and backslash included, kept as is.
+fn err_operand(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        let n = c as u32;
+        let escaped = n <= 0x1f
+            || (0x7f..=0x9f).contains(&n)
+            || n == 0x061c
+            || n == 0x200e
+            || n == 0x200f
+            || (0x202a..=0x202e).contains(&n)
+            || (0x2066..=0x2069).contains(&n);
+        match c {
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\0' => out.push_str("\\0"),
+            _ if escaped => out.push_str(&format!("\\u{{{n:x}}}")),
+            _ => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// dispatch; None = not an ext function (caller abstains)
 pub fn call_ext(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Result<Value, Flow>> {
+    // ALS-R5 / C-418: a failed `fs.read_text` / `fs.copy` names the call and
+    // its path operands, quoted, their control and bidi characters escaped.
+    let operands: Option<Vec<String>> = match name {
+        "fs.read_text" | "fs.copy" => args
+            .iter()
+            .map(|a| match a {
+                Value::Str(s) => Some(err_operand(s)),
+                _ => None,
+            })
+            .collect(),
+        _ => None,
+    };
     match dispatch(it, name, args) {
+        Ok(Ok(Value::Err(e))) if operands.is_some() => {
+            let reason = match &*e {
+                Value::Str(m) => m.to_string(),
+                _ => return Some(Ok(Value::Err(e))),
+            };
+            let ops = operands.unwrap_or_default().join(", ");
+            Some(Ok(err_str(&format!("{name}({ops}): {reason}"))))
+        }
         Ok(r) => Some(r),
         Err(Flow::Fatal(m)) if &*m == "__not_ext__" => None,
         Err(f) => Some(Err(f)),
