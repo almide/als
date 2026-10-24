@@ -281,10 +281,18 @@ t + 1 }` → 11、if アーム内ブロック → 9、両ターゲット同一)�
 形(`1.5` を実測 pin; 網羅的な浮動小数点表示規範は ALS-E3/T2 の裁定後)。
 補間全体の型は `String`。
 
+**宣言された repr**: どの値も構造的な表示形で出る。ただし型が `fn T.repr` を
+宣言していれば、その値はどの深さ（レコード・variant・リスト・Option・Result・
+タプル・Map の中）でもその repr の文字列で出る。同じ規則が `assert_eq` /
+`assert_ne` の失敗ブロック（ALS-T18）の `expected:` / `found:` にも及ぶ。
+`import secret` の `Secret[A]` は `A` が何であっても `Secret(***)` と出て、
+中身を出すのは `secret.reveal(s)` だけである。
+
 **`!` の裁定**: 補間内の前置 `!` は式文位置と同じ `not` 誘導で拒否される
 (ALS-E7、`tests/unary_not_diag_test.rs` の補間側ケース)。
 
-テスト: `spec/wasm_cross/string_interpolation.almd`(契約 C-245)。
+テスト: `spec/wasm_cross/string_interpolation.almd`(契約 C-245)、
+`spec/wasm_cross/secret_never_rendered.almd`(契約 C-423)。
 
 ## ALS-E17 識別子(`ExprKind::Ident`)
 
