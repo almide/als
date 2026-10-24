@@ -253,9 +253,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D4"
-hash = "sha256:97fca99d5008"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:47f53bba4baf"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session; author review for the regex redesign #3942 — the refusal sentence checked against C-395 and spec/wasm_cross/regex_invalid_pattern.almd / regex_size_cap.almd, run on native, the embedded wasm lane and als-ref, byte-identical; the single-grammar paragraph unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 

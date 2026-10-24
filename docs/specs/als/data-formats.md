@@ -28,8 +28,11 @@ Contracts: C-063。
 
 正規表現エンジン（match / find / replace / captures）は native エンジンと
 **fuzz された文法全域で** byte 一致する。方言差（PCRE vs RE2 等の齟齬）は
-不適合 — 対応構文は単一の規範文法。
-Contracts: C-032。
+不適合 — 対応構文は単一の規範文法。この文法の外にある pattern と、状態数
+（展開した Pike VM 命令数 × 空マッチ可能な反復グループの入れ子深さ + 1）が
+20,000 を超える pattern は、どのターゲットでも同じ理由で拒否される
+（`regex.new` は abort、`regex.compile` は err）。
+Contracts: C-032, C-395。
 
 ## ALS-D5 半精度浮動小数のデコード
 
