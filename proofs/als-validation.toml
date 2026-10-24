@@ -28,9 +28,9 @@
 # unvalidated_ceiling = "0"
 [[section]]
 id = "ALS-T8"
-hash = "sha256:b2ac579f159a"
-reviewed = "2026-08-21"
-by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a probe run on both 0.58.0 targets)"
+hash = "sha256:537cf526c28f"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session; int.parse trims the ASCII TAB/LF/FF/CR/SPACE set instead of ALS-T1 (C-413), the example test updated to match, checked against spec/wasm_cross/number_parse_ascii_trim.almd and string_whitespace.almd on native, wasm and als-ref; the int.from_hex grammar is unchanged)"
 independent = "no"
 verdict = "accurate"
 
@@ -895,9 +895,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T2"
-hash = "sha256:490599b9460b"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:4f8df56bcfd3"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session; the grammar became finite-only (inf / infinity / nan refused as `invalid float literal`, C-413), overflow became the `float literal out of range` error, and ws became the ASCII TAB/LF/FF/CR/SPACE set (C-413); checked against spec/wasm_cross/float_parse.almd, float_parse_finite_only.almd and number_parse_ascii_trim.almd run on native, wasm and als-ref, byte-identical; the rounding rule is unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
@@ -919,9 +919,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T5"
-hash = "sha256:53728760300f"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:a40c6b0e0979"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session; the no-ASCII-fold rule (C-412) and its held-back scalar list, enumerated from Rust str::to_uppercase / to_lowercase over every scalar, checked against spec/wasm_cross/string_case_no_ascii_fold.almd and string_case_unicode.almd on native, wasm and als-ref, byte-identical; the full-mapping and Final_Sigma text is unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
