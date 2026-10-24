@@ -508,6 +508,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                         fields.iter().filter(|(k, _)| keep(k)).cloned().collect(),
                     ))))
                 }
+                // C-401: a non-object has none of the keys, so pick answers
+                // the empty object; omit has nothing to remove.
+                _ if name == "value.pick" => Ok(Value::Dyn(Dyn::O(Rc::new(Vec::new())))),
                 other => Ok(Value::Dyn(other.clone())),
             }
         }
@@ -1716,23 +1719,31 @@ fn pretty(d: &Dyn, level: usize) -> String {
     }
 }
 
-// ── json.parse — transcribed from stdlib/json_parse.almd (the NORMATIVE
-// self-hosted parser, ALS-T3): byte-level, deliberately lenient — strings
-// never fail (EOF closes them, unknown escapes and invalid \uXXXX drop
-// silently, surrogate pairs join), `:` and separators are optional exactly
-// where the oracle is lenient, trailing input after the first value is
-// ignored, error positions are CHAR indices. ──
+// ── json.parse — read from ALS-T3: RFC 8259 plus I-JSON (RFC 7493), strict.
+// The whole text is one value between JSON whitespace (space, tab, LF, CR);
+// every departure is an err with one text per case, positions are CHAR
+// indices (C-087, C-400, C-401). Written from the chapter, not from either
+// implementation's parser. ──
 
 fn json_parse(text: &str) -> Value {
     let b = text.as_bytes();
-    match jp_value(b, 0, 0) {
-        Ok((v, _p)) => Value::Ok(Rc::new(Value::Dyn(v))),
+    let r = jp_value(b, 0, 0).and_then(|(v, p)| {
+        let q = jp_ws(b, p);
+        if q < b.len() {
+            Err(jp_at("json: trailing data", b, q))
+        } else {
+            Ok(v)
+        }
+    });
+    match r {
+        Ok(v) => Value::Ok(Rc::new(Value::Dyn(v))),
         Err(m) => err_str(&m),
     }
 }
 
-fn jp_is_uws(c: u32) -> bool {
-    matches!(c, 32 | 9..=13 | 133 | 160 | 5760 | 8192..=8202 | 8232 | 8233 | 8239 | 8287 | 12288)
+/// "<what> at pos N", N the char index of byte offset `p`.
+fn jp_at(what: &str, b: &[u8], p: usize) -> String {
+    format!("{what} at pos {}", jp_charpos(b, p))
 }
 
 /// decode the UTF-8 codepoint at p → (codepoint, byte length)
@@ -1760,23 +1771,17 @@ fn jp_charpos(b: &[u8], p: usize) -> usize {
         .count()
 }
 
+/// JSON whitespace only: %x20 / %x09 / %x0A / %x0D (RFC 8259 §2).
 fn jp_ws(b: &[u8], mut p: usize) -> usize {
-    while p < b.len() {
-        let x = b[p];
-        if x == 32 || (9..=13).contains(&x) {
-            p += 1;
-        } else if x >= 194 {
-            let (cp, l) = jp_cp(b, p);
-            if jp_is_uws(cp) {
-                p += l;
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
+    while p < b.len() && matches!(b[p], 32 | 9 | 10 | 13) {
+        p += 1;
     }
     p
+}
+
+/// I-JSON §2.1: U+FDD0..U+FDEF and every U+xFFFE / U+xFFFF.
+fn jp_nonchar(cp: u32) -> bool {
+    (0xFDD0..=0xFDEF).contains(&cp) || (cp & 0xFFFE) == 0xFFFE
 }
 
 fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
@@ -1786,35 +1791,16 @@ fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
     }
     match b[q] {
         34 => {
-            let (s, np) = jp_string(b, q);
+            let (s, np) = jp_string(b, q)?;
             Ok((Dyn::S(Rc::from(s.as_str())), np))
         }
         // ALS-T3 / C-391: an array or object opened inside 1000 others.
         123 | 91 if depth >= 1000 => Err("json: nesting deeper than 1000".into()),
-        123 => {
-            let q2 = jp_ws(b, q + 1);
-            if q2 < b.len() && b[q2] == 125 {
-                Ok((Dyn::O(Rc::new(Vec::new())), q2 + 1))
-            } else {
-                jp_object(b, q2, depth + 1)
-            }
-        }
-        91 => {
-            let q2 = jp_ws(b, q + 1);
-            if q2 < b.len() && b[q2] == 93 {
-                Ok((Dyn::A(Rc::new(Vec::new())), q2 + 1))
-            } else {
-                jp_array(b, q2, depth + 1)
-            }
-        }
-        116 | 102 => jp_bool(b, q),
-        110 => {
-            if b.len() >= q + 4 && &b[q..q + 4] == b"null" {
-                Ok((Dyn::Null, q + 4))
-            } else {
-                Err("expected null".into())
-            }
-        }
+        123 => jp_object(b, q, depth + 1),
+        91 => jp_array(b, q, depth + 1),
+        116 => jp_literal(b, q, b"true", Dyn::B(true), "expected bool"),
+        102 => jp_literal(b, q, b"false", Dyn::B(false), "expected bool"),
+        110 => jp_literal(b, q, b"null", Dyn::Null, "expected null"),
         45 | 48..=57 => jp_number(b, q),
         _ => {
             let (cp, _l) = jp_cp(b, q);
@@ -1829,86 +1815,94 @@ fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
     }
 }
 
-/// parse_string never fails: p is at the opening quote (consumed
-/// unconditionally); returns (decoded, position after the closing quote/EOF)
-fn jp_string(b: &[u8], p: usize) -> (String, usize) {
+fn jp_literal(b: &[u8], p: usize, word: &[u8], v: Dyn, msg: &str) -> Result<(Dyn, usize), String> {
+    if b.len() >= p + word.len() && &b[p..p + word.len()] == word {
+        Ok((v, p + word.len()))
+    } else {
+        Err(msg.into())
+    }
+}
+
+/// A string at its opening quote → (decoded, position after the closing
+/// quote). Refused: end of input before the closing quote, a raw U+0000..
+/// U+001F, an escape outside `"\/bfnrt` and `u`, `\u` without four hex
+/// digits, a surrogate that is not a high+low pair, a noncharacter.
+fn jp_string(b: &[u8], open: usize) -> Result<(String, usize), String> {
     let mut out: Vec<u8> = Vec::new();
-    let mut p = p + 1;
+    let mut p = open + 1;
     loop {
         if p >= b.len() {
-            break;
+            return Err(jp_at("json: unterminated string", b, open));
         }
-        match b[p] {
-            34 => {
-                p += 1;
-                break;
-            }
-            92 => {
-                let e = b.get(p + 1).copied().unwrap_or(0);
-                match e {
-                    110 => {
-                        out.push(10);
-                        p += 2;
-                    }
-                    116 => {
-                        out.push(9);
-                        p += 2;
-                    }
-                    114 => {
-                        out.push(13);
-                        p += 2;
-                    }
-                    98 => {
-                        out.push(8);
-                        p += 2;
-                    }
-                    102 => {
-                        out.push(12);
-                        p += 2;
-                    }
-                    34 | 92 | 47 => {
-                        out.push(e);
-                        p += 2;
-                    }
-                    117 => {
-                        // \uXXXX: advance past the 4 hex digits UNCONDITIONALLY;
-                        // write only when valid; surrogate pairs join; lone or
-                        // invalid units drop
-                        let unit = jp_hex4(b, p + 2);
-                        if unit < 0 {
-                            p += 6;
-                        } else if (55296..=56319).contains(&unit)
-                            && p + 8 <= b.len()
-                            && b.get(p + 6) == Some(&92)
-                            && b.get(p + 7) == Some(&117)
-                        {
-                            let lo = jp_hex4(b, p + 8);
-                            if (56320..=57343).contains(&lo) {
-                                let cp = 65536 + (unit - 55296) * 1024 + (lo - 56320);
-                                jp_utf8_push(&mut out, cp as u32);
-                                p += 12;
-                            } else {
-                                p += 6;
-                            }
-                        } else if (55296..=57343).contains(&unit) {
-                            p += 6;
-                        } else {
-                            jp_utf8_push(&mut out, unit as u32);
-                            p += 6;
-                        }
-                    }
-                    _ => {
-                        p += 2; // unknown escape: dropped
-                    }
+        let x = b[p];
+        if x == 34 {
+            return Ok((String::from_utf8_lossy(&out).to_string(), p + 1));
+        }
+        if x < 32 {
+            return Err(jp_at("json: control character in string", b, p));
+        }
+        if x != 92 {
+            if x >= 128 {
+                let (cp, l) = jp_cp(b, p);
+                if jp_nonchar(cp) {
+                    return Err(jp_at("json: noncharacter", b, p));
                 }
-            }
-            x => {
+                out.extend_from_slice(&b[p..p + l]);
+                p += l;
+            } else {
                 out.push(x);
                 p += 1;
             }
+            continue;
         }
+        if p + 1 >= b.len() {
+            return Err(jp_at("json: unterminated string", b, open));
+        }
+        let simple = match b[p + 1] {
+            34 => Some(34u8),
+            92 => Some(92),
+            47 => Some(47),
+            98 => Some(8),
+            102 => Some(12),
+            110 => Some(10),
+            114 => Some(13),
+            116 => Some(9),
+            _ => None,
+        };
+        if let Some(c) = simple {
+            out.push(c);
+            p += 2;
+            continue;
+        }
+        if b[p + 1] != 117 {
+            return Err(jp_at("json: unknown escape", b, p));
+        }
+        let unit = jp_hex4(b, p + 2);
+        if unit < 0 {
+            return Err(jp_at("json: invalid unicode escape", b, p));
+        }
+        let unit = unit as u32;
+        let cp = if (0xD800..=0xDBFF).contains(&unit) {
+            let lo = if b.get(p + 6) == Some(&92) && b.get(p + 7) == Some(&117) {
+                jp_hex4(b, p + 8)
+            } else {
+                -1
+            };
+            if !(0xDC00..=0xDFFF).contains(&lo) {
+                return Err(jp_at("json: lone surrogate", b, p));
+            }
+            0x10000 + ((unit - 0xD800) << 10) + (lo as u32 - 0xDC00)
+        } else if (0xDC00..=0xDFFF).contains(&unit) {
+            return Err(jp_at("json: lone surrogate", b, p));
+        } else {
+            unit
+        };
+        if jp_nonchar(cp) {
+            return Err(jp_at("json: noncharacter", b, p));
+        }
+        jp_utf8_push(&mut out, cp);
+        p += if cp >= 0x10000 { 12 } else { 6 };
     }
-    (String::from_utf8_lossy(&out).to_string(), p)
 }
 
 fn jp_utf8_push(out: &mut Vec<u8>, cp: u32) {
@@ -1953,90 +1947,132 @@ fn jp_digits(b: &[u8], mut p: usize) -> usize {
     p
 }
 
+/// The number token is the run of `0-9 + - . e E` from p; it must be
+/// `-? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?` whole.
 fn jp_number(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
-    let p1 = if b[p] == 45 { p + 1 } else { p };
-    let p2 = jp_digits(b, p1);
-    let has_frac = p2 < b.len() && b[p2] == 46;
-    let p3 = if has_frac { jp_digits(b, p2 + 1) } else { p2 };
-    let eb = b.get(p3).copied().unwrap_or(0);
-    let has_exp = eb == 101 || eb == 69;
-    let p4 = if has_exp {
-        let ps = p3 + 1;
-        let sb = b.get(ps).copied().unwrap_or(0);
-        jp_digits(b, if sb == 43 || sb == 45 { ps + 1 } else { ps })
-    } else {
-        p3
-    };
-    let s = String::from_utf8_lossy(&b[p..p4]).to_string();
+    let mut end = p;
+    while end < b.len() && matches!(b[end], 48..=57 | 43 | 45 | 46 | 101 | 69) {
+        end += 1;
+    }
+    let bad = || Err(jp_at("json: invalid number", b, p));
+    let mut q = if b[p] == 45 { p + 1 } else { p };
+    let int_end = jp_digits(b, q);
+    if int_end == q || (b[q] == 48 && int_end > q + 1) {
+        return bad();
+    }
+    q = int_end;
+    let has_frac = q < end && b[q] == 46;
+    if has_frac {
+        let f = jp_digits(b, q + 1);
+        if f == q + 1 {
+            return bad();
+        }
+        q = f;
+    }
+    let has_exp = q < end && (b[q] == 101 || b[q] == 69);
+    if has_exp {
+        let s = if q + 1 < end && (b[q + 1] == 43 || b[q + 1] == 45) {
+            q + 2
+        } else {
+            q + 1
+        };
+        let e = jp_digits(b, s);
+        if e == s {
+            return bad();
+        }
+        q = e;
+    }
+    if q != end {
+        return bad();
+    }
+    let s = String::from_utf8_lossy(&b[p..end]).to_string();
     if has_frac || has_exp {
-        // the oracle routes through float.parse (ALS-T2) and passes its
-        // error text through
+        // ALS-T2: the token is read as float.parse reads it
         match crate::stdlib::float_parse_t2(&s) {
-            Ok(f) => Ok((Dyn::F(f), p4)),
+            Ok(f) => Ok((Dyn::F(f), end)),
             Err(m) => Err(m),
         }
     } else {
         match crate::stdlib::int_parse_t8(&s) {
-            Ok(n) => Ok((Dyn::I(n), p4)),
+            Ok(n) => Ok((Dyn::I(n), end)),
             Err(m) => Err(m),
         }
     }
 }
 
-fn jp_bool(b: &[u8], p: usize) -> Result<(Dyn, usize), String> {
-    if b.len() >= p + 4 && &b[p..p + 4] == b"true" {
-        Ok((Dyn::B(true), p + 4))
-    } else if b.len() >= p + 5 && &b[p..p + 5] == b"false" {
-        Ok((Dyn::B(false), p + 5))
-    } else {
-        Err("expected bool".into())
-    }
-}
-
-fn jp_array(b: &[u8], p0: usize, depth: usize) -> Result<(Dyn, usize), String> {
-    let mut p = p0;
+/// `[` at p.
+fn jp_array(b: &[u8], open: usize, depth: usize) -> Result<(Dyn, usize), String> {
     let mut acc: Vec<Dyn> = Vec::new();
+    let first = jp_ws(b, open + 1);
+    if first < b.len() && b[first] == 93 {
+        return Ok((Dyn::A(Rc::new(acc)), first + 1));
+    }
+    let mut p = first;
     loop {
         let (v, np) = jp_value(b, p, depth)?;
         acc.push(v);
         let q = jp_ws(b, np);
-        let x = b.get(q).copied().unwrap_or(0);
-        if x == 44 {
-            p = q + 1;
-        } else if x == 93 {
-            return Ok((Dyn::A(Rc::new(acc)), q + 1));
-        } else {
-            return Ok((Dyn::A(Rc::new(acc)), q));
+        if q >= b.len() {
+            return Err("unexpected end of input".into());
+        }
+        match b[q] {
+            93 => return Ok((Dyn::A(Rc::new(acc)), q + 1)),
+            44 => {
+                let n = jp_ws(b, q + 1);
+                if n < b.len() && b[n] == 93 {
+                    return Err(jp_at("json: trailing comma", b, q));
+                }
+                p = n;
+            }
+            _ => return Err(jp_at("json: expected ',' or ']'", b, q)),
         }
     }
 }
 
-fn jp_object(b: &[u8], p0: usize, depth: usize) -> Result<(Dyn, usize), String> {
-    let mut p = p0;
+/// `{` at p. A key is a string; a key the object already holds is refused
+/// where the repeat starts (I-JSON §2.3).
+fn jp_object(b: &[u8], open: usize, depth: usize) -> Result<(Dyn, usize), String> {
     let mut acc: Vec<(Rc<str>, Dyn)> = Vec::new();
+    let first = jp_ws(b, open + 1);
+    if first < b.len() && b[first] == 125 {
+        return Ok((Dyn::O(Rc::new(acc)), first + 1));
+    }
+    let mut k = first;
     loop {
-        let q = jp_ws(b, p);
-        let (k, kp) = jp_string(b, q);
-        let q2 = jp_ws(b, kp);
-        let q3 = if q2 < b.len() && b[q2] == 58 {
-            q2 + 1
-        } else {
-            q2
-        };
-        let (v, np) = jp_value(b, q3, depth)?;
-        let kr: Rc<str> = Rc::from(k.as_str());
-        match acc.iter_mut().find(|(k2, _)| *k2 == kr) {
-            Some(slot) => slot.1 = v,
-            None => acc.push((kr, v)),
+        if k >= b.len() {
+            return Err("unexpected end of input".into());
         }
-        let q4 = jp_ws(b, np);
-        let x = b.get(q4).copied().unwrap_or(0);
-        if x == 44 {
-            p = q4 + 1;
-        } else if x == 125 {
-            return Ok((Dyn::O(Rc::new(acc)), q4 + 1));
-        } else {
-            return Ok((Dyn::O(Rc::new(acc)), q4));
+        if b[k] != 34 {
+            return Err(jp_at("json: unquoted key", b, k));
+        }
+        let (key, kp) = jp_string(b, k)?;
+        let kr: Rc<str> = Rc::from(key.as_str());
+        if acc.iter().any(|(k2, _)| *k2 == kr) {
+            return Err(jp_at("json: duplicate key", b, k));
+        }
+        let c = jp_ws(b, kp);
+        if c >= b.len() {
+            return Err("unexpected end of input".into());
+        }
+        if b[c] != 58 {
+            return Err(jp_at("json: expected ':'", b, c));
+        }
+        let (v, np) = jp_value(b, c + 1, depth)?;
+        acc.push((kr, v));
+        let q = jp_ws(b, np);
+        if q >= b.len() {
+            return Err("unexpected end of input".into());
+        }
+        match b[q] {
+            125 => return Ok((Dyn::O(Rc::new(acc)), q + 1)),
+            44 => {
+                let n = jp_ws(b, q + 1);
+                if n < b.len() && b[n] == 125 {
+                    return Err(jp_at("json: trailing comma", b, q));
+                }
+                k = n;
+            }
+            _ => return Err(jp_at("json: expected ',' or '}'", b, q)),
         }
     }
 }
