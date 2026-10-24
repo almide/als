@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:39590183f0c5"
-reviewed = "2026-10-17"
-by = "O6lvl4 (via the Claude session, on the owner's ruling of 2026-10-17 for the unix-socket and shared-memory family on the embedded wasm lane (almide/almide#3620, interim ops 104..=116; Q14: native follows the held-descriptor table); the net.unix_* / net.shm_* paragraph added for C-382 and C-383: bytes, descriptors received as the same open files, readiness and shm contents agree on native and the embedded lane, the stock artifact is E081; the held-descriptor refusal texts, the argument-domain texts and the OS-refusal form; checked against the two statements and the two spec/embedded_cross fixtures, which print identically on native and `almide run --target wasm` at almide insp-all 375e2ce7f, three runs each; and, re-reviewed after the rebase onto that change: the provider streaming clients left for package almide/llm at dialect epoch 14 — checked against stdlib/http.almd, which keeps request_stream and its limited twin)"
+hash = "sha256:1faf2afe6a44"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: query_params as url.parse_query (#4117), the RFC 9112 request head (#4112), nosniff (#4134), the buffered client's completeness and head cap (#4137) and the handler-err disclosure fix (#4150); checked against C-367 / C-404 / C-405 / C-407 / C-408 / C-409, spec/wasm_cross/http_query_params_decoder on the reference evaluator, native and wasm, and the serve fixtures' driver and rt-core tests named in those contracts)"
 independent = "no"
 verdict = "accurate"
 
@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:83b29ea69b49"
-reviewed = "2026-09-26"
-by = "O6lvl4 (via the Claude session; C-368 router paragraph checked against spec/stdlib/http_router_test.almd, run on native and on wasm with the almide#2588 branch build; implementation update follows judge merge)"
+hash = "sha256:275b6a3a5e3e"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: one canonical path for router and middleware (#4133) and the parameter refusal (#4134); checked against C-368 / C-406 and spec/stdlib/http_router_test.almd passing on native and wasm, with the same probes measured on Go 1.27 net/http, Express 4.21 and Hono 4.6)"
 independent = "no"
 verdict = "accurate"
 
@@ -903,9 +903,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T3"
-hash = "sha256:d9fa285baf1f"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:2d44e8d6e2c4"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: the strict RFC 8259 + I-JSON reading of almide/almide#4111 / #4112 and the one-entry-per-key Value model; checked against C-087 / C-400 / C-401 and spec/wasm_cross/json_parse_strict_strings, json_parse_strict_structure, json_parse_lenient_edges, json_string_span and value_object_unique_keys, whose output the reference evaluator, almide native and almide --target wasm print byte-identically at the sec-protocol branch)"
 independent = "no"
 verdict = "accurate"
 
@@ -1077,9 +1077,9 @@ independent = "no"
 verdict = "accurate"
 [[section]]
 id = "ALS-T27"
-hash = "sha256:be7520120410"
-reviewed = "2026-09-22"
-by = "O6lvl4 (via the Claude session; re-reviewed 2026-09-22 after the batch renumbering: the text now states the variable-width %Y that datetime.format shares with to_iso, and the T26/T27 calendar, parse_iso and url.parse rules, each checked against the fixture output recorded on native, structural wasm and incumbent wasm)"
+hash = "sha256:e1df56bd3e17"
+reviewed = "2026-10-24"
+by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: the WHATWG-aligned url.parse / url.resolve rules of almide/almide#4116 and the client URL splitter; checked against C-361 / C-402 / C-403, spec/wasm_cross/url_whatwg_probes and url_authority_edges on the reference evaluator, native and wasm, and against the same probes measured on Node 22 URL, Python 3.14 urllib and Go 1.27 net/url)"
 independent = "no"
 verdict = "accurate"
 [[section]]
