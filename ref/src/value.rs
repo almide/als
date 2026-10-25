@@ -611,6 +611,31 @@ pub fn render(v: &Value) -> Option<String> {
                 }
             }
         }
+        // C-432: a value of a runtime-backed http type shows its declared
+        // repr — the header COUNT, never a header name or value — at any
+        // depth. Keyed by the stdlib's own type identity (`HTTP_REQUEST_TYPE`
+        // / `HTTP_RESPONSE_TYPE`), which no user declaration can spell.
+        Value::Record {
+            type_name: Some(t),
+            fields,
+        } if &**t == HTTP_REQUEST_TYPE || &**t == HTTP_RESPONSE_TYPE => {
+            let shown = t.strip_prefix("http.").unwrap_or(t);
+            let mut out = format!("{shown} {{ ");
+            for (i, (n, v2)) in fields.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(n);
+                out.push_str(": ");
+                match (&**n, v2) {
+                    ("headers", Value::Map(kvs)) => out.push_str(&fmt_int(kvs.len() as i64)),
+                    ("headers", _) => return None,
+                    _ => out.push_str(&render_literal(v2)?),
+                }
+            }
+            out.push_str(" }");
+            out
+        }
         Value::Record { type_name, fields } => {
             let mut out = match type_name {
                 Some(t) => format!("{t} {{ "),
@@ -655,6 +680,25 @@ pub fn render(v: &Value) -> Option<String> {
             }
         },
         Value::Dyn(d) => dyn_text(d),
+        // C-432: a JsonPath shows `$`, then `.name` per field step and `[i]`
+        // per index step, bare and nested alike
+        Value::Path(segs) => {
+            let mut out = String::from("$");
+            for s in segs.iter() {
+                match s {
+                    PathSeg::Field(n) => {
+                        out.push('.');
+                        out.push_str(n);
+                    }
+                    PathSeg::Index(i) => {
+                        out.push('[');
+                        out.push_str(&fmt_int(*i));
+                        out.push(']');
+                    }
+                }
+            }
+            out
+        }
         Value::Sized { bits, signed, v } => {
             if *signed {
                 fmt_int(*v)
@@ -667,7 +711,6 @@ pub fn render(v: &Value) -> Option<String> {
         Value::Fn(_)
         | Value::Range(..)
         | Value::Bytes(_)
-        | Value::Path(_)
         | Value::Matrix(_)
         | Value::Time { .. }
         | Value::Ptr(_) => return None,
@@ -701,6 +744,11 @@ fn quote_str(s: &str) -> String {
 /// The internal type name of a `secret.Secret[A]` value (C-425..C-427): a
 /// one-field record `{ hidden: A }` no user type can spell.
 pub const SECRET_TYPE: &str = "secret.Secret";
+/// The stdlib's own identities of the http value records (C-432): a type name
+/// no user declaration can spell, so a user `type HttpRequest` is a plain
+/// record and never takes the http repr.
+pub const HTTP_REQUEST_TYPE: &str = "http.HttpRequest";
+pub const HTTP_RESPONSE_TYPE: &str = "http.HttpResponse";
 /// The internal marker of a declared repr's already-rendered text.
 const DECLARED_TYPE: &str = "\u{0}repr";
 
