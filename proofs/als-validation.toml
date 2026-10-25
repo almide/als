@@ -229,9 +229,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D1"
-hash = "sha256:10c9d5817f0f"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:534326f1c53f"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, 2026-10-25, json.set_path nesting bound of almide/almide#4209: the one err sentence checked against C-031 / C-434 / C-391 and spec/wasm_cross/json_set_path_depth_bound.almd, whose output the reference evaluator, almide native and almide --target wasm (embedded and stock wasmtime) print byte-identically at the sec-collections-4208-4209 branch)"
 independent = "no"
 verdict = "accurate"
 
