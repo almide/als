@@ -112,6 +112,8 @@ pub struct FieldDecl {
     pub alias: Option<String>,
     pub ty: TypeExpr,
     pub default: Option<Expr>,
+    /// Field attribute names (`@skip`, `@skip_decode`, `@location`, ...).
+    pub attrs: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
