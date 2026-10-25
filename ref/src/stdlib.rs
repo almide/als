@@ -79,6 +79,7 @@ const LIST_FNS: &[&str] = &[
     "list.partition",
     "list.reduce",
     "list.range",
+    "list.range_step",
     "list.slice",
     "list.insert",
     "list.remove_at",
@@ -881,6 +882,33 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 out.push(Value::Int(i));
                 i += 1;
             }
+            Ok(Value::List(Rc::new(out)))
+        }
+        "list.range_step" => {
+            // C-420: the count is taken in i128, so a span of opposite-sign
+            // bounds cannot wrap; each value is start + i * step, before end.
+            arity(name, &args, 3)?;
+            let (a, b, step) = (
+                want_int(name, &args[0])? as i128,
+                want_int(name, &args[1])? as i128,
+                want_int(name, &args[2])? as i128,
+            );
+            if step == 0 {
+                return Err(Flow::Abort("list.range_step: step must not be 0".into()));
+            }
+            let count = if step > 0 && b > a {
+                (b - a - 1) / step + 1
+            } else if step < 0 && a > b {
+                (a - b - 1) / -step + 1
+            } else {
+                0
+            };
+            if count > (1i128 << 31) {
+                return Err(Flow::Abort("out of memory".into()));
+            }
+            let out = (0..count)
+                .map(|i| Value::Int((a + i * step) as i64))
+                .collect();
             Ok(Value::List(Rc::new(out)))
         }
         "list.repeat" => {
