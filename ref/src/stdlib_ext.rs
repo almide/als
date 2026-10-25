@@ -1194,7 +1194,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "fs.read_text" => {
             arity(name, &args, 1)?;
             Ok(
-                match std::fs::read_to_string(&**want_str(name, &args[0])?) {
+                match crate::fsread::read_to_string(want_str(name, &args[0])?) {
                     Ok(s) => ok(Value::str(&s)),
                     Err(e) => io_err(e),
                 },
@@ -1204,7 +1204,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             let p = want_str(name, &args[0])?;
             Ok(if std::path::Path::new(&**p).exists() {
-                match std::fs::read_to_string(&**p) {
+                match crate::fsread::read_to_string(p) {
                     Ok(s) => ok(some(Value::str(&s))),
                     Err(e) => io_err(e),
                 }
@@ -1214,7 +1214,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "fs.read_bytes" => {
             arity(name, &args, 1)?;
-            Ok(match std::fs::read(&**want_str(name, &args[0])?) {
+            Ok(match crate::fsread::read(want_str(name, &args[0])?) {
                 Ok(b) => ok(Value::List(Rc::new(
                     b.into_iter().map(|x| Value::Int(x as i64)).collect(),
                 ))),
@@ -1274,7 +1274,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "fs.read_lines" => {
             arity(name, &args, 1)?;
             Ok(
-                match std::fs::read_to_string(&**want_str(name, &args[0])?) {
+                match crate::fsread::read_to_string(want_str(name, &args[0])?) {
                     Ok(s) => ok(Value::List(Rc::new(
                         split_lines(&s)
                             .into_iter()
