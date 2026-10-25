@@ -165,9 +165,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C3"
-hash = "sha256:d8f42b902ffa"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:7de4ab831211"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
@@ -269,9 +269,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D6"
-hash = "sha256:6d884d358515"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:b5470db489dd"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
@@ -437,9 +437,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-E16"
-hash = "sha256:956ac545e2ce"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:d426ad2962f1"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
@@ -557,9 +557,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-DL1"
-hash = "sha256:84c55d39ba0d"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:18dbe2e096dd"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
@@ -1101,5 +1101,21 @@ id = "ALS-T30"
 hash = "sha256:2ddd86af6c71"
 reviewed = "2026-10-18"
 by = "O6lvl4 (via the Claude session; author review against ADR-0029 D1-D5 and the implementation on almide impl-assert-aborts — the three fixtures named in the section pass on native and on the embedded wasm lane, the failing verdicts and the child-output rule are pinned by almide's tests/assert_aborts_runner_test.rs, E098 / E099 by its tests/diagnostics cases)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-T31"
+hash = "sha256:640316d3bcf4"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-B12"
+hash = "sha256:7fbc054468d0"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
