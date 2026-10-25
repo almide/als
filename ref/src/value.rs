@@ -611,6 +611,28 @@ pub fn render(v: &Value) -> Option<String> {
                 }
             }
         }
+        // C-433: an HttpRequest / HttpResponse shows its header COUNT, never
+        // a header name or value, at any depth
+        Value::Record {
+            type_name: Some(t),
+            fields,
+        } if &**t == "HttpRequest" || &**t == "HttpResponse" => {
+            let mut out = format!("{t} {{ ");
+            for (i, (n, v2)) in fields.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(n);
+                out.push_str(": ");
+                match (&**n, v2) {
+                    ("headers", Value::Map(kvs)) => out.push_str(&fmt_int(kvs.len() as i64)),
+                    ("headers", _) => return None,
+                    _ => out.push_str(&render_literal(v2)?),
+                }
+            }
+            out.push_str(" }");
+            out
+        }
         Value::Record { type_name, fields } => {
             let mut out = match type_name {
                 Some(t) => format!("{t} {{ "),
