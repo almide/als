@@ -736,7 +736,7 @@ impl P {
             if self.eat_sym("}") {
                 break;
             }
-            let _ = self.attrs()?;
+            let attrs = self.attrs()?.into_iter().map(|a| a.name).collect();
             let name = self.member_name()?;
             let alias = if self.eat_kw("as") {
                 match self.peek().clone() {
@@ -776,6 +776,7 @@ impl P {
                 alias,
                 ty,
                 default,
+                attrs,
             });
             self.skip_nl();
             if !self.eat_sym(",") {

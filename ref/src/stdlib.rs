@@ -568,9 +568,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             if eq == want {
                 Ok(Value::Unit)
             } else {
-                let l = render_arg(&args[0])?;
+                // C-425: the failure block renders through declared reprs
+                let l = render_arg(&it.declared_view(&args[0])?)?;
                 let expected = if want {
-                    render_arg(&args[1])?
+                    render_arg(&it.declared_view(&args[1])?)?
                 } else {
                     format!("!= {l}")
                 };
