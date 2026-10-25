@@ -1461,8 +1461,26 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 2)?;
             let k = want_str(name, &args[0])?.to_string();
             let v = want_str(name, &args[1])?.to_string();
-            it.env_overlay.push((k, v));
-            Ok(Value::Unit)
+            // C-421: the four pairs no environment holds are an err, and
+            // nothing is stored; the text names no user data (C-418)
+            let refusal = if k.is_empty() {
+                Some("empty name")
+            } else if k.contains('=') {
+                Some("name contains '='")
+            } else if k.contains('\0') {
+                Some("name contains NUL")
+            } else if v.contains('\0') {
+                Some("value contains NUL")
+            } else {
+                None
+            };
+            Ok(match refusal {
+                Some(why) => err_str(&format!("env.set: {why}")),
+                None => {
+                    it.env_overlay.push((k, v));
+                    ok(Value::Unit)
+                }
+            })
         }
         "env.sleep_ms" => {
             // a wall pause with no observation of its own: the reference
