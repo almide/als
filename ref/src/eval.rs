@@ -178,7 +178,7 @@ const STD_MODULES: &[&str] = &[
     "uint32", "uint64", "int64", "float32", "json", "fs", "http", "env", "io", "random", "regex",
     "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "fan", "compute",
     "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple",
-    "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml",
+    "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml", "bigint",
 ];
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
