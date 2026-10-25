@@ -1094,7 +1094,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let target = want_str(name, &args[1])?.to_string();
             let body = want_str(name, &args[2])?.to_string();
             Ok(Value::Record {
-                type_name: Some(Rc::from("HttpRequest")),
+                type_name: Some(Rc::from(crate::value::HTTP_REQUEST_TYPE)),
                 fields: Rc::new(vec![
                     (Rc::from("method"), Value::str(&method)),
                     (Rc::from("path"), Value::str(&target)),
@@ -1109,7 +1109,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Value::Record {
                     type_name: Some(tn),
                     fields,
-                } if &**tn == "HttpRequest" => fields
+                } if &**tn == crate::value::HTTP_REQUEST_TYPE => fields
                     .iter()
                     .find(|(k, _)| &**k == "path")
                     .and_then(|(_, v)| match v {
@@ -2087,7 +2087,7 @@ fn http_resp(status: i64, body: &str, headers: Vec<(String, String)>) -> Value {
         .map(|(k, v)| (Value::str(&k), Value::str(&v)))
         .collect();
     Value::Record {
-        type_name: Some(Rc::from("HttpResponse")),
+        type_name: Some(Rc::from(crate::value::HTTP_RESPONSE_TYPE)),
         fields: Rc::new(vec![
             (Rc::from("status"), Value::Int(status)),
             (Rc::from("body"), Value::str(body)),
@@ -2103,7 +2103,7 @@ fn http_parts(name: &str, v: &Value) -> Result<HttpParts, Flow> {
         Value::Record {
             type_name: Some(tn),
             fields,
-        } if &**tn == "HttpResponse" => {
+        } if &**tn == crate::value::HTTP_RESPONSE_TYPE => {
             let mut status = 0i64;
             let mut body = String::new();
             let mut hs: Vec<(String, String)> = Vec::new();
