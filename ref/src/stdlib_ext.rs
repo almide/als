@@ -659,6 +659,11 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let root = want_dyn(name, &args[0])?.clone();
             let segs = want_path(name, &args[1])?;
             let v = want_dyn(name, &args[2])?.clone();
+            // C-434: the value built nests the path's steps plus the new
+            // value's own nesting; past ALS-T3's bound it is parse's err.
+            if segs.len() > JSON_MAX_DEPTH || dyn_nests_past(&v, JSON_MAX_DEPTH - segs.len()) {
+                return Ok(Ok(err_str(&json_depth_error())));
+            }
             Ok(ok(Value::Dyn(json_set_at(&root, segs, &v))))
         }
         "json.remove_path" => {
@@ -1861,7 +1866,7 @@ fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
             Ok((Dyn::S(Rc::from(s.as_str())), np))
         }
         // ALS-T3 / C-391: an array or object opened inside 1000 others.
-        123 | 91 if depth >= 1000 => Err("json: nesting deeper than 1000".into()),
+        123 | 91 if depth >= JSON_MAX_DEPTH => Err(json_depth_error()),
         123 => jp_object(b, q, depth + 1),
         91 => jp_array(b, q, depth + 1),
         116 => jp_literal(b, q, b"true", Dyn::B(true), "expected bool"),
@@ -2147,7 +2152,25 @@ fn jp_object(b: &[u8], open: usize, depth: usize) -> Result<(Dyn, usize), String
 #[allow(dead_code)]
 fn _o(_: Ordering) {}
 
-/// C-031 set_path: infallible — Field over a non-object AUTOVIVIFIES (the
+/// The JSON value domain's nesting bound (ALS-T3 / C-391 for parse, ALS-D1 /
+/// C-434 for set_path): the deepest container nesting a value may have.
+const JSON_MAX_DEPTH: usize = 1000;
+
+fn json_depth_error() -> String {
+    format!("json: nesting deeper than {}", JSON_MAX_DEPTH)
+}
+
+/// `v` holds containers nested more than `budget` deep; recurses at most
+/// `budget + 1` frames whatever `v` holds.
+fn dyn_nests_past(v: &Dyn, budget: usize) -> bool {
+    match v {
+        Dyn::A(items) => budget == 0 || items.iter().any(|x| dyn_nests_past(x, budget - 1)),
+        Dyn::O(fields) => budget == 0 || fields.iter().any(|(_, x)| dyn_nests_past(x, budget - 1)),
+        _ => false,
+    }
+}
+
+/// C-031 set_path: total below the nesting bound (C-434) — Field over a non-object AUTOVIVIFIES (the
 /// node is replaced by a fresh single-key object, absent descents seed `{}`),
 /// Index over a non-array or out of range is a LOCAL no-op, a negative index
 /// normalizes (len + i). Mirrors native `set_at_steps` (json.rs oracle).
