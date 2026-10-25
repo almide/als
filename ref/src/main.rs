@@ -25,6 +25,7 @@
 mod ast;
 mod eval;
 mod fmtfloat;
+mod fsread;
 mod lexer;
 mod libm;
 mod parser;

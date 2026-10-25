@@ -868,7 +868,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         // ═══ fs leftovers ════════════════════════════════════════════════
         "fs.read_bytes_raw" => {
             arity(name, &args, 1)?;
-            Ok(match std::fs::read(&**want_str(name, &args[0])?) {
+            Ok(match crate::fsread::read(want_str(name, &args[0])?) {
                 Ok(b) => ok(bytes_val(b)),
                 Err(e) => io_err(e),
             })
@@ -890,7 +890,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 return Ok(Ok(ok(Value::None)));
             }
             Ok(match name {
-                "fs.read_lines_if_exists" => match std::fs::read_to_string(&p) {
+                "fs.read_lines_if_exists" => match crate::fsread::read_to_string(&p) {
                     Ok(s) => ok(some(Value::List(Rc::new(
                         crate::stdlib_ext::split_lines(&s)
                             .into_iter()
@@ -899,13 +899,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     )))),
                     Err(e) => io_err(e),
                 },
-                "fs.read_bytes_if_exists" => match std::fs::read(&p) {
+                "fs.read_bytes_if_exists" => match crate::fsread::read(&p) {
                     Ok(b) => ok(some(Value::List(Rc::new(
                         b.into_iter().map(|x| Value::Int(x as i64)).collect(),
                     )))),
                     Err(e) => io_err(e),
                 },
-                _ => match std::fs::read(&p) {
+                _ => match crate::fsread::read(&p) {
                     Ok(b) => ok(some(bytes_val(b))),
                     Err(e) => io_err(e),
                 },
