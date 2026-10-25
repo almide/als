@@ -34,7 +34,7 @@ MODULES = {
     "matrix", "prim", "int8", "int16", "int32", "uint8", "uint16", "uint32", "uint64", "float32", "json", "fs", "http",
     "env", "io", "random", "regex", "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "mem",
     "fan", "compute", "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple", "time",
-    "url", "log", "hash", "base", "uuid", "csv", "toml", "yaml",
+    "url", "log", "hash", "base", "uuid", "csv", "toml", "yaml", "bigint",
 }
 
 

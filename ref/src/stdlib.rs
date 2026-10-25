@@ -17,6 +17,7 @@ use crate::value::{fmt_int, render, value_cmp, values_eq, Callable, Value, F64};
 /// Names the evaluator implements, for the totality gate (`als-ref stdlib-index`).
 pub fn implemented() -> Vec<&'static str> {
     let mut v: Vec<&'static str> = Vec::new();
+    v.extend(crate::stdlib_bigint::BIGINT_FNS);
     v.extend(crate::stdlib_ext::EXT_FNS);
     v.extend(crate::stdlib_ext2::EXT2_FNS);
     v.extend(crate::stdlib_matrix::MATRIX_FNS);
@@ -2637,6 +2638,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             .or_else(|| crate::stdlib_sized::call_sized(it, other, args.clone()))
             .or_else(|| crate::stdlib_regex::call_regex(it, other, args.clone()))
             .or_else(|| crate::stdlib_testing::call_testing(it, other, args.clone()))
+            .or_else(|| crate::stdlib_bigint::call_bigint(it, other, args.clone()))
             .or_else(|| crate::stdlib_matrix::call_matrix(it, other, args))
         {
             Some(r) => r,
