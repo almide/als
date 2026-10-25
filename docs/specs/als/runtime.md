@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-10-24
+> Last updated: 2026-10-25
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -487,8 +487,18 @@ target, body, headers)` はソケットなしでリクエストを作り、読�
   失敗の `err` は理由を本文に持つ `400 Bad Request` のレスポンスである。
   ハンドラの `err` は `err` のまま呼び出し側に返る。
 
-テスト: `spec/stdlib/http_router_test.almd`。
-Contracts: C-275, C-368, C-406。
+`HttpRequest` と `HttpResponse` の補間表示形は**宣言された repr** である
+（almide/almide#4204）: `HttpRequest { method: "GET", path: "/x?q=1", body: "",
+headers: 2 }`・`HttpResponse { status: 200, body: "ok", headers: 1 }`。文字列は
+入れ子の文字列の形（ALS-R2）で、`headers` は**ヘッダの数**であり、ヘッダの名前も
+値も表示形に現れない。裸の補間でも、レコードのフィールド・リストの要素・Option の
+中身・タプルの要素でも同じ形であり、両ターゲットでバイト単位で一致する。ゆえに
+`Authorization`・`Cookie`・`Set-Cookie` を持つ値を補間しても、それらの値は出力に
+書かれない。
+
+テスト: `spec/stdlib/http_router_test.almd`,
+`spec/wasm_cross/http_value_repr_hides_headers.almd`。
+Contracts: C-275, C-368, C-406, C-433。
 
 ## ALS-R9 プロセス終了コードの値域
 

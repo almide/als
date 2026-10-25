@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:275b6a3a5e3e"
-reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: one canonical path for router and middleware (#4133) and the parameter refusal (#4134); checked against C-368 / C-406 and spec/stdlib/http_router_test.almd passing on native and wasm, with the same probes measured on Go 1.27 net/http, Express 4.21 and Hono 4.6)"
+hash = "sha256:b54d7e33144c"
+reviewed = "2026-10-25"
+by = "O6lvl4 (via the Claude session, 2026-10-25, sec-4204: the http value reprs; checked against C-433 and spec/wasm_cross/http_value_repr_hides_headers.almd, byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
 independent = "no"
 verdict = "accurate"
 
