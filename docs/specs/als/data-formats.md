@@ -1,6 +1,6 @@
 # ALS — データ形式（Data Formats）
 
-> Last updated: 2026-10-24
+> Last updated: 2026-10-25
 
 JSON / 正規表現 / バイナリ形式の観測規範。参照方法は [strings.md](strings.md)
 冒頭と同じ。
@@ -10,7 +10,11 @@ JSON / 正規表現 / バイナリ形式の観測規範。参照方法は [strin
 `json.get_path`・`set_path`・`remove_path` のエッジケース（欠損キー・配列
 範囲外・型不一致ノード・空パス）は infallible native oracle（serde_json 上の
 参照実装）と観測等価: 欠損は none / no-op に縮退し、trap しない。
-Contracts: C-031。
+`set_path` の err は入れ子の深さだけである。作る値の入れ子（パスの段数と、
+置く値自身の入れ子の深さの和）が `json.parse` の上限 1000（ALS-T3）を超えると、
+parse と同じ `err("json: nesting deeper than 1000")` を返す
+（`spec/wasm_cross/json_set_path_depth_bound.almd`）。
+Contracts: C-031, C-433。
 
 ## ALS-D2 Value の JSON テキスト表現
 
