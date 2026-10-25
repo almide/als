@@ -39,7 +39,7 @@
 
 | ID | Section | Contracts |
 |----|---------|-----------|
-| [ALS-D1](./data-formats.md#als-d1-json-パス操作) | JSON パス操作 | C-031 |
+| [ALS-D1](./data-formats.md#als-d1-json-パス操作) | JSON パス操作 | C-031, C-433 |
 | [ALS-D2](./data-formats.md#als-d2-value-の-json-テキスト表現) | Value の JSON テキスト表現 | C-060, C-356 |
 | [ALS-D3](./data-formats.md#als-d3-異種ネスト文書の走査) | 異種ネスト文書の走査 | C-063 |
 | [ALS-D4](./data-formats.md#als-d4-正規表現エンジン) | 正規表現エンジン | C-032, C-160, C-285, C-347, C-395 |
