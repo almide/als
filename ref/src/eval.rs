@@ -179,6 +179,7 @@ const STD_MODULES: &[&str] = &[
     "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "fan", "compute",
     "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple",
     "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml", "bigint",
+    "secret",
 ];
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
@@ -622,6 +623,7 @@ impl Interp {
                 .unwrap_or(false),
             Callable::Std(_) | Callable::Ctor(..) => false,
             Callable::Codec(_, decode) => *decode,
+            Callable::CodecStrict(_) => true,
             Callable::EffectWrap(_) => true,
             Callable::Composed(_, g) => self.cb_fallible(g),
         }
@@ -1148,6 +1150,32 @@ impl Interp {
                     Ok(Value::Dyn(self.codec_encode(&t, &arg)?))
                 }
             }
+            Callable::CodecStrict(t) => {
+                let t = t.clone();
+                if args.len() != 1 {
+                    return Err(Flow::Fatal(format!(
+                        "`{t}.decode_strict` takes 1 argument, got {}",
+                        args.len()
+                    )));
+                }
+                let arg = self.force(args.into_iter().next().unwrap())?;
+                let Value::Dyn(d) = &arg else {
+                    return self.abstain(
+                        "semantics:codec",
+                        format!("`{t}.decode_strict` on a {}", arg.type_name()),
+                    );
+                };
+                let d = d.clone();
+                if let Some(k) = self.codec_strict_unknown_key(&t, &d)? {
+                    return Ok(Value::Err(Rc::new(Value::str(&format!(
+                        "unknown key '{k}'"
+                    )))));
+                }
+                match self.codec_decode(&t, &d)? {
+                    Ok(v) => Ok(Value::Ok(Rc::new(v))),
+                    Err(e) => Ok(Value::Err(Rc::new(Value::str(&e)))),
+                }
+            }
         }
     }
 
@@ -1429,14 +1457,19 @@ impl Interp {
                         let (pos, named) = self.eval_args(env, args)?;
                         return self.call_fn(&f, pos, named);
                     }
-                    // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
-                    if (name == "decode" || name == "encode")
+                    // ALS-D6: `T.decode` / `T.encode` / `T.decode_strict`
+                    // derived from `: Codec`
+                    if (name == "decode" || name == "encode" || name == "decode_strict")
                         && self
                             .types
                             .get(t)
                             .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
                     {
-                        let c = Callable::Codec(t.clone(), name == "decode");
+                        let c = if name == "decode_strict" {
+                            Callable::CodecStrict(t.clone())
+                        } else {
+                            Callable::Codec(t.clone(), name == "decode")
+                        };
                         let (pos, named) = self.eval_args(env, args)?;
                         if !named.is_empty() {
                             return self.abstain(
@@ -1640,6 +1673,7 @@ impl Interp {
                         StrSeg::Expr(x) => {
                             let v = self.eval(env, x)?;
                             let v = self.force(v)?;
+                            let v = self.declared_view(&v)?;
                             match render(&v) {
                                 Some(s) => out.push_str(&s),
                                 None => {
@@ -2350,16 +2384,17 @@ impl Interp {
                         ))));
                     }
                     // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
-                    if (name == "decode" || name == "encode")
+                    if (name == "decode" || name == "encode" || name == "decode_strict")
                         && self
                             .types
                             .get(t)
                             .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
                     {
-                        return Ok(Value::Fn(Rc::new(Callable::Codec(
-                            t.clone(),
-                            name == "decode",
-                        ))));
+                        return Ok(Value::Fn(Rc::new(if name == "decode_strict" {
+                            Callable::CodecStrict(t.clone())
+                        } else {
+                            Callable::Codec(t.clone(), name == "decode")
+                        })));
                     }
                 }
                 let v = self.eval(env, obj)?;
@@ -3411,6 +3446,107 @@ impl Interp {
         }
     }
 
+    /// C-425: the value as every renderer shows it. A record or variant
+    /// whose type declares `fn T.repr` is replaced, at any depth, by that
+    /// repr's text (`value::declared_text`); everything else is unchanged.
+    pub(crate) fn declared_view(&mut self, v: &Value) -> R {
+        if !self.methods.keys().any(|(_, m)| m == "repr") {
+            return Ok(v.clone());
+        }
+        let list = |me: &mut Self, xs: &Rc<Vec<Value>>| -> Result<Rc<Vec<Value>>, Flow> {
+            let mut out = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                out.push(me.declared_view(x)?);
+            }
+            Ok(Rc::new(out))
+        };
+        let fields = |me: &mut Self, fs: &Fields| -> Result<Fields, Flow> {
+            let mut out = Vec::with_capacity(fs.len());
+            for (n, x) in fs.iter() {
+                out.push((n.clone(), me.declared_view(x)?));
+            }
+            Ok(Rc::new(out))
+        };
+        let owner = match v {
+            Value::Record {
+                type_name: Some(t), ..
+            } => Some(t.to_string()),
+            Value::Variant { type_name, .. } => Some(type_name.to_string()),
+            _ => None,
+        };
+        if let Some(t) = owner {
+            if let Some(f) = self.methods.get(&(t, "repr".to_string())).cloned() {
+                let r = self.call_fn(&f, vec![v.clone()], vec![])?;
+                let r = self.force(r)?;
+                return match r {
+                    Value::Str(text) => Ok(crate::value::declared_text(&text)),
+                    other => mismatch_repr(&other),
+                };
+            }
+        }
+        Ok(match v {
+            Value::List(xs) => Value::List(list(self, xs)?),
+            Value::Tuple(xs) => Value::Tuple(list(self, xs)?),
+            Value::Set(xs) => Value::Set(list(self, xs)?),
+            Value::Some(x) => Value::Some(Rc::new(self.declared_view(x)?)),
+            Value::Ok(x) => Value::Ok(Rc::new(self.declared_view(x)?)),
+            Value::Err(x) => Value::Err(Rc::new(self.declared_view(x)?)),
+            Value::Map(kvs) => {
+                let mut out = Vec::with_capacity(kvs.len());
+                for (k, x) in kvs.iter() {
+                    out.push((self.declared_view(k)?, self.declared_view(x)?));
+                }
+                Value::Map(Rc::new(out))
+            }
+            Value::Record {
+                type_name,
+                fields: fs,
+            } => Value::Record {
+                type_name: type_name.clone(),
+                fields: fields(self, fs)?,
+            },
+            Value::Variant {
+                type_name,
+                case,
+                payload,
+            } => Value::Variant {
+                type_name: type_name.clone(),
+                case: case.clone(),
+                payload: match payload {
+                    Payload::Unit => Payload::Unit,
+                    Payload::Tuple(xs) => Payload::Tuple(list(self, xs)?),
+                    Payload::Record(fs) => Payload::Record(fields(self, fs)?),
+                },
+            },
+            other => other.clone(),
+        })
+    }
+
+    /// C-429: the first object key (document order) that is not the wire
+    /// key of a decoded field; a non-object or a variant answers None and
+    /// falls through to `decode`'s own result
+    fn codec_strict_unknown_key(&mut self, t: &str, d: &Dyn) -> Result<Option<String>, Flow> {
+        let decl = self.codec_decl(t)?;
+        let TypeBody::Record(fds) = &decl.body else {
+            return self.abstain(
+                "semantics:codec",
+                format!("`{t}.decode_strict` on a non-record type"),
+            );
+        };
+        let Dyn::O(pairs) = d else {
+            return Ok(None);
+        };
+        let known: Vec<&str> = fds
+            .iter()
+            .filter(|fd| !field_skips_decode(fd))
+            .map(|fd| fd.alias.as_deref().unwrap_or(&fd.name))
+            .collect();
+        Ok(pairs
+            .iter()
+            .find(|(k, _)| !known.contains(&&**k))
+            .map(|(k, _)| k.to_string()))
+    }
+
     /// outer Err = abstain/fatal; inner Err = the decode error string (C-084)
     fn codec_decode(&mut self, t: &str, d: &Dyn) -> Result<Result<Value, String>, Flow> {
         let decl = self.codec_decl(t)?;
@@ -3422,6 +3558,20 @@ impl Interp {
                 let mut fields: Vec<(Rc<str>, Value)> = Vec::with_capacity(fds.len());
                 for fd in fds {
                     let key = fd.alias.as_deref().unwrap_or(&fd.name);
+                    // C-428: `@skip` / `@skip_decode` never read their key;
+                    // the field takes its declared default
+                    if field_skips_decode(fd) {
+                        let Some(dx) = fd.default.clone() else {
+                            return self.abstain(
+                                "semantics:codec-field-type",
+                                format!("skipped field `{}` without a default", fd.name),
+                            );
+                        };
+                        let env = Env::new(Some(self.globals.clone()));
+                        let v = self.eval(&env, &dx)?;
+                        fields.push((Rc::from(fd.name.as_str()), v));
+                        continue;
+                    }
                     let found = pairs
                         .iter()
                         .find(|(k, _)| &**k == key)
@@ -3588,6 +3738,13 @@ impl Interp {
                     _ => Err("expected Bool".into()),
                 }),
                 ("Value", []) => Ok(Ok(Value::Dyn(d.clone()))),
+                // C-427: a Secret field decodes from its value's wire form
+                ("Secret", [inner]) => {
+                    let inner = inner.clone();
+                    Ok(self
+                        .codec_decode_ty(&inner, d)?
+                        .map(crate::value::secret_of))
+                }
                 ("List", [elem]) => {
                     let Dyn::A(items) = d else {
                         return Ok(Err("expected Array".into()));
@@ -3634,6 +3791,10 @@ impl Interp {
                         );
                     };
                     let key: Rc<str> = Rc::from(fd.alias.as_deref().unwrap_or(&fd.name));
+                    // C-428: a `@skip` field is never written
+                    if fd.attrs.iter().any(|a| a == "skip") {
+                        continue;
+                    }
                     match fv {
                         // C-209: none is OMITTED, never an explicit null
                         Value::None => {}
@@ -4027,4 +4188,16 @@ fn compile_int_expr(
         Expr::Paren(x) => compile_int_expr(x, binder, names, regs, env, code),
         _ => false,
     }
+}
+
+/// C-428: a field carrying `@skip` or `@skip_decode` is never decoded
+fn field_skips_decode(fd: &FieldDecl) -> bool {
+    fd.attrs.iter().any(|a| a == "skip" || a == "skip_decode")
+}
+
+fn mismatch_repr(v: &Value) -> R {
+    Err(Flow::Fatal(format!(
+        "a declared `repr` answered a {}, not a String",
+        v.type_name()
+    )))
 }
