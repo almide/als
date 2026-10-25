@@ -259,7 +259,10 @@ def diag_item(args, root, case):
     if not os.path.isfile(broken) or not os.path.isfile(fixed):
         return ("failed", rel, "case must have both broken.almd and fixed.almd")
     meta = parse_meta(os.path.join(d, "meta.toml"))
-    code, out, err = run([args.almide, "check", broken], cwd=root)
+    # a diagnostic that belongs to a profile (E100 under critical) is judged
+    # with that profile on both halves, as the implementation's harness does
+    prof = ["--profile", meta["check_profile"]] if meta.get("check_profile") else []
+    code, out, err = run([args.almide, "check", *prof, broken], cwd=root)
     combined = out + err
     problems = []
     if code == 0 and "error" not in combined and "warning" not in combined:
@@ -273,7 +276,7 @@ def diag_item(args, root, case):
     hs = meta.get("hint_substring")
     if hs and hs.lower() not in combined.lower():
         problems.append(f"expected hint substring {hs!r} not found")
-    fcode, fout, ferr = run([args.almide, "check", fixed], cwd=root)
+    fcode, fout, ferr = run([args.almide, "check", *prof, fixed], cwd=root)
     if fcode != 0:
         problems.append(f"fixed.almd does not compile cleanly (exit={fcode})\n  {(fout + ferr)[-400:]!r}")
     if problems:
