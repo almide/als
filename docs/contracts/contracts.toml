@@ -5179,3 +5179,78 @@ status    = "active"
 evidence  = [
   { path = "tests/diagnostics/e100-critical-insecure-digest/broken.almd", class = "fixture" },
 ]
+
+[[contract]]
+id        = "C-425"
+spec      = "ALS-E16"
+title     = "A value prints through its type's declared repr wherever it is rendered; a Secret prints Secret(***) on every path"
+statement = "A value whose type declares `fn T.repr` renders as that function's result wherever the value is rendered: at the top of a string interpolation, inside an enclosing record, list, option, result, tuple, map or variant payload, and as an operand of an `assert_eq` / `assert_ne` failure block. A value with no declared repr anywhere in its type renders structurally, as before. `secret.Secret[A]` declares one: a Secret renders as the 11 bytes `Secret(***)` for every A, so no stdout or stderr byte of a run carries the wrapped value unless the program calls `secret.reveal`. Identical on native, wasm and the interpreter."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/secret_never_rendered.almd", class = "fixture" },
+  { path = "tests/secret_render_canary_test.rs", name = "no_renderer_prints_a_planted_canary", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-426"
+spec      = "ALS-C3"
+title     = "== on Secret[String] and Secret[Bytes] compares the revealed values; any other Secret, and a variant or map holding one, is E103"
+statement = "`==` / `!=` (and `assert_eq` / `assert_ne`) on `Secret[String]` or `Secret[Bytes]` is true exactly when the revealed values are equal, computed by `string.is_equal_constant_time` / `bytes.is_equal_constant_time`; a record, tuple, list, option or result holding such a Secret compares field by field, element by element, with that rule at each Secret. `==` on a `Secret[A]` for any other A, on a variant holding a Secret, or on a map or set holding a Secret is refused at check time with E103 and the hint `secret.reveal(a) == secret.reveal(b)`. Identical on native, wasm and the interpreter."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/secret_eq_and_decode.almd", class = "fixture" },
+  { path = "tests/diagnostics/e103-secret-eq-non-string/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e103-secret-variant-eq/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e103-secret-assert-eq-non-string/broken.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-427"
+spec      = "ALS-D6"
+title     = "A Codec record decodes a Secret field from its value's wire form and derives no encode (E023)"
+statement = "A `: Codec` record whose field has type `Secret[A]` derives `T.decode`: the field reads A's wire form under the field's key (a declared default applies when the key is absent) and holds it as a Secret. Such a type derives no `T.encode`: a reference to `T.encode`, `json.encode(x)` of it, or an outer Codec type that would encode it is refused with E023 naming the Secret. A Secret anywhere in a field type other than the field's own type (`List[Secret[String]]`), `Secret[Bytes]`, and a Secret in a Codec variant are E023 at the declaration. The opaque Secret's field and record literal are E033 outside the `secret` module. Identical on native, wasm and the interpreter."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/secret_eq_and_decode.almd", class = "fixture" },
+  { path = "tests/diagnostics/e023-encode-secret/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e033-secret-field-read/broken.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-428"
+spec      = "ALS-D6"
+title     = "A `@skip` record field is neither decoded nor encoded and a `@skip_decode` field is never decoded but still encoded; both need a default"
+statement = "In a derived Codec record, a field carrying `@skip` is left out of both `T.decode` and `T.encode`, and a field carrying `@skip_decode` is left out of `T.decode` and still written by `T.encode` (#4108). `T.decode` never reads a skipped field's key: the field takes its declared default whether the key is absent, present with any value, or explicit null, so a request body `{\"name\": \"m\", \"is_admin\": true}` decodes a `@skip_decode is_admin: Bool = false` field to `false`; the key is treated exactly like an unknown key (ignored by `decode`, refused by `decode_strict`, C-429). `T.encode` omits a `@skip` field's key and writes a `@skip_decode` field under its key in declaration order. The attributes compose with the alias syntax (`@skip_decode role as \"role_name\": String = \"user\"`: the wire key is `role_name`). A `@skip` / `@skip_decode` field without a default (`= value`) is refused at check time with E104 (`field '<f>' is `@skip_decode` but has no default`). The two attributes are the declared family {decode, encode} × {kept, skipped}; the output-only cell (`@skip_encode`) is an intentional omission. Every leg prints the matrix byte for byte; native = wasm = interp."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/codec_field_skip_matrix.almd", class = "fixture" },
+  { path = "tests/diagnostics/e104-skip-without-default/broken.almd", class = "fixture" },
+  { path = "tests/codec_field_skip_test.rs", name = "every_family_row_is_honoured_by_the_derive_on_both_legs", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-429"
+spec      = "ALS-D6"
+title     = "A derived `T.decode_strict` refuses the first key outside the record's decoded fields with `unknown key '<k>'`; `T.decode` stays lenient"
+statement = "Every Codec RECORD type `T` has a derived `T.decode_strict(v: Value) -> Result[T, String]` beside `T.decode` (#4108); a hand-written `T.decode_strict` replaces it. Before any field is decoded it looks at the object's keys in document order and returns `err(\"unknown key '<k>'\")` for the first key that is not the wire key of a DECODED field — a key naming a `@skip` / `@skip_decode` field (C-428) is such a key. With no such key it returns exactly what `T.decode(v)` returns. The key check comes first: `{\"zeta\": 1, \"alpha\": 2}` is `unknown key 'zeta'` from `decode_strict` and `missing field 'name'` from `decode`. It is shallow: a nested Codec field decodes with its own lenient `decode`. `T.decode` is unchanged and ignores unknown keys. Variant types have no `decode_strict` (their wire form is a tag and a payload). The error text is identical on every leg; native = wasm = interp."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/codec_field_skip_matrix.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-430"
+spec      = "ALS-DL1"
+title     = "An attribute on a record field that the compiler does not read is a check error (E053); the field vocabulary is @builtin, @location, @skip, @skip_decode"
+statement = "A record field (a record type's field or a variant case's record-payload field) accepts only the attributes `@builtin`, `@location`, `@skip` and `@skip_decode`. Any other attribute on a field is refused at check time with the ERROR E053 `unknown attribute `@<name>` on record field '<field>'` (dialect epoch 15; before it the attribute parsed and did nothing, so `@serde(skip) is_admin: Bool = false` compiled and decode still set `is_admin` from input). The hint names the Almide spelling for other ecosystems' field rules: `@serde(skip)` / `@json_ignore` / `@transient` / `@ignore` → `@skip`; `@serde(skip_deserializing)` / `@skip_deserializing` / `@readonly` / `@read_only` → `@skip_decode`; `@redact` / `@sensitive` / `@secret` → the type `Secret[String]` (`import secret`); otherwise the nearest field attribute, or the whole vocabulary. A fn attribute outside the fn vocabulary stays the E053 warning."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "tests/diagnostics/e053-unknown-field-attribute-serde-skip/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e053-unknown-field-attribute-redact/broken.almd", class = "fixture" },
+]
