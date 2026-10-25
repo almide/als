@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 433 contracts: **requirements-first 128** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 434 contracts: **requirements-first 129** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-433 contracts
+434 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -468,4 +468,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-431 | the fs whole-file readers read a regular file of at most 1 GiB: a device, FIFO or socket errs Not a regular file without blocking, a larger file errs File too large, on every leg | 0.69.0 | active | fixture | 1 |
 | C-432 | A runtime-backed value (HttpRequest, HttpResponse, JsonPath, HttpCall) interpolates as its declared repr, bare and nested, on every leg; the http reprs count the headers and never show a header value | 0.69.0 | active | fixture | 1 |
 | C-433 | json.set_path refuses to build a value nested deeper than json.parse accepts, with parse's err text, on every leg | 0.69.0 | active | fixture | 1 |
+| C-434 | a runtime abort inside an http.serve handler fails only that request: the fixed C-409 500, one stderr line, and the server keeps serving | 0.69.0 | active | fixture | 0 |
 
