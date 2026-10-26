@@ -1788,7 +1788,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let (x, bits) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
             if bits <= 0 {
-                return it.abstain_pub("semantics:wrap-nonpositive-bits", "int.wrap with bits <= 0 — T14 does not name the abort message");
+                return it.abstain_pub(
+                    "semantics:wrap-nonpositive-bits",
+                    "int.wrap with bits <= 0 — T14 does not name the abort message",
+                );
             }
             // ALS-T14: the mask saturates to u64::MAX for bits >= 64 and keeps x
             Ok(Value::Int(if bits >= 64 {
