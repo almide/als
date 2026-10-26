@@ -269,9 +269,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D6"
-hash = "sha256:b5470db489dd"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:b0db97d2ceeb"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, row 22: the Encode/Decode split; prose checked against the C-435 statement and C-428/C-429 as amended, spec/wasm_cross/codec_direction_split.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
 independent = "no"
 verdict = "accurate"
 
@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:4fae9cff01b3"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, 2026-10-25, sec-4204: the declared reprs of the runtime-backed values; checked against C-432, spec/wasm_cross/runtime_backed_value_repr.almd (byte-identical on native, the embedded wasm host, wasmtime and als-ref) and spec/embedded_cross/http_call_repr.almd (native and the embedded host))"
+hash = "sha256:47f21f753bf4"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, row 22: the typed request decode; checked against C-436 and C-368 as amended, spec/wasm_cross/http_decode_json_input_type.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
 independent = "no"
 verdict = "accurate"
 
