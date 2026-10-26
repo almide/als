@@ -3,12 +3,13 @@
 //! index/reduction domain. Written from C-161 (dims normalize + the 2^28
 //! ceiling), C-223 (transcendentals through the vendored musl-libm),
 //! C-228/C-229 (selector decode + OOB→zeros/clamps), C-282 (`matrix.get`
-//! aborts out of range) and the fixtures they cite; unknown edges abstain
+//! answers `none` out of range), C-341 (the byte loaders answer `none` when
+//! the data does not fit) and the fixtures they cite; unknown edges abstain
 //! with a class.
 //!
 //! Sign discipline: the float DECODERS (`from_bytes_f16_le` /
-//! `from_bytes_f32_le` / `select_rows_f32`) store the datum verbatim — a
-//! stored -0.0 is information there.
+//! `from_bytes_f32_le` / `from_bytes_f64_le` / `select_rows_f32`) store the
+//! datum verbatim — a stored -0.0 is information there.
 
 use std::rc::Rc;
 
@@ -30,6 +31,7 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.select_rows_f32",
     "matrix.from_bytes_f32_le",
     "matrix.from_bytes_f16_le",
+    "matrix.from_bytes_f64_le",
     // C-353 / C-354 / C-355: the shape-precondition, row-range and
     // signed-zero rules, and the exact-arithmetic kernels they govern.
     "matrix.cols",
@@ -196,12 +198,14 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let m = want_mat(name, &args[0])?;
             let r = want_int(name, &args[1])?;
             let c = want_int(name, &args[2])?;
-            // C-282: indexing has no identity value — out of range ABORTS
-            // like `xs[i]`, negatives included
+            // C-282: `Option[Float]` — out of range (negatives included) is
+            // `none`; compared as i64 before any cast
             if r < 0 || r >= m.rows || c < 0 || c >= m.cols {
-                return Err(Flow::Abort("matrix index out of bounds".into()));
+                return Ok(Value::None);
             }
-            Ok(Value::Float(F64(m.data[(r * m.cols + c) as usize])))
+            Ok(Value::Some(Rc::new(Value::Float(F64(
+                m.data[(r * m.cols + c) as usize],
+            )))))
         }
         "matrix.from_lists" => {
             arity(name, &args, 1)?;
@@ -607,35 +611,49 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(rids.len() as i64, cols, data))
         }
-        "matrix.from_bytes_f32_le" | "matrix.from_bytes_f16_le" => {
+        "matrix.from_bytes_f32_le" | "matrix.from_bytes_f16_le" | "matrix.from_bytes_f64_le" => {
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?.max(0);
+            let off = want_int(name, &args[1])?;
+            // C-161 first: negatives clamp, the count ceiling aborts before
+            // the offset is judged
             let (r, c) = norm_dims(want_int(name, &args[2])?, want_int(name, &args[3])?)?;
-            let w = if name == "matrix.from_bytes_f32_le" {
-                4
-            } else {
-                2
+            let w: usize = match name {
+                "matrix.from_bytes_f64_le" => 8,
+                "matrix.from_bytes_f32_le" => 4,
+                _ => 2,
             };
-            let mut data = vec![0.0f64; (r * c) as usize];
-            for row in 0..r {
-                let start = off as i128 + row as i128 * c as i128 * w;
-                let end = start + c as i128 * w;
-                if start < 0 || end > b.len() as i128 {
-                    continue; // the all-zero row (C-229's edge on the full loaders)
-                }
-                for col in 0..c as usize {
-                    let p = start as usize + col * w as usize;
-                    // a DECODER, not a dequantizer: the stored sign survives
-                    data[(row * c) as usize + col] = if w == 4 {
-                        f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]]))
-                            as f64
-                    } else {
-                        f16_to_f64(u16::from_le_bytes([b[p], b[p + 1]]))
-                    };
-                }
+            // C-341: `Option[Matrix]` — `some` exactly when 0 <= off <= len
+            // and r*c*width <= len - off (judged on the buffer side, never as
+            // a wrapping `off + need`); `none` otherwise
+            let len = b.len() as i128;
+            let need = r as i128 * c as i128 * w as i128;
+            if off < 0 || off as i128 > len || need > len - off as i128 {
+                return Ok(Value::None);
             }
-            Ok(mat(r, c, data))
+            let base = off as usize;
+            let data: Vec<f64> = (0..(r * c) as usize)
+                .map(|i| {
+                    let p = base + i * w;
+                    // a DECODER, not a dequantizer: the stored sign survives
+                    match w {
+                        8 => f64::from_le_bytes([
+                            b[p],
+                            b[p + 1],
+                            b[p + 2],
+                            b[p + 3],
+                            b[p + 4],
+                            b[p + 5],
+                            b[p + 6],
+                            b[p + 7],
+                        ]),
+                        4 => f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]]))
+                            as f64,
+                        _ => f16_to_f64(u16::from_le_bytes([b[p], b[p + 1]])),
+                    }
+                })
+                .collect();
+            Ok(Value::Some(Rc::new(mat(r, c, data))))
         }
         other => Err(Flow::Fatal(format!("unrouted matrix fn `{other}`"))),
     }
