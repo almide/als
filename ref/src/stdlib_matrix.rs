@@ -445,15 +445,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(mat(r, n_out, data))
         }
-        // C-354: `list.slice` over the rows — a negative start is EMPTY, a
-        // negative or past-the-end end is rows(m), start >= end is EMPTY.
+        // C-354: `list.slice` over the rows — both bounds clamp into
+        // [0, rows(m)] (a negative bound is 0, #4147), start >= end is EMPTY.
         "matrix.slice_rows" => {
             arity(name, &args, 3)?;
             let m = want_mat(name, &args[0])?;
             let start = want_int(name, &args[1])?;
             let end = want_int(name, &args[2])?;
-            let e = if end < 0 || end > m.rows { m.rows } else { end };
-            if start < 0 || start >= e {
+            let e = end.clamp(0, m.rows);
+            let start = start.max(0);
+            if start >= e {
                 return Ok(mat(0, 0, Vec::new()));
             }
             let data = m.data[(start * m.cols) as usize..(e * m.cols) as usize].to_vec();

@@ -395,38 +395,18 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             ];
             Ok(Value::str(WD[idx as usize]))
         }
+        // ALS-T26 (C-360, #4149): the same range rules and texts as parse_iso,
+        // read from the one check both constructors share; nothing rolls over.
         "datetime.from_parts" => {
             arity(name, &args, 6)?;
             let mut a = [0i64; 6];
             for (i, slot) in a.iter_mut().enumerate() {
                 *slot = want_int(name, &args[i])?;
             }
-            let (y, m, d, h, min, s) = (a[0], a[1], a[2], a[3], a[4], a[5]);
-            let ya = if m <= 2 { y.wrapping_sub(1) } else { y };
-            let eadj = if ya >= 0 { ya } else { ya.wrapping_sub(399) };
-            let era = eadj / 400;
-            let mp = if m > 2 {
-                m.wrapping_sub(3)
-            } else {
-                m.wrapping_add(9)
-            };
-            let doy = (mp.wrapping_mul(153).wrapping_add(2)) / 5 + d - 1;
-            let yoe = ya.wrapping_sub(era.wrapping_mul(400));
-            let doe = yoe
-                .wrapping_mul(365)
-                .wrapping_add(yoe / 4)
-                .wrapping_sub(yoe / 100)
-                .wrapping_add(doy);
-            let days = era
-                .wrapping_mul(146097)
-                .wrapping_add(doe)
-                .wrapping_sub(719468);
-            Ok(Value::Int(
-                days.wrapping_mul(86400)
-                    .wrapping_add(h.wrapping_mul(3600))
-                    .wrapping_add(min.wrapping_mul(60))
-                    .wrapping_add(s),
-            ))
+            Ok(match iso_civil(a[0], a[1], a[2], a[3], a[4], a[5]) {
+                Ok(ts) => Value::Ok(Rc::new(Value::Int(ts))),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
         }
         "datetime.to_iso" => {
             arity(name, &args, 1)?;
@@ -781,16 +761,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ args (stdlib/args.almd over env.args(); ref argv is empty) ═══
-        "args.raw" | "args.positional" => {
+        "args.raw" => {
             arity(name, &args, 0)?;
+            Ok(Value::List(Rc::new(Vec::new())))
+        }
+        // positional(options) names the options whose values it leaves out (#4144)
+        "args.positional" => {
+            arity(name, &args, 1)?;
             Ok(Value::List(Rc::new(Vec::new())))
         }
         "args.flag" => {
             arity(name, &args, 1)?;
             Ok(Value::Bool(false))
         }
-        "args.option" | "args.positional_at" => {
+        "args.option" => {
             arity(name, &args, 1)?;
+            Ok(Value::None)
+        }
+        "args.positional_at" => {
+            arity(name, &args, 2)?;
             Ok(Value::None)
         }
         "args.option_or" => {
@@ -1510,8 +1499,12 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
             }
         }
     };
-    let (y, mo, dd) = (d[0], d[1], d[2]);
-    let (h, mi, sec) = (tm[0], tm[1], tm[2]);
+    Ok(iso_civil(d[0], d[1], d[2], tm[0], tm[1], tm[2])? - offset)
+}
+
+/// The one range check of both constructors (parse_iso, from_parts): the
+/// first field out of range, by name, else the UTC instant.
+fn iso_civil(y: i64, mo: i64, dd: i64, h: i64, mi: i64, sec: i64) -> Result<i64, String> {
     // RFC 3339's four-digit year; checked first, so no later step can wrap.
     if !(0..=9999).contains(&y) {
         return Err(format!("year out of range: {y}"));
@@ -1531,7 +1524,7 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
     if !(0..=59).contains(&sec) {
         return Err(format!("second out of range: {sec}"));
     }
-    Ok(iso_epoch(y, mo, dd, h, mi, sec) - offset)
+    Ok(iso_epoch(y, mo, dd, h, mi, sec))
 }
 
 /// RFC 3986 reg-name without pct-encoded: unreserved / sub-delims (ALS-T27).

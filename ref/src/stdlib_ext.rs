@@ -965,8 +965,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 3)?;
             let b = want_bytes(name, &args[0])?;
             let b = b.borrow();
-            let a = (want_int(name, &args[1])? as u64).min(b.len() as u64) as usize;
-            let e = (want_int(name, &args[2])? as u64).min(b.len() as u64) as usize;
+            // a negative bound is 0, then clamp to len (#4147)
+            let a = (want_int(name, &args[1])?.max(0) as u64).min(b.len() as u64) as usize;
+            let e = (want_int(name, &args[2])?.max(0) as u64).min(b.len() as u64) as usize;
             Ok(bytes_val(if a >= e {
                 Vec::new()
             } else {
