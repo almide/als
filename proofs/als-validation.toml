@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:d868cdc399e1"
+hash = "sha256:42df6176951d"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib redesign wave 4 mirror (almide#4234): the process launch-failure prefix moves to process.output / process.start, http.start takes a built request, the HttpMessage readers are method / path / body / header, and the streaming twin request_stream_with_limits is gone; checked against the wave-4 fixtures spec/stdlib/http_call_test.almd, spec/embedded_cross/http_call_handle_errs.almd and spec/embedded_cross/process_spawn_family.almd as almide carries them)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib wave 5 mirror: the embedded host's process family named by the current surface (exec, output, run, kill, pid) with spawn and is_alive gone and C-417 narrowed to process.kill; text mirrored from almide 581b0db86 and checked against C-417 as amended and spec/embedded_cross/process_kill_syscall.almd as almide carries it)"
 independent = "no"
 verdict = "accurate"
 
