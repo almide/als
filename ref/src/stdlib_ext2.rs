@@ -88,6 +88,12 @@ pub const EXT2_FNS: &[&str] = &[
     "io.read_n_bytes",
     "io.read_all",
     "io.read_line",
+    "io.stdin",
+    "io.stdout",
+    "io.stderr",
+    "io.read",
+    "io.read_to_end",
+    "io.eprint",
     "fs.read_bytes_raw",
     "fs.read_bytes_raw_if_exists",
     "fs.write_bytes_raw",
@@ -119,8 +125,10 @@ pub const EXT2_FNS: &[&str] = &[
     "http.redirect",
     "http.with_headers",
     "http.get_header",
+    "http.header",
     "http.set_header",
     "http.status",
+    "http.set_status",
     "http.body",
     "string.run_length_encode",
     "list.length",
@@ -508,11 +516,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         // ═══ hashes ══════════════════════════════════════════════════════
         "hash.fnv1a32" | "hash.fnv1a32_bytes" => {
             arity(name, &args, 1)?;
-            let bytes: Vec<u8> = if name == "hash.fnv1a32" {
-                want_str(name, &args[0])?.as_bytes().to_vec()
-            } else {
-                want_bytes(name, &args[0])?.borrow().clone()
-            };
+            // wave 4: `hash.fnv1a32(b: Bytes)`; a String is its UTF-8 bytes
+            let bytes: Vec<u8> = str_or_bytes(name, &args[0])?;
             let mut h: u32 = 2166136261;
             for b in bytes {
                 h ^= b as u32;
@@ -522,11 +527,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "hash.sha256" | "hash.sha256_hex" => {
             arity(name, &args, 1)?;
-            let bytes: Vec<u8> = if name == "hash.sha256_hex" {
-                want_str(name, &args[0])?.as_bytes().to_vec()
-            } else {
-                want_bytes(name, &args[0])?.borrow().clone()
-            };
+            let bytes: Vec<u8> = str_or_bytes(name, &args[0])?;
             let digest = sha256(&bytes);
             Ok(if name == "hash.sha256_hex" {
                 Value::str(&hex_lower(&digest))
@@ -826,12 +827,65 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ io ══════════════════════════════════════════════════════════
+        // wave 4: the std handles. A handle is an opaque variant naming its
+        // stream; `io.stdin()` / `io.stdout()` / `io.stderr()` yield it as a
+        // Result like a user-declared effect fn.
+        "io.stdin" | "io.stdout" | "io.stderr" => {
+            arity(name, &args, 0)?;
+            let ty = match name {
+                "io.stdin" => "Stdin",
+                "io.stdout" => "Stdout",
+                _ => "Stderr",
+            };
+            Ok(ok(Value::Variant {
+                type_name: Rc::from(ty),
+                case: Rc::from(ty),
+                payload: crate::value::Payload::Unit,
+            }))
+        }
+        // wave 4: `io.write(h, data)` on a handle; the one-argument form is
+        // the earlier spelling (stdout).
         "io.write" => {
+            let (to_err, data) = match args.len() {
+                1 => (false, &args[0]),
+                2 => (std_handle(name, &args[0])? == "Stderr", &args[1]),
+                _ => arity(name, &args, 2).map(|_| (false, &args[0]))?,
+            };
+            let raw = want_bytes(name, data)?.borrow().clone();
+            if to_err {
+                it.stderr.push_str(&String::from_utf8_lossy(&raw));
+            } else {
+                it.stdout.extend_from_slice(&raw);
+            }
+            if args.len() == 2 {
+                Ok(ok(Value::Unit))
+            } else {
+                Ok(Value::Unit)
+            }
+        }
+        "io.eprint" => {
             arity(name, &args, 1)?;
-            let b = want_bytes(name, &args[0])?;
-            let raw = b.borrow().clone();
-            it.stdout.extend_from_slice(&raw);
+            let s = want_str(name, &args[0])?.to_string();
+            it.stderr.push_str(&s);
             Ok(Value::Unit)
+        }
+        // ref stdin is empty: a read answers no bytes at any non-negative
+        // length (count_domain_nonbytes); a negative length is io.read's
+        // named err
+        "io.read" => {
+            arity(name, &args, 2)?;
+            let _ = std_handle(name, &args[0])?;
+            let n = want_int(name, &args[1])?;
+            Ok(if n < 0 {
+                err_str(&format!("io.read: negative length {n}"))
+            } else {
+                ok(bytes_val(Vec::new()))
+            })
+        }
+        "io.read_to_end" => {
+            arity(name, &args, 1)?;
+            let _ = std_handle(name, &args[0])?;
+            Ok(ok(bytes_val(Vec::new())))
         }
         "io.write_bytes" => {
             arity(name, &args, 1)?;
@@ -849,9 +903,14 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let _ = want_int(name, &args[0])?;
             Ok(Value::List(Rc::new(Vec::new())))
         }
-        "io.read_all" | "io.read_line" => {
+        "io.read_all" => {
             arity(name, &args, 0)?;
             Ok(Value::str(""))
+        }
+        // wave 4: `String?`, none at the end of input (ref stdin is empty)
+        "io.read_line" => {
+            arity(name, &args, 0)?;
+            Ok(Value::None)
         }
 
         // ═══ fs leftovers ════════════════════════════════════════════════
@@ -885,12 +944,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                             .into_iter()
                             .map(|l| Value::str(&l))
                             .collect(),
-                    )))),
-                    Err(e) => io_err(e),
-                },
-                "fs.read_bytes_if_exists" => match crate::fsread::read(&p) {
-                    Ok(b) => ok(some(Value::List(Rc::new(
-                        b.into_iter().map(|x| Value::Int(x as i64)).collect(),
                     )))),
                     Err(e) => io_err(e),
                 },
@@ -1088,7 +1141,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     (Rc::from("method"), Value::str(&method)),
                     (Rc::from("path"), Value::str(&target)),
                     (Rc::from("body"), Value::str(&body)),
-                    (Rc::from("headers"), args[3].clone()),
+                    // wave 4 passes the headers as a `List[(String, String)]`;
+                    // kept as the ordered pair map the readers and the repr use
+                    (Rc::from("headers"), header_map(name, &args[3])?),
                 ]),
             })
         }
@@ -1126,22 +1181,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 3)?;
             let status = want_int(name, &args[0])?;
             let body = want_str(name, &args[1])?.clone();
-            let hs = match &args[2] {
-                Value::Map(m) => {
-                    let mut v: Vec<(String, String)> = Vec::new();
-                    for (k, val) in m.iter() {
-                        v.push((
-                            want_str(name, k)?.to_string(),
-                            want_str(name, val)?.to_string(),
-                        ));
-                    }
-                    v
-                }
-                other => return mismatch(name, "Map[String, String]", other),
-            };
+            let hs = header_pairs(name, &args[2])?;
             Ok(http_resp(status, &body, hs))
         }
-        "http.get_header" => {
+        "http.get_header" | "http.header" => {
             arity(name, &args, 2)?;
             let key = want_str(name, &args[1])?.to_string();
             let hs = http_headers(name, &args[0])?;
@@ -1163,7 +1206,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(http_resp(status, &body, hs))
         }
-        "http.status" => {
+        // wave 4: `http.status(resp)` reads the code and `http.set_status`
+        // replaces it; the two-argument `http.status` is the earlier setter
+        "http.status" if args.len() == 1 => {
+            let (status, _, _) = http_parts(name, &args[0])?;
+            Ok(Value::Int(status))
+        }
+        "http.status" | "http.set_status" => {
             arity(name, &args, 2)?;
             let (_, body, hs) = http_parts(name, &args[0])?;
             Ok(http_resp(want_int(name, &args[1])?, &body, hs))
@@ -2122,6 +2171,61 @@ fn http_parts(name: &str, v: &Value) -> Result<HttpParts, Flow> {
             Ok((status, body, hs))
         }
         other => mismatch(name, "HttpResponse", other),
+    }
+}
+
+/// A header argument: wave 4's `List[(String, String)]`, or the earlier
+/// `Map[String, String]`, as ordered pairs.
+fn header_pairs(name: &str, v: &Value) -> Result<Vec<(String, String)>, Flow> {
+    let pairs: Vec<(Value, Value)> = match v {
+        Value::Map(m) => m.iter().cloned().collect(),
+        Value::List(xs) => {
+            let mut out = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                match x {
+                    Value::Tuple(t) if t.len() == 2 => out.push((t[0].clone(), t[1].clone())),
+                    other => return mismatch(name, "(String, String)", other),
+                }
+            }
+            out
+        }
+        other => return mismatch(name, "List[(String, String)]", other),
+    };
+    let mut hs = Vec::with_capacity(pairs.len());
+    for (k, val) in pairs.iter() {
+        hs.push((
+            want_str(name, k)?.to_string(),
+            want_str(name, val)?.to_string(),
+        ));
+    }
+    Ok(hs)
+}
+
+fn header_map(name: &str, v: &Value) -> Result<Value, Flow> {
+    Ok(Value::Map(Rc::new(
+        header_pairs(name, v)?
+            .into_iter()
+            .map(|(k, val)| (Value::str(&k), Value::str(&val)))
+            .collect(),
+    )))
+}
+
+/// The stream an `io` std handle names (`io.stdin()` / `stdout()` / `stderr()`).
+fn std_handle(name: &str, v: &Value) -> Result<&'static str, Flow> {
+    match v {
+        Value::Variant { type_name, .. } if &**type_name == "Stdin" => Ok("Stdin"),
+        Value::Variant { type_name, .. } if &**type_name == "Stdout" => Ok("Stdout"),
+        Value::Variant { type_name, .. } if &**type_name == "Stderr" => Ok("Stderr"),
+        other => mismatch(name, "an io handle", other),
+    }
+}
+
+/// A digest input: wave 4's `Bytes`, or a String as its UTF-8 bytes.
+fn str_or_bytes(name: &str, v: &Value) -> Result<Vec<u8>, Flow> {
+    match v {
+        Value::Str(s) => Ok(s.as_bytes().to_vec()),
+        Value::Bytes(b) => Ok(b.borrow().clone()),
+        other => mismatch(name, "Bytes", other),
     }
 }
 
