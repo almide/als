@@ -5112,6 +5112,7 @@ evidence  = [
   { path = "spec/wasm_cross/fs_error_path_escape.almd", class = "fixture" },
   { path = "spec/wasm_cross/err_text_operand_escape_families.almd", class = "fixture" },
   { path = "spec/wasm_cross/err_text_label_and_key_escape.almd", class = "fixture" },
+  { path = "spec/embedded_cross/http_error_quote_c1_bidi.almd", class = "fixture" },
   { path = "tests/runtime_err_text_operands_test.rs", class = "by-construction", name = "every_runtime_error_text_embeds_text_through_err_text" },
 ]
 
