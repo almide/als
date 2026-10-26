@@ -837,9 +837,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-M15"
-hash = "sha256:3d3bb27bd47b"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:62bdd9f9ca22"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, almide/als#206: the carrier-shape bullet read against almide's checker (finalize_call_return_ty, bundled_call_is_lifted, never_err_bang_is_noop), docs/specs/effect-fn-call-semantics.md and ADR-0002 section D6 at almide fold-env f9bd3663b, and against spec/wasm_cross/env_vars_remove.almd and env_sleep_pause.almd)"
 independent = "no"
 verdict = "accurate"
 
