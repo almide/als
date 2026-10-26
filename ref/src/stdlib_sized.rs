@@ -12,22 +12,6 @@ use crate::fmtfloat;
 use crate::value::{fmt_u64, Value, F64};
 
 pub const SIZED_FNS: &[&str] = &[
-    "int.to_int8",
-    "int.to_int16",
-    "int.to_int32",
-    "int.to_int64",
-    "int.to_uint8",
-    "int.to_uint16",
-    "int.to_uint32",
-    "int.to_uint64",
-    "int.from_int8",
-    "int.from_int16",
-    "int.from_int32",
-    "int.from_int64",
-    "int.from_uint8",
-    "int.from_uint16",
-    "int.from_uint32",
-    "int.bits_to_float",
     "int8.to_string",
     "int16.to_string",
     "int32.to_string",
@@ -36,33 +20,7 @@ pub const SIZED_FNS: &[&str] = &[
     "uint16.to_string",
     "uint32.to_string",
     "uint64.to_string",
-    "int8.to_int64",
-    "int16.to_int64",
-    "int32.to_int64",
-    "uint8.to_int64",
-    "uint16.to_int64",
-    "uint32.to_int64",
-    "int64.to_int8_checked",
-    "uint8.to_int8_checked",
-    "int.from_uint64_checked",
-    "int.to_uint8_checked",
-    "int.from_int16",
-    "uint64.to_float64",
-    "float.from_float64",
-    "float.to_int8_checked",
-    "float.to_int16_checked",
-    "float.to_int32_checked",
-    "float.to_uint8_checked",
-    "float.to_uint16_checked",
-    "float.to_uint32_checked",
-    "float.to_uint64_checked",
-    "float.to_float32_checked",
     "float32.to_string",
-    "float.from_float32",
-    "float.to_float32",
-    "float32.to_float64",
-    "int.to_float32",
-    "int.to_float32_checked",
     "int.max_value",
     "int.min_value",
     "int8.max_value",
@@ -88,6 +46,48 @@ pub const SIZED_FNS: &[&str] = &[
     "uint16.parse",
     "uint32.parse",
     "uint64.parse",
+    // the `from` family (R-L0-40): a target type from any numeric source
+    "int.from",
+    "int.from_checked",
+    "int.from_saturating",
+    "int.from_wrapping",
+    "int8.from",
+    "int8.from_checked",
+    "int8.from_saturating",
+    "int8.from_wrapping",
+    "int16.from",
+    "int16.from_checked",
+    "int16.from_saturating",
+    "int16.from_wrapping",
+    "int32.from",
+    "int32.from_checked",
+    "int32.from_saturating",
+    "int32.from_wrapping",
+    "uint8.from",
+    "uint8.from_checked",
+    "uint8.from_saturating",
+    "uint8.from_wrapping",
+    "uint16.from",
+    "uint16.from_checked",
+    "uint16.from_saturating",
+    "uint16.from_wrapping",
+    "uint32.from",
+    "uint32.from_checked",
+    "uint32.from_saturating",
+    "uint32.from_wrapping",
+    "uint64.from",
+    "uint64.from_checked",
+    "uint64.from_saturating",
+    "uint64.from_wrapping",
+    "int64.from",
+    "int64.from_checked",
+    "int64.from_saturating",
+    "int64.from_wrapping",
+    "float.from",
+    "float64.from",
+    "float32.from",
+    "float32.from_checked",
+    "float32.from_bits",
 ];
 
 fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
@@ -111,16 +111,6 @@ fn want_int(name: &str, v: &Value) -> Result<i64, Flow> {
     }
 }
 
-fn want_float(name: &str, v: &Value) -> Result<f64, Flow> {
-    match v {
-        Value::Float(F64(f)) => Ok(*f),
-        other => Err(Flow::Fatal(format!(
-            "{name}: expected Float, got {}",
-            other.type_name()
-        ))),
-    }
-}
-
 fn want_sized(name: &str, v: &Value, bits: u8, signed: bool) -> Result<i64, Flow> {
     match v {
         Value::Sized {
@@ -134,53 +124,6 @@ fn want_sized(name: &str, v: &Value, bits: u8, signed: bool) -> Result<i64, Flow
             if signed { "signed" } else { "unsigned" },
             other.type_name()
         ))),
-    }
-}
-
-fn in_range(bits: u8, signed: bool, n: i64) -> bool {
-    if signed {
-        let min = -(1i64 << (bits as u32 - 1));
-        let max = (1i64 << (bits as u32 - 1)) - 1;
-        n >= min && n <= max
-    } else if bits == 64 {
-        n >= 0 // an Int source can only reach the lower half
-    } else {
-        n >= 0 && (n as u64) <= (u64::MAX >> (64 - bits as u32))
-    }
-}
-
-fn checked_from_float(f: f64, bits: u8, signed: bool) -> Option<i64> {
-    // ALS-T24: some() only when the value is EXACTLY representable —
-    // fractional, out-of-range, NaN and ±inf are none; -0.0 is some(0)
-    if !f.is_finite() || f.trunc() != f {
-        return None;
-    }
-    if signed {
-        let min = -((1i128) << (bits - 1));
-        let max = ((1i128) << (bits - 1)) - 1;
-        let as_i = f as i128;
-        // reject values whose f64 form lies outside (2^63-1 rounds up)
-        if f >= (max as f64) + 1.0 || f < min as f64 {
-            return None;
-        }
-        if as_i < min || as_i > max {
-            return None;
-        }
-        Some(as_i as i64)
-    } else {
-        let max: u128 = if bits == 64 {
-            u64::MAX as u128
-        } else {
-            (u64::MAX >> (64 - bits as u32)) as u128
-        };
-        if f < 0.0 || f >= (max as f64) + 1.0 {
-            return None;
-        }
-        let as_u = f as u128;
-        if as_u > max {
-            return None;
-        }
-        Some(as_u as u64 as i64)
     }
 }
 
@@ -200,34 +143,11 @@ pub fn call_sized(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Resul
 }
 
 fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow> {
-    // int.to_<sized>: unchecked — in-range only in the corpus
-    if let Some(rest) = name.strip_prefix("int.to_") {
-        if let Some((bits, signed)) = parse_sized(rest) {
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            if !in_range(bits, signed, n) {
-                return it.abstain_pub(
-                    &format!("stdlib:{name}"),
-                    format!("{name}({n}) out of range — the unchecked edge is not pinned"),
-                );
-            }
-            return Ok(sized(bits, signed, n));
-        }
+    // the `from` family (stdlib/<T>.almd, R-L0-40)
+    if let Some(r) = from_family(it, name, &args) {
+        return r;
     }
-    // int.from_<sized>: the value back as Int
-    if let Some(rest) = name.strip_prefix("int.from_") {
-        if let Some((bits, signed)) = parse_sized(rest) {
-            arity(name, &args, 1)?;
-            let v = want_sized(name, &args[0], bits, signed)?;
-            let n = if signed {
-                v
-            } else {
-                sized_unsigned(bits, v) as i64
-            };
-            return Ok(Value::Int(n));
-        }
-    }
-    // <sized>.to_string / <sized>.to_int64
+    // <sized>.to_string
     for (module, bits, signed) in SIZED_MODULES {
         if name == format!("{module}.to_string") {
             arity(name, &args, 1)?;
@@ -237,16 +157,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             } else {
                 Value::str(&fmt_u64(sized_unsigned(*bits, v)))
             });
-        }
-        if name == format!("{module}.to_int64") {
-            arity(name, &args, 1)?;
-            let v = want_sized(name, &args[0], *bits, *signed)?;
-            let n = if *signed {
-                v
-            } else {
-                sized_unsigned(*bits, v) as i64
-            };
-            return Ok(Value::Int(n));
         }
     }
     // <sized>.parse (C-413): int.parse's grammar and ASCII-only trim, then the
@@ -289,119 +199,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
     }
     match name {
-        "int.to_int64" | "float.from_float64" => {
-            // Int64 rides the Int carrier; Float64 rides Float — identities
-            arity(name, &args, 1)?;
-            Ok(args.into_iter().next().unwrap())
-        }
-        "int.from_int64" => {
-            arity(name, &args, 1)?;
-            Ok(args.into_iter().next().unwrap())
-        }
-        "int.bits_to_float" => {
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            // C-210: the raw pattern loads; observation boundaries canonicalize
-            Ok(Value::Float(F64(f64::from_bits(n as u64))))
-        }
-        "int64.to_int8_checked" => {
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            Ok(if in_range(8, true, n) {
-                some(sized(8, true, n))
-            } else {
-                Value::None
-            })
-        }
-        "uint8.to_int8_checked" => {
-            arity(name, &args, 1)?;
-            let v = sized_unsigned(8, want_sized(name, &args[0], 8, false)?);
-            Ok(if v <= 127 {
-                some(sized(8, true, v as i64))
-            } else {
-                Value::None
-            })
-        }
-        "int.from_uint64_checked" => {
-            arity(name, &args, 1)?;
-            let v = want_sized(name, &args[0], 64, false)?;
-            Ok(if v >= 0 {
-                some(Value::Int(v))
-            } else {
-                Value::None
-            })
-        }
-        "int.to_uint8_checked" => {
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            Ok(if in_range(8, false, n) {
-                some(sized(8, false, n))
-            } else {
-                Value::None
-            })
-        }
-        "uint64.to_float64" => {
-            arity(name, &args, 1)?;
-            let v = want_sized(name, &args[0], 64, false)?;
-            Ok(Value::Float(F64(v as u64 as f64)))
-        }
-        "float.to_float32_checked" => {
-            arity(name, &args, 1)?;
-            let f = want_float(name, &args[0])?;
-            // exactly representable in binary32 (T24); NaN/±inf are none
-            let g = f as f32;
-            Ok(if f.is_finite() && (g as f64) == f {
-                some(Value::Float32(g))
-            } else {
-                Value::None
-            })
-        }
-        "float.to_float32" => {
-            // C-371: one rounding to binary32 (round-to-nearest-even)
-            arity(name, &args, 1)?;
-            let f = want_float(name, &args[0])?;
-            Ok(Value::Float32(f as f32))
-        }
-        "float32.to_float64" => {
-            arity(name, &args, 1)?;
-            match &args[0] {
-                Value::Float32(g) => Ok(Value::Float(F64(*g as f64))),
-                other => Err(Flow::Fatal(format!(
-                    "{name}: expected Float32, got {}",
-                    other.type_name()
-                ))),
-            }
-        }
-        "float.from_float32" => {
-            arity(name, &args, 1)?;
-            match &args[0] {
-                Value::Float32(g) => Ok(Value::Float(F64(*g as f64))),
-                other => Err(Flow::Fatal(format!(
-                    "{name}: expected Float32, got {}",
-                    other.type_name()
-                ))),
-            }
-        }
-        "int.to_float32" => {
-            // the DIRECT `n as f32` — a single rounding (C-338)
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            Ok(Value::Float32(n as f32))
-        }
-        "int.to_float32_checked" => {
-            // some() exactly when the f32 holds n's value. NOT a round trip
-            // through the SATURATING Float -> Int: 2^63 - 1 rounds to 2^63 as
-            // an f32 and the saturated read-back equals max_value (C-338/#2487).
-            arity(name, &args, 1)?;
-            let n = want_int(name, &args[0])?;
-            let g = n as f32;
-            let back = g as f64;
-            Ok(if back.is_finite() && (back as i128) == (n as i128) {
-                some(Value::Float32(g))
-            } else {
-                Value::None
-            })
-        }
         "int.max_value" | "int.min_value" | "int64.max_value" | "int64.min_value" => {
             arity(name, &args, 0)?;
             let v = if name.ends_with("max_value") {
@@ -427,25 +224,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 ))),
             }
         }
-        _ => {
-            // float.to_<sized>_checked
-            if let Some(rest) = name.strip_prefix("float.to_") {
-                if let Some(base) = rest.strip_suffix("_checked") {
-                    if let Some((bits, signed)) = parse_sized(base) {
-                        arity(name, &args, 1)?;
-                        let f = want_float(name, &args[0])?;
-                        return Ok(match checked_from_float(f, bits, signed) {
-                            Some(v) => some(sized(bits, signed, v)),
-                            None => Value::None,
-                        });
-                    }
-                }
-            }
-            it.abstain_pub(
-                &format!("stdlib:{name}"),
-                format!("`{name}` is registered but unrouted in the sized module"),
-            )
-        }
+        _ => it.abstain_pub(
+            &format!("stdlib:{name}"),
+            format!("`{name}` is registered but unrouted in the sized module"),
+        ),
     }
 }
 
@@ -458,19 +240,6 @@ const SIZED_MODULES: &[(&str, u8, bool)] = &[
     ("uint32", 32, false),
     ("uint64", 64, false),
 ];
-
-fn parse_sized(s: &str) -> Option<(u8, bool)> {
-    Some(match s {
-        "int8" => (8, true),
-        "int16" => (16, true),
-        "int32" => (32, true),
-        "uint8" => (8, false),
-        "uint16" => (16, false),
-        "uint32" => (32, false),
-        "uint64" => (64, false),
-        _ => return None,
-    })
-}
 
 /// `<sized>.parse`: the stdlib bodies' rule, over int.parse (ALS-T8, C-413).
 /// Int8/16/32 range-check its answer; UInt8/16/32 first refuse a '-' after
@@ -538,4 +307,282 @@ fn trim_by(s: &str, ws: fn(char) -> bool) -> String {
         hi -= 1;
     }
     cs[lo..hi].iter().collect()
+}
+
+// ── the `from` family (R-L0-40, stdlib/<T>.almd) ─────────────────────────
+// Every body reads its source through the Numeric pivots (`__int_exact`,
+// `__uint64_exact`, `__trunc`, `__int_sat`, `__uint64_sat`, `__bits64`,
+// `__to_float`, `__to_float32`, ...). For an integer target those pivots
+// compose to one rule over the source's exact value: `from` truncates and
+// must land in range (else a panic), `from_checked` must be exact and in
+// range (else none), `from_saturating` truncates and clamps (NaN is 0), and
+// `from_wrapping` keeps the low bits of an integer source.
+
+/// A numeric source as the pivots see it.
+enum Src {
+    /// Int, Int64 and the narrower sized integers: the exact value
+    I(i64),
+    /// UInt64: the unsigned value (its upper half exceeds Int)
+    U(u64),
+    /// Float (and Float32 widened, which is exact)
+    F(f64),
+    /// Float32, kept for the targets whose pivot is the identity on it
+    F32(f32),
+}
+
+fn src_of(v: &Value) -> Option<Src> {
+    Some(match v {
+        Value::Int(n) => Src::I(*n),
+        Value::Sized {
+            bits: 64,
+            signed: false,
+            v,
+        } => Src::U(*v as u64),
+        Value::Sized { bits, signed, v } => {
+            if *signed {
+                Src::I(*v)
+            } else {
+                Src::I(sized_unsigned(*bits, *v) as i64)
+            }
+        }
+        Value::Float(F64(f)) => Src::F(*f),
+        Value::Float32(g) => Src::F32(*g),
+        _ => return None,
+    })
+}
+
+/// The integer targets: (bits, signed); Int is the signed 64-bit register.
+fn int_target(module: &str) -> Option<(u8, bool)> {
+    Some(match module {
+        // Int64 rides the Int carrier
+        "int" | "int64" => (64, true),
+        "int8" => (8, true),
+        "int16" => (16, true),
+        "int32" => (32, true),
+        "uint8" => (8, false),
+        "uint16" => (16, false),
+        "uint32" => (32, false),
+        "uint64" => (64, false),
+        _ => return None,
+    })
+}
+
+fn target_range(bits: u8, signed: bool) -> (i128, i128) {
+    if signed {
+        (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1)
+    } else {
+        (0, (1i128 << bits) - 1)
+    }
+}
+
+/// The value a target of (bits, signed) holds for the in-range integer n.
+fn int_value(bits: u8, signed: bool, n: i128) -> Value {
+    if bits == 64 && signed {
+        Value::Int(n as i64)
+    } else {
+        sized(bits, signed, n as i64)
+    }
+}
+
+/// `__int_exact` / `__uint64_exact` before the range test: the source's value
+/// when it is an integer, a float only when finite and integral (the float
+/// pivots bound it to -2^63..2^64, which every target range lies inside).
+fn exact_of(src: &Src) -> Option<i128> {
+    match src {
+        Src::I(n) => Some(*n as i128),
+        Src::U(u) => Some(*u as i128),
+        Src::F(f) => float_exact(*f),
+        Src::F32(g) => float_exact(*g as f64),
+    }
+}
+
+fn float_exact(f: f64) -> Option<i128> {
+    if f.is_finite()
+        && f.trunc() == f
+        && (-9223372036854775808.0..18446744073709551616.0).contains(&f)
+    {
+        Some(f as i128)
+    } else {
+        None
+    }
+}
+
+fn trunc_of(src: Src) -> Src {
+    match src {
+        Src::F(f) => Src::F(f.trunc()),
+        Src::F32(g) => Src::F(g.trunc() as f64),
+        other => other,
+    }
+}
+
+/// UInt64 → Float as stdlib/uint64_convert.almd computes it: the lower half
+/// converts directly; the upper half as (x/2 as Float) * 2 + x%2.
+fn u64_to_f64(u: u64) -> f64 {
+    if (u as i64) >= 0 {
+        (u as i64) as f64
+    } else {
+        let hf = ((u / 2) as i64) as f64;
+        let lf = ((u % 2) as i64) as f64;
+        hf + hf + lf
+    }
+}
+
+/// UInt64 → Float32 (uint64_to_float32): direct on the lower half, the
+/// upper half's Float sum rounded once more.
+fn u64_to_f32(u: u64) -> f32 {
+    if (u as i64) >= 0 {
+        (u as i64) as f32
+    } else {
+        u64_to_f64(u) as f32
+    }
+}
+
+fn from_family(it: &Interp, name: &str, args: &[Value]) -> Option<Result<Value, Flow>> {
+    let (module, verb) = name.split_once('.')?;
+    if !matches!(
+        verb,
+        "from" | "from_checked" | "from_saturating" | "from_wrapping" | "from_bits"
+    ) {
+        return None;
+    }
+    Some(from_dispatch(it, name, module, verb, args))
+}
+
+fn from_dispatch(
+    it: &Interp,
+    name: &str,
+    module: &str,
+    verb: &str,
+    args: &[Value],
+) -> Result<Value, Flow> {
+    arity(name, args, 1)?;
+    if (module, verb) == ("float32", "from_bits") {
+        // int.__bits_to_f32: the low 32 bits as a binary32
+        let n = want_int(name, &args[0])?;
+        return Ok(Value::Float32(f32::from_bits(n as u32)));
+    }
+    let src = match src_of(&args[0]) {
+        Some(s) => s,
+        None => {
+            return Err(Flow::Fatal(format!(
+                "{name}: expected a number, got {}",
+                args[0].type_name()
+            )))
+        }
+    };
+    let panic = |what: &str| -> Result<Value, Flow> {
+        it.abstain_pub(
+            "stdlib:panic",
+            format!("{name}: the value is not a number in the range of {what} — a panic (C-219), not rendered yet"),
+        )
+    };
+    match (module, verb) {
+        // Float64 rides the Float carrier
+        ("float" | "float64", "from") => Ok(Value::Float(F64(match src {
+            Src::I(n) => n as f64,
+            Src::U(u) => u64_to_f64(u),
+            Src::F(f) => f,
+            Src::F32(g) => g as f64,
+        }))),
+        ("float32", "from") => Ok(Value::Float32(match src {
+            Src::I(n) => n as f32,
+            Src::U(u) => u64_to_f32(u),
+            Src::F(f) => f as f32,
+            Src::F32(g) => g,
+        })),
+        ("float32", "from_checked") => {
+            let got = match src {
+                // int.__to_float32_checked: the f32 widened back must not reach
+                // 2^63 and must read back as n
+                Src::I(n) => {
+                    let g = n as f32;
+                    let back = g as f64;
+                    (back < 9223372036854775808.0 && back as i64 == n).then_some(g)
+                }
+                Src::U(u) => {
+                    let g = u64_to_f32(u);
+                    (float_exact(g as f64) == Some(u as i128)).then_some(g)
+                }
+                // float.__to_float32_checked: NaN and the infinities are none
+                Src::F(f) => {
+                    let g = f as f32;
+                    (f.is_finite() && g as f64 == f).then_some(g)
+                }
+                Src::F32(g) => (!g.is_nan()).then_some(g),
+            };
+            Ok(match got {
+                Some(g) => some(Value::Float32(g)),
+                None => Value::None,
+            })
+        }
+        _ => {
+            let Some((bits, signed)) = int_target(module) else {
+                return it.abstain_pub(
+                    &format!("stdlib:{name}"),
+                    format!("`{name}`: no integer target `{module}` in the sized module"),
+                );
+            };
+            let (lo, hi) = target_range(bits, signed);
+            let tname = match (bits, signed) {
+                (64, true) => "Int",
+                (8, true) => "Int8",
+                (16, true) => "Int16",
+                (32, true) => "Int32",
+                (8, false) => "UInt8",
+                (16, false) => "UInt16",
+                (32, false) => "UInt32",
+                _ => "UInt64",
+            };
+            match verb {
+                "from" => match exact_of(&trunc_of(src)) {
+                    Some(n) if (lo..=hi).contains(&n) => Ok(int_value(bits, signed, n)),
+                    _ => panic(tname),
+                },
+                "from_checked" => Ok(match exact_of(&src) {
+                    Some(n) if (lo..=hi).contains(&n) => some(int_value(bits, signed, n)),
+                    _ => Value::None,
+                }),
+                "from_saturating" => {
+                    let n: i128 = match trunc_of(src) {
+                        Src::I(n) => n as i128,
+                        Src::U(u) => u as i128,
+                        Src::F(f) if f.is_nan() => 0,
+                        Src::F(f) if f < lo as f64 => lo,
+                        Src::F(f) if f > hi as f64 => hi,
+                        Src::F(f) => f as i128,
+                        Src::F32(g) => g as i128, // unreachable: trunc widened it
+                    };
+                    Ok(int_value(bits, signed, n.clamp(lo, hi)))
+                }
+                "from_wrapping" => {
+                    // `[S: Integer]`: the low bits of the 64-bit pattern
+                    let b64: u64 = match src {
+                        Src::I(n) => n as u64,
+                        Src::U(u) => u,
+                        _ => {
+                            return Err(Flow::Fatal(format!(
+                                "{name}: from_wrapping takes an integer, got {}",
+                                args[0].type_name()
+                            )))
+                        }
+                    };
+                    let v: i64 = match (bits, signed) {
+                        (64, _) => b64 as i64,
+                        (8, true) => b64 as u8 as i8 as i64,
+                        (16, true) => b64 as u16 as i16 as i64,
+                        (32, true) => b64 as u32 as i32 as i64,
+                        (8, false) => b64 as u8 as i64,
+                        (16, false) => b64 as u16 as i64,
+                        _ => b64 as u32 as i64,
+                    };
+                    Ok(if bits == 64 && signed {
+                        Value::Int(v)
+                    } else {
+                        sized(bits, signed, v)
+                    })
+                }
+                _ => Err(Flow::Fatal("from family: unreachable verb".into())),
+            }
+        }
+    }
 }
