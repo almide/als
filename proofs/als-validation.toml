@@ -36,9 +36,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T16"
-hash = "sha256:452570a4287f"
-reviewed = "2026-08-21"
-by = "O6lvl4 (via the Claude session; reviewed against the named fixtures and a probe run on both 0.58.0 targets)"
+hash = "sha256:97d0c5d5b589"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: one signed max(n,0).min(len) rule for counts and slice bounds on list, string, bytes and matrix.slice_rows; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
 independent = "no"
 verdict = "accurate"
 
@@ -173,9 +173,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C4"
-hash = "sha256:3be7cd0cd252"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:d49a8536d9a8"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: negative counts and range bounds read as 0; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
 independent = "no"
 verdict = "accurate"
 
@@ -911,9 +911,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T4"
-hash = "sha256:d489a7f9c0d7"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:c7c77f38c679"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: a chunk/window size of 0 or less aborts; the old n<0 ruling withdrawn; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
 independent = "no"
 verdict = "accurate"
 
@@ -1070,9 +1070,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T26"
-hash = "sha256:744294588fce"
-reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session; re-reviewed 2026-10-24 for #4118: the year range 0..=9999 and the `year` refusal row added, prose cross-checked against C-360/C-410 and spec/wasm_cross/datetime_parse_iso_year_range.almd on native, stock wasm and als-ref)"
+hash = "sha256:8b258cbd49fc"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: from_parts returns Result with parse_iso's range and texts, no rollover; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
 independent = "no"
 verdict = "accurate"
 [[section]]
