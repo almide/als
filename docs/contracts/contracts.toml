@@ -2272,7 +2272,7 @@ evidence  = [
   { path = "spec/wasm_cross/nested_scalar_record_append.almd", class = "fixture" },
 ]
 
-# ── INTEGER `^` OPERATOR == math.pow ─
+# ── INTEGER `^` OPERATOR == int.pow ─
 [[contract]]
 id        = "C-184"
 spec      = "ALS-T6"
@@ -4402,7 +4402,7 @@ evidence  = [
   { path = "spec/wasm_cross/json_stringify_nonfinite.almd", class = "fixture" },
 ]
 
-# ── json.get_int IS INT-ONLY: A FLOAT FIELD IS none, NEVER TRUNCATED ──
+# ── value.get_int IS INT-ONLY: A FLOAT FIELD IS none, NEVER TRUNCATED ──
 [[contract]]
 id        = "C-357"
 spec      = "ALS-D6"
