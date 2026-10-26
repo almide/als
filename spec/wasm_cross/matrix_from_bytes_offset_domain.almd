@@ -26,7 +26,9 @@ fn main() -> Unit = {
   println("negative offset: ${show(matrix.from_bytes_f32_le(f, -1, 1, 2))}")
   println("half huge: ${show(matrix.from_bytes_f16_le(f, 9223372036854775806, 1, 2))}")
   println("half negative: ${show(matrix.from_bytes_f16_le(f, -2, 1, 1))}")
-  println("f64 fits: ${show(matrix.from_bytes_f64_le(f, 0, 1, 1))}")
-  println("f64 short: ${show(matrix.from_bytes_f64_le(f, 1, 1, 1))}")
-  println("f64 huge: ${show(matrix.from_bytes_f64_le(f, 9223372036854775800, 1, 1))}")
+  var g = bytes.new(16)
+  bytes.set_f64_le(g, 8, -0.75)
+  println("f64 fits: ${show(matrix.from_bytes_f64_le(g, 8, 1, 1))}")
+  println("f64 short: ${show(matrix.from_bytes_f64_le(g, 9, 1, 1))}")
+  println("f64 huge: ${show(matrix.from_bytes_f64_le(g, 9223372036854775800, 1, 1))}")
 }
