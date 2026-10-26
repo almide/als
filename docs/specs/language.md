@@ -765,7 +765,7 @@ Tuple destructuring in for:
 
 ```almide
 fn print_entries(m: Map[String, Int]) -> Unit = {
-  for (k, v) in map.entries(m) {
+  for (k, v) in map.to_list(m) {
     println("${k} = ${v}")
   }
 }
@@ -1117,7 +1117,7 @@ effect fn create_once(path: String) -> Result[Unit, String] = {
     println("already exists")
     ok(())
   }
-  fs.write(path, "")!
+  fs.write_text(path, "")!
   ok(())
 }
 ```
