@@ -51,6 +51,23 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.concat_cols",
     "matrix.concat_cols_many",
     "matrix.conv1d",
+    // C-161's composition family (stdlib/matrix_fused.almd in the
+    // implementation): each is a composition of the kernels above, so it is
+    // written here as that composition — fma = add∘scale (zip shape, two
+    // rounded products and a rounded sum, never fused), mul_scaled =
+    // scale∘mul, the `_f32` names alias the f64 arithmetic.
+    "matrix.fma",
+    "matrix.fma3",
+    "matrix.mul_scaled",
+    "matrix.mul_f32",
+    "matrix.mul_f32_scaled",
+    "matrix.mul_f32_t",
+    "matrix.mul_f32_t_scaled",
+    "matrix.zeros_f32",
+    "matrix.ones_f32",
+    "matrix.append_rows",
+    "matrix.linear_f32_row_no_bias",
+    "matrix.to_bytes_f32_le",
 ];
 
 /// C-161: 2^28 elements (2 GiB of f64, inside wasm32's address space), and
@@ -593,6 +610,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let off = want_int(name, &args[1])?.max(0);
             let cols = want_int(name, &args[2])?.max(0);
             let rids = want_rids(name, &args[3])?;
+            // C-161: the `len(ids) x cols` shape takes the shared ceiling
+            // before anything is allocated
+            let (_, cols) = norm_dims(rids.len() as i64, cols)?;
             let mut data = vec![0.0f64; rids.len() * cols as usize];
             for (i, rid) in rids.iter().enumerate() {
                 // C-229: a negative row id clamps to row 0; a row whose byte
@@ -656,6 +676,110 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 })
                 .collect();
             Ok(Value::Some(Rc::new(mat(r, c, data))))
+        }
+        "matrix.zeros_f32" | "matrix.ones_f32" => {
+            let base = if name == "matrix.ones_f32" {
+                "matrix.ones"
+            } else {
+                "matrix.zeros"
+            };
+            dispatch(it, base, args)
+        }
+        "matrix.fma" => {
+            arity(name, &args, 4)?;
+            let sa = dispatch(it, "matrix.scale", vec![args[0].clone(), args[1].clone()])?;
+            let sb = dispatch(it, "matrix.scale", vec![args[2].clone(), args[3].clone()])?;
+            dispatch(it, "matrix.add", vec![sa, sb])
+        }
+        "matrix.fma3" => {
+            arity(name, &args, 6)?;
+            let ab = dispatch(it, "matrix.fma", args[0..4].to_vec())?;
+            let sc = dispatch(it, "matrix.scale", vec![args[4].clone(), args[5].clone()])?;
+            dispatch(it, "matrix.add", vec![ab, sc])
+        }
+        "matrix.mul_f32" => {
+            arity(name, &args, 2)?;
+            dispatch(it, "matrix.mul", args)
+        }
+        "matrix.mul_f32_t" => {
+            arity(name, &args, 2)?;
+            let t = dispatch(it, "matrix.transpose", vec![args[1].clone()])?;
+            dispatch(it, "matrix.mul", vec![args[0].clone(), t])
+        }
+        "matrix.mul_scaled" | "matrix.mul_f32_scaled" | "matrix.mul_f32_t_scaled" => {
+            arity(name, &args, 3)?;
+            let b = if name == "matrix.mul_f32_t_scaled" {
+                dispatch(it, "matrix.transpose", vec![args[2].clone()])?
+            } else {
+                args[2].clone()
+            };
+            let p = dispatch(it, "matrix.mul", vec![args[0].clone(), b])?;
+            dispatch(it, "matrix.scale", vec![p, args[1].clone()])
+        }
+        // An operand with no rows yields the other; else base's rows then
+        // extra's, and two non-empty operands must be the same width (C-353).
+        "matrix.append_rows" => {
+            arity(name, &args, 2)?;
+            let base = want_mat(name, &args[0])?;
+            let extra = want_mat(name, &args[1])?;
+            if base.rows == 0 {
+                return Ok(args[1].clone());
+            }
+            if extra.rows == 0 {
+                return Ok(args[0].clone());
+            }
+            shape_eq(base.cols, extra.cols)?;
+            let (r, c) = norm_dims(base.rows + extra.rows, base.cols)?;
+            let mut data = base.data.clone();
+            data.extend_from_slice(&extra.data);
+            Ok(mat(r, c, data))
+        }
+        // The sequential widen-mul-add dot over the f32 weight rows read out of
+        // the byte buffer. An empty x or a zero out/in extent is
+        // `zeros(rows(x), w_rows)` (the C-161 ceiling included); a negative
+        // offset reads from 0; weights that do not fit the buffer decode as
+        // the all-zero rows.
+        "matrix.linear_f32_row_no_bias" => {
+            arity(name, &args, 5)?;
+            let x = want_mat(name, &args[0])?;
+            let b = want_bytes(name, &args[1])?;
+            let off = want_int(name, &args[2])?.max(0);
+            let w_rows = want_int(name, &args[3])?;
+            let w_cols = want_int(name, &args[4])?;
+            if x.rows == 0 || w_rows <= 0 || w_cols <= 0 {
+                return dispatch(
+                    it,
+                    "matrix.zeros",
+                    vec![Value::Int(x.rows), Value::Int(w_rows)],
+                );
+            }
+            let (r, c) = norm_dims(w_rows, w_cols)?;
+            let len = b.len() as i128;
+            let need = r as i128 * c as i128 * 4;
+            let fits = off as i128 <= len && need <= len - off as i128;
+            let data: Vec<f64> = (0..(r * c) as usize)
+                .map(|i| {
+                    if !fits {
+                        return 0.0;
+                    }
+                    let p = off as usize + i * 4;
+                    f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]])) as f64
+                })
+                .collect();
+            dispatch(
+                it,
+                "matrix.linear_row_no_bias",
+                vec![args[0].clone(), mat(r, c, data)],
+            )
+        }
+        "matrix.to_bytes_f32_le" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            let mut out = Vec::with_capacity(m.data.len() * 4);
+            for x in m.data.iter() {
+                out.extend_from_slice(&(*x as f32).to_bits().to_le_bytes());
+            }
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
         }
         other => Err(Flow::Fatal(format!("unrouted matrix fn `{other}`"))),
     }

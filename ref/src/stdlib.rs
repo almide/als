@@ -122,10 +122,12 @@ const STRING_FNS: &[&str] = &[
     "string.get",
     "string.lines",
     "string.chars",
+    "string.to_list",
     "string.index_of",
     "string.last_index_of",
     "string.repeat",
     "string.count",
+    "string.count_matches",
     "string.is_empty",
     "string.reverse",
     "string.strip_prefix",
@@ -143,6 +145,7 @@ const STRING_FNS: &[&str] = &[
     "string.is_upper",
     "string.is_lower",
     "string.codepoint",
+    "string.to_codepoint",
     "string.from_codepoint",
     "string.concat",
 ];
@@ -237,6 +240,7 @@ const MAP_FNS: &[&str] = &[
     "map.values",
     "map.len",
     "map.entries",
+    "map.to_list",
     "map.merge",
     "map.is_empty",
     "map.from_list",
@@ -1284,7 +1288,24 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 .map(|i| Value::Some(Rc::new(Value::Int(i as i64))))
                 .unwrap_or(Value::None))
         }
-        "string.count" => {
+        // wave 4: `string.count(s, f)` counts the characters f holds for
+        // (list.count over string.to_list); the substring count is
+        // `string.count_matches(s, needle)`. The two-String form is kept as
+        // the substring count so a fixture written against the earlier
+        // spelling still evaluates.
+        "string.count" if matches!(args.get(1), Some(Value::Fn(_))) => {
+            arity(name, &args, 2)?;
+            let cs: Vec<Value> = want_str(name, &args[0])?
+                .chars()
+                .map(|c| Value::str(&c.to_string()))
+                .collect();
+            call(
+                it,
+                "list.count",
+                vec![Value::List(Rc::new(cs)), args[1].clone()],
+            )
+        }
+        "string.count" | "string.count_matches" => {
             arity(name, &args, 2)?;
             let cs = chars_of(want_str(name, &args[0])?);
             let pat = chars_of(want_str(name, &args[1])?);
@@ -1465,7 +1486,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 format!("{}{}", s_of(&cs), pad)
             }))
         }
-        "string.chars" => {
+        "string.chars" | "string.to_list" => {
             arity(name, &args, 1)?;
             Ok(Value::List(Rc::new(
                 want_str(name, &args[0])?
@@ -1615,14 +1636,26 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 .map(|c| Value::Some(Rc::new(Value::Int(c as i64))))
                 .unwrap_or(Value::None))
         }
+        // wave 4: the scalar value of a string that is EXACTLY one code
+        // point; none for "" and for two or more.
+        "string.to_codepoint" => {
+            arity(name, &args, 1)?;
+            let s = want_str(name, &args[0])?;
+            let mut cs = s.chars();
+            Ok(match (cs.next(), cs.next()) {
+                (Some(c), None) => Value::Some(Rc::new(Value::Int(c as i64))),
+                _ => Value::None,
+            })
+        }
+        // wave 4: `String?` — none for a surrogate, a negative, or past
+        // U+10FFFF (value_domain_arith's 2^32 included)
         "string.from_codepoint" => {
             arity(name, &args, 1)?;
             let n = want_int(name, &args[0])?;
-            // surrogates, past-max, and out-of-range all yield "" (value_domain_arith)
-            match u32::try_from(n).ok().and_then(char::from_u32) {
-                Some(c) => Ok(Value::str(&c.to_string())),
-                None => Ok(Value::str("")),
-            }
+            Ok(match u32::try_from(n).ok().and_then(char::from_u32) {
+                Some(c) => Value::Some(Rc::new(Value::str(&c.to_string()))),
+                None => Value::None,
+            })
         }
 
         // ═══ int (ALS-T6, T8, T14, T16) ═══════════════════════════════
@@ -2261,7 +2294,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                     .collect(),
             )))
         }
-        "map.entries" => {
+        "map.entries" | "map.to_list" => {
             arity(name, &args, 1)?;
             let m = want_map(name, &args[0])?;
             Ok(Value::List(Rc::new(
