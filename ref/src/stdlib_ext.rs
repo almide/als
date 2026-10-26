@@ -19,6 +19,7 @@ pub const EXT_FNS: &[&str] = &[
     "value.as_bool",
     "value.as_array",
     "value.str",
+    "value.string",
     "value.int",
     "value.float",
     "value.bool",
@@ -55,6 +56,7 @@ pub const EXT_FNS: &[&str] = &[
     "json.get",
     // bytes
     "bytes.new",
+    "bytes.zeros",
     "bytes.from_list",
     "bytes.from_string",
     "bytes.to_list",
@@ -136,8 +138,11 @@ pub const EXT_FNS: &[&str] = &[
     "fs.read_text",
     "fs.read_bytes",
     "fs.write",
+    "fs.write_text",
     "fs.write_bytes",
     "fs.append",
+    "fs.append_text",
+    "fs.append_bytes",
     "fs.mkdir_p",
     "fs.exists",
     "fs.read_lines",
@@ -433,7 +438,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             Ok(Value::Dyn(Dyn::B(want_bool(name, &args[0])?)))
         }
-        "value.str" | "json.from_string" => {
+        "value.str" | "value.string" | "json.from_string" => {
             arity(name, &args, 1)?;
             Ok(Value::Dyn(Dyn::S(want_str(name, &args[0])?.clone())))
         }
@@ -700,7 +705,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ bytes (ALS-D5/D7) — REFERENCE semantics, total reads ═══════
-        "bytes.new" => {
+        // `bytes.new()` is the empty buffer and `bytes.zeros(n)` n zero
+        // bytes (wave 4); the one-argument `bytes.new(n)` is kept as zeros.
+        "bytes.new" if args.is_empty() => Ok(bytes_val(Vec::new())),
+        "bytes.new" | "bytes.zeros" => {
             arity(name, &args, 1)?;
             let n = want_int(name, &args[0])?.max(0) as usize;
             // C-197: an unsatisfiable allocation is the DEFINED abort
@@ -1182,7 +1190,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             };
             let plain = match name {
                 "fs.root_read_text" => "fs.read_text",
-                "fs.root_write_text" => "fs.write",
+                "fs.root_write_text" => "fs.write_text",
                 "fs.root_list_dir" => "fs.list_dir",
                 "fs.root_exists" => "fs.exists",
                 _ => "fs.remove",
@@ -1217,42 +1225,55 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 ok(Value::None)
             })
         }
+        // wave 4: the bytes readers answer `Bytes`
         "fs.read_bytes" => {
             arity(name, &args, 1)?;
             Ok(match crate::fsread::read(want_str(name, &args[0])?) {
-                Ok(b) => ok(Value::List(Rc::new(
-                    b.into_iter().map(|x| Value::Int(x as i64)).collect(),
-                ))),
+                Ok(b) => ok(bytes_val(b)),
                 Err(e) => io_err(e),
             })
         }
-        "fs.write" | "fs.append" => {
+        // wave 4 spells the text writers `write_text` / `append_text` and adds
+        // `append_bytes`; `fs.write` / `fs.append` stay as their earlier
+        // spelling so a fixture written against it still evaluates.
+        "fs.write" | "fs.append" | "fs.write_text" | "fs.append_text" | "fs.append_bytes" => {
             arity(name, &args, 2)?;
             let p = want_str(name, &args[0])?.to_string();
-            let c = want_str(name, &args[1])?.to_string();
-            let r = if name == "fs.write" {
-                std::fs::write(&p, c.as_bytes())
+            let c: Vec<u8> = if name == "fs.append_bytes" {
+                want_bytes(name, &args[1])?.borrow().clone()
+            } else {
+                want_str(name, &args[1])?.as_bytes().to_vec()
+            };
+            let r = if name == "fs.write" || name == "fs.write_text" {
+                std::fs::write(&p, &c)
             } else {
                 use std::io::Write;
                 std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)
                     .open(&p)
-                    .and_then(|mut f| f.write_all(c.as_bytes()))
+                    .and_then(|mut f| f.write_all(&c))
             };
             Ok(match r {
                 Ok(()) => ok(Value::Unit),
                 Err(e) => io_err(e),
             })
         }
+        // wave 4: `data: Bytes`; a `List[Int]` (the earlier shape) is still
+        // read as its low bytes
         "fs.write_bytes" => {
             arity(name, &args, 2)?;
             let p = want_str(name, &args[0])?.to_string();
-            let xs = want_list(name, &args[1])?.clone();
-            let mut b = Vec::with_capacity(xs.len());
-            for x in xs.iter() {
-                b.push(want_int(name, x)? as u8);
-            }
+            let b: Vec<u8> = if let Value::Bytes(raw) = &args[1] {
+                raw.borrow().clone()
+            } else {
+                let xs = want_list(name, &args[1])?.clone();
+                let mut b = Vec::with_capacity(xs.len());
+                for x in xs.iter() {
+                    b.push(want_int(name, x)? as u8);
+                }
+                b
+            };
             Ok(match std::fs::write(&p, b) {
                 Ok(()) => ok(Value::Unit),
                 Err(e) => io_err(e),
