@@ -169,6 +169,7 @@ pub const EXT_FNS: &[&str] = &[
     "fs.root_remove",
     "env.args",
     "env.get",
+    "env.secret",
     "env.set",
     "env.sleep_ms",
     "env.cwd",
@@ -1472,13 +1473,15 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             // its content is host-specific and never pinned beyond that
             Ok(Value::List(Rc::new(vec![Value::str("als-ref")])))
         }
-        "env.get" => {
+        // C-438: env.secret is env.get with the value born a Secret[String].
+        "env.get" | "env.secret" => {
             arity(name, &args, 1)?;
             let k = want_str(name, &args[0])?.to_string();
+            let wrap = |v: Value| if name == "env.secret" { crate::value::secret_of(v) } else { v };
             Ok(match it.env_overlay.iter().rev().find(|(n, _)| *n == k) {
-                Some((_, v)) => some(Value::str(v)),
+                Some((_, v)) => some(wrap(Value::str(v))),
                 None => match std::env::var(&k) {
-                    Ok(v) => some(Value::str(&v)),
+                    Ok(v) => some(wrap(Value::str(&v))),
                     Err(_) => Value::None,
                 },
             })
