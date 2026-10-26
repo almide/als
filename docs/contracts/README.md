@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 436 contracts: **requirements-first 131** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 437 contracts: **requirements-first 132** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-436 contracts
+437 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -471,4 +471,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-434 | a runtime abort inside an http.serve handler fails only that request: the fixed C-409 500, one stderr line, and the server keeps serving | 0.69.0 | active | fixture | 0 |
 | C-435 | `Codec` is `Encode + Decode`: a `: Decode` type derives only `decode` (+ a record's `decode_strict`), a `: Encode` type only `encode`, and an input type skips no field | 0.69.0 | active | fixture | 1 |
 | C-436 | `http.decode_json[T](req)` decodes a request body only into an input type: a `Codec` T is E110, and a key outside T is `400 Bad Request: unknown key '<k>'` | 0.69.0 | active | fixture | 1 |
+| C-437 | A process.start child neither waited on nor stopped is stopped when the program exits by main's return, process.exit or an effect error | 0.69.0 | active | fixture | 0 |
 
