@@ -53,9 +53,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T25"
-hash = "sha256:d2cfe87d186d"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:781e4962e1f8"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, nnlib to nn rename: the moved functions now live in module nn.kernels of package almide-graphics/nn, text mirrored from almide nn-not-nnlib-ro 0e6c9b27f and checked against C-270 as amended)"
 independent = "no"
 verdict = "accurate"
 
