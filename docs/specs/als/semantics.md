@@ -178,6 +178,24 @@ fn 型は `effect` 前置で**効果スロット**になる: `effect (A) -> B`(�
 - 効果スロットは pure lambda と可謬 lambda の**両方**を受理する。
 - effect fn 型の**値**の呼び出しはそれ自体が effect 呼び出しであり、
   キャリア `Result[B, String]` を生む(pure 文脈からは E006)。
+- **宣言された effect fn の呼び出しのキャリア形** — `!` が読む値は、宣言の
+  戻り型と、呼び先が Almide の本体を持つかで決まる:
+  - 宣言が `-> Result[T, E]` なら、呼び出しの値はその `Result[T, E]` で
+    ある(二重には包まない)。
+  - 宣言が Result でない `-> T` で、呼び先が **Almide の本体を持つ** —
+    ユーザー宣言の effect fn と、本体を Almide で書いた同梱 stdlib の
+    effect fn(`env.vars`、`args.option`、`io.stdout` など)— なら、
+    呼び出しの値はキャリア `Result[T, String]` である(本体の値 tail は
+    `ok(...)` に持ち上がる)。宣言型が素の `T` でも値を取るには `f()!` と
+    書き、`!` は `ok(v)` を `v` にし、`err(e)` を囲む関数の失敗チャネルへ
+    伝搬する。`!` を書かない無注釈の `let` は E041、文の位置は E042。
+  - 宣言が Result でない `-> T` で、呼び先が**ランタイムのテンプレートに
+    束縛された**同梱 stdlib の effect fn(`@intrinsic` / `@inline_rust` /
+    `@wasm_intrinsic` / `@extern` を持ち Almide の本体がない —
+    `env.sleep_ms`、`env.millis`、`fs.exists`、`random.int` など)なら、
+    呼び出しの値は素の `T` である。effect fn の本体と効果スロットの lambda
+    では、その上の `!` は no-op で、値は `T` のまま何も伝搬しない。`T` が
+    `Option` のとき(`env.get`)の `!` は Option への `!` である。
 - `effect` を書いていない素の `(A) -> B` スロットでは、#1108 2b-iii の
   Cell 1 サブセット内の可謬 lambda は生成された `__fallible__` twin へ
   ルーティングされて**実行される**(C-221、`fallible_user_hof_test.almd`)。
