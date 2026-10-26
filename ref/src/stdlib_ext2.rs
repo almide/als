@@ -88,12 +88,6 @@ pub const EXT2_FNS: &[&str] = &[
     "io.read_n_bytes",
     "io.read_all",
     "io.read_line",
-    "io.stdin",
-    "io.stdout",
-    "io.stderr",
-    "io.read",
-    "io.read_to_end",
-    "io.eprint",
     "fs.read_bytes_raw",
     "fs.read_bytes_raw_if_exists",
     "fs.write_bytes_raw",
@@ -125,10 +119,8 @@ pub const EXT2_FNS: &[&str] = &[
     "http.redirect",
     "http.with_headers",
     "http.get_header",
-    "http.header",
     "http.set_header",
     "http.status",
-    "http.set_status",
     "http.body",
     "string.run_length_encode",
     "list.length",
@@ -403,67 +395,18 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             ];
             Ok(Value::str(WD[idx as usize]))
         }
+        // ALS-T26 (C-360, #4149): the same range rules and texts as parse_iso,
+        // read from the one check both constructors share; nothing rolls over.
         "datetime.from_parts" => {
             arity(name, &args, 6)?;
             let mut a = [0i64; 6];
             for (i, slot) in a.iter_mut().enumerate() {
                 *slot = want_int(name, &args[i])?;
             }
-            let (y, m, d, h, min, s) = (a[0], a[1], a[2], a[3], a[4], a[5]);
-            // wave 4 (R-datetime-07): `Result[Int, String]` — the first part
-            // out of range is refused by name with parse_iso's texts; once
-            // every part is in range the civil algorithm rolls nothing over
-            let leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
-            let dim = match m {
-                2 if leap => 29,
-                2 => 28,
-                4 | 6 | 9 | 11 => 30,
-                _ => 31,
-            };
-            let refuse = if !(1..=12).contains(&m) {
-                Some(format!("month out of range: {}", crate::value::fmt_int(m)))
-            } else if d < 1 || d > dim {
-                Some(format!("day out of range: {}", crate::value::fmt_int(d)))
-            } else if !(0..=23).contains(&h) {
-                Some(format!("hour out of range: {}", crate::value::fmt_int(h)))
-            } else if !(0..=59).contains(&min) {
-                Some(format!(
-                    "minute out of range: {}",
-                    crate::value::fmt_int(min)
-                ))
-            } else if !(0..=59).contains(&s) {
-                Some(format!("second out of range: {}", crate::value::fmt_int(s)))
-            } else {
-                None
-            };
-            if let Some(msg) = refuse {
-                return Ok(Ok(err_str(&msg)));
-            }
-            let ya = if m <= 2 { y.wrapping_sub(1) } else { y };
-            let eadj = if ya >= 0 { ya } else { ya.wrapping_sub(399) };
-            let era = eadj / 400;
-            let mp = if m > 2 {
-                m.wrapping_sub(3)
-            } else {
-                m.wrapping_add(9)
-            };
-            let doy = (mp.wrapping_mul(153).wrapping_add(2)) / 5 + d - 1;
-            let yoe = ya.wrapping_sub(era.wrapping_mul(400));
-            let doe = yoe
-                .wrapping_mul(365)
-                .wrapping_add(yoe / 4)
-                .wrapping_sub(yoe / 100)
-                .wrapping_add(doy);
-            let days = era
-                .wrapping_mul(146097)
-                .wrapping_add(doe)
-                .wrapping_sub(719468);
-            Ok(ok(Value::Int(
-                days.wrapping_mul(86400)
-                    .wrapping_add(h.wrapping_mul(3600))
-                    .wrapping_add(min.wrapping_mul(60))
-                    .wrapping_add(s),
-            )))
+            Ok(match iso_civil(a[0], a[1], a[2], a[3], a[4], a[5]) {
+                Ok(ts) => Value::Ok(Rc::new(Value::Int(ts))),
+                Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
+            })
         }
         "datetime.to_iso" => {
             arity(name, &args, 1)?;
@@ -565,8 +508,11 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         // ═══ hashes ══════════════════════════════════════════════════════
         "hash.fnv1a32" | "hash.fnv1a32_bytes" => {
             arity(name, &args, 1)?;
-            // wave 4: `hash.fnv1a32(b: Bytes)`; a String is its UTF-8 bytes
-            let bytes: Vec<u8> = str_or_bytes(name, &args[0])?;
+            let bytes: Vec<u8> = if name == "hash.fnv1a32" {
+                want_str(name, &args[0])?.as_bytes().to_vec()
+            } else {
+                want_bytes(name, &args[0])?.borrow().clone()
+            };
             let mut h: u32 = 2166136261;
             for b in bytes {
                 h ^= b as u32;
@@ -576,7 +522,11 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "hash.sha256" | "hash.sha256_hex" => {
             arity(name, &args, 1)?;
-            let bytes: Vec<u8> = str_or_bytes(name, &args[0])?;
+            let bytes: Vec<u8> = if name == "hash.sha256_hex" {
+                want_str(name, &args[0])?.as_bytes().to_vec()
+            } else {
+                want_bytes(name, &args[0])?.borrow().clone()
+            };
             let digest = sha256(&bytes);
             Ok(if name == "hash.sha256_hex" {
                 Value::str(&hex_lower(&digest))
@@ -811,16 +761,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ args (stdlib/args.almd over env.args(); ref argv is empty) ═══
-        "args.raw" | "args.positional" => {
+        "args.raw" => {
             arity(name, &args, 0)?;
+            Ok(Value::List(Rc::new(Vec::new())))
+        }
+        // positional(options) names the options whose values it leaves out (#4144)
+        "args.positional" => {
+            arity(name, &args, 1)?;
             Ok(Value::List(Rc::new(Vec::new())))
         }
         "args.flag" => {
             arity(name, &args, 1)?;
             Ok(Value::Bool(false))
         }
-        "args.option" | "args.positional_at" => {
+        "args.option" => {
             arity(name, &args, 1)?;
+            Ok(Value::None)
+        }
+        "args.positional_at" => {
+            arity(name, &args, 2)?;
             Ok(Value::None)
         }
         "args.option_or" => {
@@ -867,65 +826,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ io ══════════════════════════════════════════════════════════
-        // wave 4: the std handles. A handle is an opaque variant naming its
-        // stream; `io.stdin()` / `io.stdout()` / `io.stderr()` yield it as a
-        // Result like a user-declared effect fn.
-        "io.stdin" | "io.stdout" | "io.stderr" => {
-            arity(name, &args, 0)?;
-            let ty = match name {
-                "io.stdin" => "Stdin",
-                "io.stdout" => "Stdout",
-                _ => "Stderr",
-            };
-            Ok(ok(Value::Variant {
-                type_name: Rc::from(ty),
-                case: Rc::from(ty),
-                payload: crate::value::Payload::Unit,
-            }))
-        }
-        // wave 4: `io.write(h, data)` on a handle; the one-argument form is
-        // the earlier spelling (stdout).
         "io.write" => {
-            let (to_err, data) = match args.len() {
-                1 => (false, &args[0]),
-                2 => (std_handle(name, &args[0])? == "Stderr", &args[1]),
-                _ => arity(name, &args, 2).map(|_| (false, &args[0]))?,
-            };
-            let raw = want_bytes(name, data)?.borrow().clone();
-            if to_err {
-                it.stderr.push_str(&String::from_utf8_lossy(&raw));
-            } else {
-                it.stdout.extend_from_slice(&raw);
-            }
-            if args.len() == 2 {
-                Ok(ok(Value::Unit))
-            } else {
-                Ok(Value::Unit)
-            }
-        }
-        "io.eprint" => {
             arity(name, &args, 1)?;
-            let s = want_str(name, &args[0])?.to_string();
-            it.stderr.push_str(&s);
+            let b = want_bytes(name, &args[0])?;
+            let raw = b.borrow().clone();
+            it.stdout.extend_from_slice(&raw);
             Ok(Value::Unit)
-        }
-        // ref stdin is empty: a read answers no bytes at any non-negative
-        // length (count_domain_nonbytes); a negative length is io.read's
-        // named err
-        "io.read" => {
-            arity(name, &args, 2)?;
-            let _ = std_handle(name, &args[0])?;
-            let n = want_int(name, &args[1])?;
-            Ok(if n < 0 {
-                err_str(&format!("io.read: negative length {n}"))
-            } else {
-                ok(bytes_val(Vec::new()))
-            })
-        }
-        "io.read_to_end" => {
-            arity(name, &args, 1)?;
-            let _ = std_handle(name, &args[0])?;
-            Ok(ok(bytes_val(Vec::new())))
         }
         "io.write_bytes" => {
             arity(name, &args, 1)?;
@@ -943,14 +849,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let _ = want_int(name, &args[0])?;
             Ok(Value::List(Rc::new(Vec::new())))
         }
-        "io.read_all" => {
+        "io.read_all" | "io.read_line" => {
             arity(name, &args, 0)?;
             Ok(Value::str(""))
-        }
-        // wave 4: `String?`, none at the end of input (ref stdin is empty)
-        "io.read_line" => {
-            arity(name, &args, 0)?;
-            Ok(Value::None)
         }
 
         // ═══ fs leftovers ════════════════════════════════════════════════
@@ -984,6 +885,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                             .into_iter()
                             .map(|l| Value::str(&l))
                             .collect(),
+                    )))),
+                    Err(e) => io_err(e),
+                },
+                "fs.read_bytes_if_exists" => match crate::fsread::read(&p) {
+                    Ok(b) => ok(some(Value::List(Rc::new(
+                        b.into_iter().map(|x| Value::Int(x as i64)).collect(),
                     )))),
                     Err(e) => io_err(e),
                 },
@@ -1181,9 +1088,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     (Rc::from("method"), Value::str(&method)),
                     (Rc::from("path"), Value::str(&target)),
                     (Rc::from("body"), Value::str(&body)),
-                    // wave 4 passes the headers as a `List[(String, String)]`;
-                    // kept as the ordered pair map the readers and the repr use
-                    (Rc::from("headers"), header_map(name, &args[3])?),
+                    (Rc::from("headers"), args[3].clone()),
                 ]),
             })
         }
@@ -1221,10 +1126,22 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 3)?;
             let status = want_int(name, &args[0])?;
             let body = want_str(name, &args[1])?.clone();
-            let hs = header_pairs(name, &args[2])?;
+            let hs = match &args[2] {
+                Value::Map(m) => {
+                    let mut v: Vec<(String, String)> = Vec::new();
+                    for (k, val) in m.iter() {
+                        v.push((
+                            want_str(name, k)?.to_string(),
+                            want_str(name, val)?.to_string(),
+                        ));
+                    }
+                    v
+                }
+                other => return mismatch(name, "Map[String, String]", other),
+            };
             Ok(http_resp(status, &body, hs))
         }
-        "http.get_header" | "http.header" => {
+        "http.get_header" => {
             arity(name, &args, 2)?;
             let key = want_str(name, &args[1])?.to_string();
             let hs = http_headers(name, &args[0])?;
@@ -1246,13 +1163,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(http_resp(status, &body, hs))
         }
-        // wave 4: `http.status(resp)` reads the code and `http.set_status`
-        // replaces it; the two-argument `http.status` is the earlier setter
-        "http.status" if args.len() == 1 => {
-            let (status, _, _) = http_parts(name, &args[0])?;
-            Ok(Value::Int(status))
-        }
-        "http.status" | "http.set_status" => {
+        "http.status" => {
             arity(name, &args, 2)?;
             let (_, body, hs) = http_parts(name, &args[0])?;
             Ok(http_resp(want_int(name, &args[1])?, &body, hs))
@@ -1588,8 +1499,12 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
             }
         }
     };
-    let (y, mo, dd) = (d[0], d[1], d[2]);
-    let (h, mi, sec) = (tm[0], tm[1], tm[2]);
+    Ok(iso_civil(d[0], d[1], d[2], tm[0], tm[1], tm[2])? - offset)
+}
+
+/// The one range check of both constructors (parse_iso, from_parts): the
+/// first field out of range, by name, else the UTC instant.
+fn iso_civil(y: i64, mo: i64, dd: i64, h: i64, mi: i64, sec: i64) -> Result<i64, String> {
     // RFC 3339's four-digit year; checked first, so no later step can wrap.
     if !(0..=9999).contains(&y) {
         return Err(format!("year out of range: {y}"));
@@ -1609,7 +1524,7 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
     if !(0..=59).contains(&sec) {
         return Err(format!("second out of range: {sec}"));
     }
-    Ok(iso_epoch(y, mo, dd, h, mi, sec) - offset)
+    Ok(iso_epoch(y, mo, dd, h, mi, sec))
 }
 
 /// RFC 3986 reg-name without pct-encoded: unreserved / sub-delims (ALS-T27).
@@ -2202,61 +2117,6 @@ fn http_parts(name: &str, v: &Value) -> Result<HttpParts, Flow> {
             Ok((status, body, hs))
         }
         other => mismatch(name, "HttpResponse", other),
-    }
-}
-
-/// A header argument: wave 4's `List[(String, String)]`, or the earlier
-/// `Map[String, String]`, as ordered pairs.
-fn header_pairs(name: &str, v: &Value) -> Result<Vec<(String, String)>, Flow> {
-    let pairs: Vec<(Value, Value)> = match v {
-        Value::Map(m) => m.iter().cloned().collect(),
-        Value::List(xs) => {
-            let mut out = Vec::with_capacity(xs.len());
-            for x in xs.iter() {
-                match x {
-                    Value::Tuple(t) if t.len() == 2 => out.push((t[0].clone(), t[1].clone())),
-                    other => return mismatch(name, "(String, String)", other),
-                }
-            }
-            out
-        }
-        other => return mismatch(name, "List[(String, String)]", other),
-    };
-    let mut hs = Vec::with_capacity(pairs.len());
-    for (k, val) in pairs.iter() {
-        hs.push((
-            want_str(name, k)?.to_string(),
-            want_str(name, val)?.to_string(),
-        ));
-    }
-    Ok(hs)
-}
-
-fn header_map(name: &str, v: &Value) -> Result<Value, Flow> {
-    Ok(Value::Map(Rc::new(
-        header_pairs(name, v)?
-            .into_iter()
-            .map(|(k, val)| (Value::str(&k), Value::str(&val)))
-            .collect(),
-    )))
-}
-
-/// The stream an `io` std handle names (`io.stdin()` / `stdout()` / `stderr()`).
-fn std_handle(name: &str, v: &Value) -> Result<&'static str, Flow> {
-    match v {
-        Value::Variant { type_name, .. } if &**type_name == "Stdin" => Ok("Stdin"),
-        Value::Variant { type_name, .. } if &**type_name == "Stdout" => Ok("Stdout"),
-        Value::Variant { type_name, .. } if &**type_name == "Stderr" => Ok("Stderr"),
-        other => mismatch(name, "an io handle", other),
-    }
-}
-
-/// A digest input: wave 4's `Bytes`, or a String as its UTF-8 bytes.
-fn str_or_bytes(name: &str, v: &Value) -> Result<Vec<u8>, Flow> {
-    match v {
-        Value::Str(s) => Ok(s.as_bytes().to_vec()),
-        Value::Bytes(b) => Ok(b.borrow().clone()),
-        other => mismatch(name, "Bytes", other),
     }
 }
 

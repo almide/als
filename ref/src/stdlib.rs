@@ -372,12 +372,12 @@ fn cmp_strict(name: &str, a: &Value, b: &Value) -> Result<Ordering, Flow> {
 /// reinterpreted UNSIGNED (v0's `as usize`), then clamped to len — so a
 /// negative count means "whole", not "none". (ALS-T16's prose says 負→0;
 /// the fixtures say otherwise — recorded as a finding in PARSER-NOTES.)
+/// A count or range bound clamped into [0, len]: a negative one is 0 (#4147).
 fn clamp_idx(i: i64, len: usize) -> usize {
-    let u = i as u64;
-    if u > len as u64 {
-        len
+    if i < 0 {
+        0
     } else {
-        u as usize
+        (i as u64).min(len as u64) as usize
     }
 }
 
@@ -789,24 +789,13 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let xs = want_list(name, &args[0])?;
             let n = want_int(name, &args[1])?;
-            // ALS-T4: n == 0 aborts (T6 form); n < 0: chunk = whole-as-one, windows = []
-            if n == 0 {
+            // ALS-T4: a size of 0 or less aborts (T6 form); a negative size is 0 (#4147)
+            if n <= 0 {
                 return Err(Flow::Abort(if name == "list.chunk" {
                     "chunk size must be positive".into()
                 } else {
                     "window size must be positive".into()
                 }));
-            }
-            if n < 0 {
-                return Ok(if name == "list.chunk" {
-                    if xs.is_empty() {
-                        Value::List(Rc::new(vec![]))
-                    } else {
-                        Value::List(Rc::new(vec![Value::List(xs.clone())]))
-                    }
-                } else {
-                    Value::List(Rc::new(vec![]))
-                });
             }
             let n = n as usize;
             let mut out = Vec::new();
