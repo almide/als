@@ -1,4 +1,4 @@
-// A user fn shadowing stdlib float.sqrt with the identical Float -> Float
+// A user fn shadowing stdlib math.sqrt with the identical Float -> Float
 // signature — the reimpl lint steers to delegation.
 fn sqrt(x: Float) -> Float = x
 
