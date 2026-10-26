@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:6784c4175aba"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:81d14451ecde"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, row 20 replayed onto main: env.secret answers env.get's value as Secret[String], C-438, spec/wasm_cross/env_secret.almd; the merged prose read against main\'s neighbouring text)"
 independent = "no"
 verdict = "accurate"
 
@@ -1106,16 +1106,16 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T31"
-hash = "sha256:640316d3bcf4"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:cfb093ea9fca"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, row 20 replayed onto main: HMAC keys and tags are Secret[Bytes] with no _hex cells, C-422 as amended, spec/wasm_cross/hash_hmac_rfc4231.almd equal to RFC 4231; the merged prose read against main\'s neighbouring text)"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-B12"
-hash = "sha256:7fbc054468d0"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:b557ba35a316"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, row 20 replayed onto main: md5/sha1 removed in epoch 15, E002 with the ledger hint, C-424 as restated, tests/diagnostics/e002-epoch15-md5-removed; the merged prose read against main\'s neighbouring text)"
 independent = "no"
 verdict = "accurate"
