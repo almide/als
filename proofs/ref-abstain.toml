@@ -10,34 +10,30 @@
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
 ceiling = 17
-evaluated = 790
+evaluated = 787
 
 [[abstain]]
 class = "parse"
 count = 2
 
 [[abstain]]
-class = "stdlib:bytes.to_string_lossy"
+class = "semantics:carrier-shape"
 count = 2
 
 [[abstain]]
-class = "semantics:carrier-shape"
-count = 1
-
-[[abstain]]
 class = "semantics:ctor-call"
-count = 1
+count = 2
 
 [[abstain]]
 class = "semantics:ctor-fn-value"
 count = 1
 
 [[abstain]]
-class = "stdlib:bytes.cmp"
+class = "semantics:type-mismatch"
 count = 1
 
 [[abstain]]
-class = "stdlib:bytes.set_int32"
+class = "stdlib:bytes.starts_with"
 count = 1
 
 [[abstain]]
