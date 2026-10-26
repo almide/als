@@ -74,7 +74,7 @@ effect fn main() -> Unit = {
   probe("/dev/null")!
   let d = fs.create_temp_dir("nonregular")!
   let f = d + "/f.txt"
-  fs.write(f, "one\ntwo\n")!
+  fs.write_text(f, "one\ntwo\n")!
   println(line(
     "dir",
     match fs.read_text(d) {
