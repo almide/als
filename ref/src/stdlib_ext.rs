@@ -1487,7 +1487,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             let k = want_str(name, &args[0])?.to_string();
             let secret = name == "env.secret";
-            let wrap = |v: Value| if secret { crate::value::secret_of(v) } else { v };
+            let wrap = |v: Value| {
+                if secret {
+                    crate::value::secret_of(v)
+                } else {
+                    v
+                }
+            };
             let found = match it.env_overlay.iter().rev().find(|(n, _)| *n == k) {
                 Some((_, v)) => some(wrap(Value::str(v))),
                 None => match std::env::var(&k) {

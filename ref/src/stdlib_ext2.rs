@@ -195,7 +195,10 @@ fn bytes_val(v: Vec<u8>) -> Value {
 /// The bytes a `Secret[Bytes]` argument holds (C-422's key and tag).
 fn want_secret_bytes(name: &str, v: &Value) -> Result<Vec<u8>, Flow> {
     match v {
-        Value::Record { type_name: Some(t), fields } if &**t == crate::value::SECRET_TYPE && fields.len() == 1 => {
+        Value::Record {
+            type_name: Some(t),
+            fields,
+        } if &**t == crate::value::SECRET_TYPE && fields.len() == 1 => {
             Ok(want_bytes(name, &fields[0].1)?.borrow().clone())
         }
         other => mismatch(name, "Secret[Bytes]", other),
