@@ -48,9 +48,7 @@ pub const EXT2_FNS: &[&str] = &[
     "hash.sha512",
     "hash.sha512_hex",
     "hash.hmac_sha256",
-    "hash.hmac_sha256_hex",
     "hash.hmac_sha512",
-    "hash.hmac_sha512_hex",
     "hash.is_valid_hmac_sha256",
     "hash.is_valid_hmac_sha512",
     "bytes.is_equal_constant_time",
@@ -192,6 +190,16 @@ fn want_bytes(name: &str, v: &Value) -> Result<Rc<std::cell::RefCell<Vec<u8>>>, 
 
 fn bytes_val(v: Vec<u8>) -> Value {
     Value::Bytes(Rc::new(std::cell::RefCell::new(v)))
+}
+
+/// The bytes a `Secret[Bytes]` argument holds (C-422's key and tag).
+fn want_secret_bytes(name: &str, v: &Value) -> Result<Vec<u8>, Flow> {
+    match v {
+        Value::Record { type_name: Some(t), fields } if &**t == crate::value::SECRET_TYPE && fields.len() == 1 => {
+            Ok(want_bytes(name, &fields[0].1)?.borrow().clone())
+        }
+        other => mismatch(name, "Secret[Bytes]", other),
+    }
 }
 
 /// C-432: the path stays inside the directory it is joined to.
@@ -533,30 +541,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             })
         }
         // HMAC (RFC 2104 / RFC 4231): the key comes first, as RFC 2104 writes
-        // HMAC(K, m); a key longer than the block is hashed first.
-        "hash.hmac_sha256"
-        | "hash.hmac_sha256_hex"
-        | "hash.hmac_sha512"
-        | "hash.hmac_sha512_hex" => {
+        // HMAC(K, m); a key longer than the block is hashed first. The key and
+        // the tag are Secret[Bytes] (C-422, security table row 20), so the
+        // tag renders Secret(***) and compares as C-426 says; no _hex cell.
+        "hash.hmac_sha256" | "hash.hmac_sha512" => {
             arity(name, &args, 2)?;
-            let key = want_bytes(name, &args[0])?.borrow().clone();
+            let key = want_secret_bytes(name, &args[0])?;
             let msg = want_bytes(name, &args[1])?.borrow().clone();
             let mac = hmac(name.contains("512"), &key, &msg);
-            Ok(if name.ends_with("_hex") {
-                Value::str(&hex_lower(&mac))
-            } else {
-                bytes_val(mac)
-            })
+            Ok(crate::value::secret_of(bytes_val(mac)))
         }
         // The verify cells answer whether `tag` is the MAC of b under key; a
         // tag whose length differs from the MAC's answers false. Timing is
         // not an observable the reference can judge; the answer is.
         "hash.is_valid_hmac_sha256" | "hash.is_valid_hmac_sha512" => {
             arity(name, &args, 3)?;
-            let key = want_bytes(name, &args[0])?.borrow().clone();
+            let key = want_secret_bytes(name, &args[0])?;
             let msg = want_bytes(name, &args[1])?.borrow().clone();
             let mac = hmac(name.contains("512"), &key, &msg);
-            let tag = want_bytes(name, &args[2])?.borrow().clone();
+            let tag = want_secret_bytes(name, &args[2])?;
             Ok(Value::Bool(tag == mac))
         }
         // Constant-time equality: the answer is plain equality of the bytes
