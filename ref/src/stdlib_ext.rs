@@ -10,6 +10,8 @@ use crate::eval::{Flow, Interp};
 use crate::value::{dyn_text, json_quote, values_eq, Dyn, PathSeg, Value, F64};
 
 pub const EXT_FNS: &[&str] = &[
+    // error (ALS-R5 / C-418: the label is escaped)
+    "error.context",
     // value
     "value.field",
     "value.keys",
@@ -485,13 +487,26 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 _ => Ok(Value::List(Rc::new(Vec::new()))),
             }
         }
+        "error.context" => {
+            arity(name, &args, 2)?;
+            let label = want_str(name, &args[1])?.clone();
+            match &args[0] {
+                Value::Ok(_) => Ok(args[0].clone()),
+                Value::Err(e) => match &**e {
+                    Value::Str(inner) => Ok(err_str(&format!("{}: {inner}", err_escape(&label)))),
+                    other => mismatch(name, "Result[_, String]", other),
+                },
+                other => mismatch(name, "Result", other),
+            }
+        }
         "value.field" => {
             arity(name, &args, 2)?;
             let key = want_str(name, &args[1])?.clone();
             match want_dyn(name, &args[0])? {
                 Dyn::O(fields) => Ok(match fields.iter().find(|(k, _)| *k == key) {
                     Some((_, v)) => ok(Value::Dyn(v.clone())),
-                    None => err_str(&format!("field '{key}' not found")),
+                    // C-418 (#4126): the key, escaped.
+                    None => err_str(&format!("missing field '{}'", err_escape(&key))),
                 }),
                 _ => Ok(err_str("expected Object")),
             }
