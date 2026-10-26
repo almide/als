@@ -28,17 +28,17 @@
 # unvalidated_ceiling = "0"
 [[section]]
 id = "ALS-T8"
-hash = "sha256:537cf526c28f"
-reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session; int.parse trims the ASCII TAB/LF/FF/CR/SPACE set instead of ALS-T1 (C-413), the example test updated to match, checked against spec/wasm_cross/number_parse_ascii_trim.almd and string_whitespace.almd on native, wasm and als-ref; the int.from_hex grammar is unchanged)"
+hash = "sha256:c7a11bd4f788"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-T16"
-hash = "sha256:97d0c5d5b589"
+hash = "sha256:9ff84a2dfa95"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: one signed max(n,0).min(len) rule for counts and slice bounds on list, string, bytes and matrix.slice_rows; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -53,9 +53,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T25"
-hash = "sha256:6e10654fe195"
-reviewed = "2026-10-18"
-by = "O6lvl4 (via the Claude session; rewritten for dialect epoch 14, re-stamped 2026-10-18 for the package name almide/nnlib — the fast-exp activations left for package almide/nnlib; checked against stdlib/matrix_arith.almd matrix_pow, runtime/rs/src/matrix.rs almide_rt_matrix_pow and the products in stdlib/matrix_core.almd)"
+hash = "sha256:d2cfe87d186d"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -109,9 +109,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-B7"
-hash = "sha256:23766739dc80"
-reviewed = "2026-09-18"
-by = "O6lvl4 (via the Claude session; amended for almide#2297 — the constructor clause checked against almide's bounded.rs classification, the section's own example and spec/stdlib/bounded_profile_test.almd, run on the fixed checker (7/7 pass, native and wasm, fmt-clean) and on almide 0.63.0-rc1 (E074 at every constructor, as the issue reports))"
+hash = "sha256:b1965bf0a597"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -205,9 +205,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C8"
-hash = "sha256:36b2f736c91d"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:65474ea41e32"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -229,9 +229,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D1"
-hash = "sha256:2a77d05516ec"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, 2026-10-25, json.set_path nesting bound of almide/almide#4209: the one err sentence checked against C-031 / C-433 / C-391 and spec/wasm_cross/json_set_path_depth_bound.almd, whose output the reference evaluator, almide native and almide --target wasm (embedded and stock wasmtime) print byte-identically at the sec-collections-4208-4209 branch)"
+hash = "sha256:4db2c858b987"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -613,9 +613,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-E29"
-hash = "sha256:d991b114e3d5"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:9d42c73e3972"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:42df6176951d"
+hash = "sha256:6784c4175aba"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib wave 5 mirror: the embedded host's process family named by the current surface (exec, output, run, kill, pid) with spawn and is_alive gone and C-417 narrowed to process.kill; text mirrored from almide 581b0db86 and checked against C-417 as amended and spec/embedded_cross/process_kill_syscall.almd as almide carries it)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -821,9 +821,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-M13"
-hash = "sha256:02a623bf428f"
-reviewed = "2026-10-21"
-by = "O6lvl4 (via the Claude session; the plain-Bytes-parameter route the 2026-08-27 text described was closed by #2466 (epoch 5) — rewritten to the declared-mut rule and re-probed on almide 0.68.0 dev, native and wasm: a let, a non-mut parameter and a temporary to a mut receiver are each E032; `let t = s` keeps its value across a mut-param write to s (String) and `let c = b` across bytes.set_u8 (Bytes); a callee reading the module-level var its mut argument is rooted at sees the pre-call value)"
+hash = "sha256:70ec07bf6bb7"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -862,9 +862,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-S4"
-hash = "sha256:9cc9a2e21061"
-reviewed = "2026-09-10"
-by = "Codex agent (same author; C-348 boundary matrix and independent source evaluator checked)"
+hash = "sha256:de1e5a41602c"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 # verdict: accurate | revise (revise requires issue = "#N"); independent: yes only for a reviewer who is not the author
@@ -903,17 +903,17 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T3"
-hash = "sha256:2d44e8d6e2c4"
-reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: the strict RFC 8259 + I-JSON reading of almide/almide#4111 / #4112 and the one-entry-per-key Value model; checked against C-087 / C-400 / C-401 and spec/wasm_cross/json_parse_strict_strings, json_parse_strict_structure, json_parse_lenient_edges, json_string_span and value_object_unique_keys, whose output the reference evaluator, almide native and almide --target wasm print byte-identically at the sec-protocol branch)"
+hash = "sha256:9834b2dc8257"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-T4"
-hash = "sha256:c7c77f38c679"
+hash = "sha256:0d7252763f61"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, rows 23/24: a chunk/window size of 0 or less aborts; the old n<0 ruling withdrawn; old and new prose read side by side against C-054, C-129, C-354, C-360 and C-181 as amended and spec/wasm_cross/negative_count_rule.almd, list_chunk_negative.almd and datetime_from_parts_strict.almd, equal on native, stock wasm and als-ref)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -927,9 +927,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T6"
-hash = "sha256:7d159e531dee"
+hash = "sha256:34c22765eceb"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib wave 5: the rotate-width abort removed with the width argument (R-int-12); prose checked against C-047 as amended, the named fixtures, and int_rotate_nonpositive_width.almd dropped from the fixture list)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -991,9 +991,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T15"
-hash = "sha256:0e6569f03288"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:5ab085c6336c"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -1038,25 +1038,25 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T22"
-hash = "sha256:42355ca8992b"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:c9328c4add97"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-T23"
-hash = "sha256:f1b21c3b90f7"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:244a527379ad"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-T24"
-hash = "sha256:69c3c7a7d41b"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:0614d8a84497"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 
@@ -1084,9 +1084,9 @@ independent = "no"
 verdict = "accurate"
 [[section]]
 id = "ALS-T28"
-hash = "sha256:89032e4530e1"
-reviewed = "2026-09-30"
-by = "O6lvl4 (via the Claude session; checked against the ref evaluator, native almide and the host f32 formatter over every f32 exponent and 3000 random patterns)"
+hash = "sha256:86a2bd4fc485"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
 independent = "no"
 verdict = "accurate"
 [[section]]
