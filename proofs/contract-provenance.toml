@@ -3266,6 +3266,6 @@ class = "requirements-first"
 [[contract]]
 id = "C-439"
 since = "0.69.0"
-entry = "2026-10-27T04:21:06+09:00"
-entry_commit = "af8d7458"
+entry = "2026-10-27T08:42:42+09:00"
+entry_commit = "bce9effc"
 class = "requirements-first"
