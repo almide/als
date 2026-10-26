@@ -460,13 +460,40 @@ fn io_err(e: std::io::Error) -> Value {
     err_str(&e.to_string())
 }
 
-/// C-418: `"s"` with every C0 (U+0000..=U+001F), DEL, C1 (U+0080..=U+009F)
-/// and bidirectional control (U+061C, U+200E, U+200F, U+202A..=U+202E,
-/// U+2066..=U+2069) written `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every
-/// other character, quote and backslash included, kept as is.
+/// C-418: `"s"` with every character of C-418's set (`ERR_ESCAPED`) written
+/// `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every other character, quote and
+/// backslash included, kept as is.
 fn err_operand(s: &str) -> String {
     format!("\"{}\"", err_escape(s))
 }
+
+/// C-418's set as ALS-R5 states it (#4126, #4265): C0, DEL and C1, every
+/// character of General Category Cf, Zl or Zp (Unicode 16.0), and the Tags
+/// block U+E0000..=U+E007F, as sorted inclusive ranges.
+const ERR_ESCAPED: &[(u32, u32)] = &[
+    (0x0000, 0x001f),
+    (0x007f, 0x009f),
+    (0x00ad, 0x00ad),
+    (0x0600, 0x0605),
+    (0x061c, 0x061c),
+    (0x06dd, 0x06dd),
+    (0x070f, 0x070f),
+    (0x0890, 0x0891),
+    (0x08e2, 0x08e2),
+    (0x180e, 0x180e),
+    (0x200b, 0x200f),
+    (0x2028, 0x202e),
+    (0x2060, 0x2064),
+    (0x2066, 0x206f),
+    (0xfeff, 0xfeff),
+    (0xfff9, 0xfffb),
+    (0x110bd, 0x110bd),
+    (0x110cd, 0x110cd),
+    (0x13430, 0x1343f),
+    (0x1bca0, 0x1bca3),
+    (0x1d173, 0x1d17a),
+    (0xe0000, 0xe007f),
+];
 
 /// C-418's escape without the quotes: the form an error text uses for an
 /// operand it does not quote (datetime.parse_iso's offset, json.parse's
@@ -475,13 +502,7 @@ pub fn err_escape(s: &str) -> String {
     let mut out = String::new();
     for c in s.chars() {
         let n = c as u32;
-        let escaped = n <= 0x1f
-            || (0x7f..=0x9f).contains(&n)
-            || n == 0x061c
-            || n == 0x200e
-            || n == 0x200f
-            || (0x202a..=0x202e).contains(&n)
-            || (0x2066..=0x2069).contains(&n);
+        let escaped = ERR_ESCAPED.iter().any(|&(lo, hi)| lo <= n && n <= hi);
         match c {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
