@@ -242,6 +242,8 @@ pub const EXT_FNS: &[&str] = &[
     "env.get",
     "env.secret",
     "env.set",
+    "env.remove",
+    "env.vars",
     "env.sleep_ms",
     "env.cwd",
     "env.os",
@@ -399,6 +401,20 @@ fn root_resolve(dir: &str, rel: &str) -> Option<String> {
 
 fn err_str(s: &str) -> Value {
     Value::Err(Rc::new(Value::str(s)))
+}
+
+/// C-421 / C-439: the names no environment holds, checked in this order by
+/// both env.set and env.remove. The text names no user data (C-418).
+fn env_name_refusal(k: &str) -> Option<&'static str> {
+    if k.is_empty() {
+        Some("empty name")
+    } else if k.contains('=') {
+        Some("name contains '='")
+    } else if k.contains('\0') {
+        Some("name contains NUL")
+    } else {
+        None
+    }
 }
 
 fn some(v: Value) -> Value {
@@ -1495,6 +1511,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 }
             };
             let found = match it.env_overlay.iter().rev().find(|(n, _)| *n == k) {
+                // C-439: env.remove's mark is the value NUL, which no
+                // env.set can store, so it reads as unset
+                Some((_, v)) if v == "\0" => Value::None,
                 Some((_, v)) => some(wrap(Value::str(v))),
                 None => match std::env::var(&k) {
                     Ok(v) => some(wrap(Value::str(&v))),
@@ -1509,16 +1528,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let v = want_str(name, &args[1])?.to_string();
             // C-421: the four pairs no environment holds are an err, and
             // nothing is stored; the text names no user data (C-418)
-            let refusal = if k.is_empty() {
-                Some("empty name")
-            } else if k.contains('=') {
-                Some("name contains '='")
-            } else if k.contains('\0') {
-                Some("name contains NUL")
-            } else if v.contains('\0') {
-                Some("value contains NUL")
-            } else {
-                None
+            let refusal = match env_name_refusal(&k) {
+                Some(why) => Some(why),
+                None if v.contains('\0') => Some("value contains NUL"),
+                None => None,
             };
             Ok(match refusal {
                 Some(why) => err_str(&format!("env.set: {why}")),
@@ -1527,6 +1540,51 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     ok(Value::Unit)
                 }
             })
+        }
+        "env.remove" => {
+            arity(name, &args, 1)?;
+            let k = want_str(name, &args[0])?.to_string();
+            // C-439: refused for exactly the names env.set refuses (C-421),
+            // in the same order, under its own name; an unset name is ok
+            Ok(match env_name_refusal(&k) {
+                Some(why) => err_str(&format!("env.remove: {why}")),
+                None => {
+                    it.env_overlay.push((k, "\0".to_string()));
+                    ok(Value::Unit)
+                }
+            })
+        }
+        "env.vars" => {
+            arity(name, &args, 0)?;
+            // C-439: every variable whose name and value are UTF-8, with the
+            // program's own set / remove applied, ordered by name
+            let mut vars: Vec<(String, String)> = Vec::new();
+            for (n, v) in std::env::vars_os() {
+                if let (Some(n), Some(v)) = (n.to_str(), v.to_str()) {
+                    vars.push((n.to_string(), v.to_string()));
+                }
+            }
+            for (n, v) in it.env_overlay.iter() {
+                vars.retain(|(m, _)| m != n);
+                if v != "\0" {
+                    vars.push((n.clone(), v.clone()));
+                }
+            }
+            // ascending name order: UTF-8 byte order is code point order
+            let mut sorted: Vec<(String, String)> = Vec::with_capacity(vars.len());
+            for (n, v) in vars {
+                let at = sorted
+                    .iter()
+                    .position(|(m, _)| n.as_bytes() < m.as_bytes())
+                    .unwrap_or(sorted.len());
+                sorted.insert(at, (n, v));
+            }
+            Ok(Value::Map(Rc::new(
+                sorted
+                    .into_iter()
+                    .map(|(n, v)| (Value::str(&n), Value::str(&v)))
+                    .collect(),
+            )))
         }
         "env.sleep_ms" => {
             // a wall pause with no observation of its own: the reference
