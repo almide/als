@@ -7,12 +7,12 @@
 // - `scale(x, ka) + scale(y, kb) [+ scale(z, kc)]`: two rounded products and a
 //   rounded sum per term, never a fused step, zip shape included;
 // - `scale(a * b, alpha)` (the gelu / softmax / norm compositions left the
-//   stdlib at dialect epoch 14 for package almide/nnlib);
+//   stdlib at dialect epoch 14 for module nn.kernels of package almide-graphics/nn);
 // - `concat_rows([base, extra])`: an operand with no rows yields the other,
 //   else base's rows then extra's;
 // - the f32 spellings (`ones` / `zeros` and `*` with an optional transpose and
 //   scale) are the f64 arithmetic on every leg. (The `linear_f32_row_no_bias`
-//   kernel cells left with the kernel for package almide/nnlib.)
+//   kernel cells left with the kernel for module nn.kernels of package almide-graphics/nn.)
 fn show(tag: String, m: Matrix) -> Unit = {
   let l = matrix.to_lists(m)
   let s = matrix.shape(m)
@@ -38,17 +38,26 @@ fn main() -> Unit = {
   show("fma", matrix.scale(a, 2.0) + matrix.scale(c, -3.0))
   show(
     "fma_zip",
-    matrix.scale(a, 1.0) + matrix.scale(matrix.from_lists([
+    matrix.scale(a, 1.0) + matrix.scale(
+      matrix.from_lists([
         [10.0, 20.0],
         [30.0, 40.0],
         [50.0, 60.0]
-      ]), 1.0),
+      ]),
+      1.0,
+    ),
   )
   show("fma3", matrix.scale(a, 2.0) + matrix.scale(c, -3.0) + matrix.scale(a, 0.5))
   show("mul_scaled", matrix.scale(a * b, 0.5))
-  show("append", matrix.concat_rows([a, matrix.from_lists([
-    [7.0, 8.0, 9.0]
-  ])]))
+  show(
+    "append",
+    matrix.concat_rows([
+      a,
+      matrix.from_lists([
+        [7.0, 8.0, 9.0]
+      ])
+    ]),
+  )
   show("append_base0", matrix.concat_rows([e, a]))
   show("append_extra0", matrix.concat_rows([a, matrix.zeros(0, 5)]))
   let f = matrix.ones(2, 3)
@@ -106,19 +115,19 @@ fn fma_overlap() -> Unit = {
   show(
     "round",
     matrix.scale(matrix.from_lists([
-        [0.1]
-      ]), 10.0) + matrix.scale(matrix.from_lists([
-        [-1.0]
-      ]), 1.0),
+      [0.1]
+    ]), 10.0) + matrix.scale(matrix.from_lists([
+      [-1.0]
+    ]), 1.0),
   )
   show(
     "round3",
     matrix.scale(matrix.from_lists([
-        [1.0e16]
-      ]), 1.0) + matrix.scale(matrix.from_lists([
-        [1.0]
-      ]), 1.0) + matrix.scale(matrix.from_lists([
-        [-1.0e16]
-      ]), 1.0),
+      [1.0e16]
+    ]), 1.0) + matrix.scale(matrix.from_lists([
+      [1.0]
+    ]), 1.0) + matrix.scale(matrix.from_lists([
+      [-1.0e16]
+    ]), 1.0),
   )
 }
