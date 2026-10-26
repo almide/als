@@ -573,10 +573,11 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             if eq == want {
                 Ok(Value::Unit)
             } else {
-                // C-425: the failure block renders through declared reprs
-                let l = render_arg(&it.declared_view(&args[0])?)?;
+                // C-425: the failure block renders through declared reprs;
+                // C-153 / C-418: each operand written by C-418's rule (#4262)
+                let l = crate::stdlib_ext::err_escape(&render_arg(&it.declared_view(&args[0])?)?);
                 let expected = if want {
-                    render_arg(&it.declared_view(&args[1])?)?
+                    crate::stdlib_ext::err_escape(&render_arg(&it.declared_view(&args[1])?)?)
                 } else {
                     format!("!= {l}")
                 };

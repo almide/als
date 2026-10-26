@@ -10,6 +10,7 @@
 use std::rc::Rc;
 
 use crate::eval::{Flow, Interp};
+use crate::stdlib_ext::err_escape;
 use crate::value::{render, Value};
 
 pub const TESTING_FNS: &[&str] = &[
@@ -31,8 +32,10 @@ fn mismatch<T>(name: &str, want: &str, got: &Value) -> Result<T, Flow> {
     )))
 }
 
+/// An operand as the T18 block shows it: rendered, then written by C-418's
+/// rule (C-153, #4262).
 fn shown(v: &Value) -> Result<String, Flow> {
-    render(v).ok_or_else(|| Flow::Abstain {
+    render(v).map(|r| err_escape(&r)).ok_or_else(|| Flow::Abstain {
         class: format!("render:{}", v.type_name()),
         reason: format!(
             "rendering a {} is not implemented by the reference evaluator yet",
@@ -141,7 +144,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             if contains(hay, needle) {
                 return Ok(Value::Unit);
             }
-            fail(line, format!("contains {needle}"), hay.to_string())
+            fail(line, format!("contains {}", err_escape(needle)), err_escape(hay))
         }
         "testing.assert_some" | "testing.assert_none" => {
             arity(name, &args, 1)?;
