@@ -361,7 +361,14 @@ fn io_err(e: std::io::Error) -> Value {
 /// U+2066..=U+2069) written `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every
 /// other character, quote and backslash included, kept as is.
 fn err_operand(s: &str) -> String {
-    let mut out = String::from("\"");
+    format!("\"{}\"", err_escape(s))
+}
+
+/// C-418's escape without the quotes: the form an error text uses for an
+/// operand it does not quote (datetime.parse_iso's offset, json.parse's
+/// unexpected character; #4126).
+pub fn err_escape(s: &str) -> String {
+    let mut out = String::new();
     for c in s.chars() {
         let n = c as u32;
         let escaped = n <= 0x1f
@@ -380,7 +387,6 @@ fn err_operand(s: &str) -> String {
             _ => out.push(c),
         }
     }
-    out.push('"');
     out
 }
 
@@ -1879,7 +1885,8 @@ fn jp_value(b: &[u8], p: usize, depth: usize) -> Result<(Dyn, usize), String> {
                 .map(|c| c.to_string())
                 .unwrap_or_default();
             Err(format!(
-                "unexpected char '{shown}' at pos {}",
+                "unexpected char '{}' at pos {}",
+                err_escape(&shown),
                 jp_charpos(b, q)
             ))
         }
