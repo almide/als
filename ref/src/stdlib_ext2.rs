@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::eval::{fnan, Flow, Interp};
 use crate::libm;
-use crate::stdlib_ext::{obs_bits_f32, obs_bits_f64};
+use crate::stdlib_ext::obs_bits_f32;
 use crate::value::{Value, F64};
 
 pub const EXT2_FNS: &[&str] = &[
@@ -43,7 +43,6 @@ pub const EXT2_FNS: &[&str] = &[
     "url.resolve",
     "url.parse_query",
     "hash.fnv1a32",
-    "hash.fnv1a32_bytes",
     "hash.sha256",
     "hash.sha256_hex",
     "hash.sha512",
@@ -71,16 +70,10 @@ pub const EXT2_FNS: &[&str] = &[
     "path.dirname",
     "path.extension",
     "path.is_absolute",
-    "path.from_string",
-    "path.trusted",
-    "path.to_string",
     "path.join_within",
-    "args.raw",
-    "args.flag",
+    "args.has_flag",
     "args.option",
-    "args.option_or",
     "args.positional",
-    "args.positional_at",
     "random.int",
     "random.bytes",
     "io.write",
@@ -94,30 +87,25 @@ pub const EXT2_FNS: &[&str] = &[
     "io.read",
     "io.read_to_end",
     "io.eprint",
-    "fs.read_bytes_raw",
     "fs.read_bytes_raw_if_exists",
     "fs.write_bytes_raw",
     "fs.read_lines_if_exists",
     "fs.read_bytes_if_exists",
-    "fs.modified_at",
+    "fs.stat",
     "fs.walk",
     "bytes.pad_left",
     "bytes.pad_right",
     "bytes.chunks",
     "bytes.copy_within",
-    "bytes.write_u8",
     "bytes.write_u16_le",
     "bytes.write_u16_be",
     "bytes.write_u32_le",
-    "bytes.write_u32_be",
     "bytes.write_i32_le",
     "bytes.write_i32_be",
     "bytes.write_i64_le",
-    "bytes.write_i64_be",
     "bytes.write_f32_le",
-    "bytes.write_f64_be",
     "bytes.write_bool",
-    "bytes.write_string_be",
+    "bytes.append_bool",
     "http.response",
     "http.json",
     "http.new_request",
@@ -130,14 +118,13 @@ pub const EXT2_FNS: &[&str] = &[
     "http.status",
     "http.set_status",
     "http.body",
-    "string.run_length_encode",
     "list.length",
-    "list.tail",
     "list.with_capacity",
     "list.window",
     "list.binary_search",
     "result.flatten",
     "result.or_else",
+    "float.pow",
     "map.upsert",
     "fan.map",
     "fan.settle",
@@ -277,7 +264,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "math.atan" => fl(libm::almide_rt_libm_atan(want_float(name, &args[0])?)),
         "math.tanh" => fl(libm::almide_rt_libm_tanh(want_float(name, &args[0])?)),
         "math.expm1" => fl(libm::almide_rt_libm_expm1(want_float(name, &args[0])?)),
-        "math.fpow" => fl(libm::almide_rt_libm_pow(
+        // float.pow (stdlib/float.almd): math.__fpow, the vendored libm pow
+        "float.pow" => fl(libm::almide_rt_libm_pow(
             want_float(name, &args[0])?,
             want_float(name, &args[1])?,
         )),
@@ -514,7 +502,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ hashes ══════════════════════════════════════════════════════
-        "hash.fnv1a32" | "hash.fnv1a32_bytes" => {
+        "hash.fnv1a32" => {
             arity(name, &args, 1)?;
             // wave 4: `hash.fnv1a32(b: Bytes)`; a String is its UTF-8 bytes
             let bytes: Vec<u8> = str_or_bytes(name, &args[0])?;
@@ -730,62 +718,36 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         // directory it is joined to — relative (no leading `/` or `\`, no
         // `X:` drive, no leading `~`), no NUL, no `..` segment on either
         // separator. A SafePath is its string.
-        "path.from_string" | "path.join_within" => {
-            let (base, s) = if name == "path.from_string" {
-                arity(name, &args, 1)?;
-                (None, want_str(name, &args[0])?.to_string())
-            } else {
-                arity(name, &args, 2)?;
-                (
-                    Some(want_str(name, &args[0])?.to_string()),
-                    want_str(name, &args[1])?.to_string(),
-                )
-            };
+        "path.join_within" => {
+            arity(name, &args, 2)?;
+            let a = want_str(name, &args[0])?.to_string();
+            let s = want_str(name, &args[1])?.to_string();
             Ok(if !path_stays_inside(&s) {
                 err_str(&format!("path traversal rejected: {s}"))
             } else {
-                ok(match base {
-                    None => Value::str(&s),
-                    Some(a) => Value::str(&if a.is_empty() {
-                        s
-                    } else if a.ends_with('/') {
-                        format!("{a}{s}")
-                    } else {
-                        format!("{a}/{s}")
-                    }),
-                })
+                ok(Value::str(&if a.is_empty() {
+                    s
+                } else if a.ends_with('/') {
+                    format!("{a}{s}")
+                } else {
+                    format!("{a}/{s}")
+                }))
             })
-        }
-        "path.trusted" | "path.to_string" => {
-            arity(name, &args, 1)?;
-            Ok(Value::str(want_str(name, &args[0])?))
         }
 
         // ═══ args (stdlib/args.almd over env.args(); ref argv is empty) ═══
-        "args.raw" => {
-            arity(name, &args, 0)?;
-            Ok(Value::List(Rc::new(Vec::new())))
-        }
         // positional(options) names the options whose values it leaves out (#4144)
         "args.positional" => {
             arity(name, &args, 1)?;
             Ok(Value::List(Rc::new(Vec::new())))
         }
-        "args.flag" => {
+        "args.has_flag" => {
             arity(name, &args, 1)?;
             Ok(Value::Bool(false))
         }
         "args.option" => {
             arity(name, &args, 1)?;
             Ok(Value::None)
-        }
-        "args.positional_at" => {
-            arity(name, &args, 2)?;
-            Ok(Value::None)
-        }
-        "args.option_or" => {
-            arity(name, &args, 2)?;
-            Ok(args[1].clone())
         }
 
         // ═══ random (entropy floor; ref uses a fixed-seed splitmix64 —
@@ -914,13 +876,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ fs leftovers ════════════════════════════════════════════════
-        "fs.read_bytes_raw" => {
-            arity(name, &args, 1)?;
-            Ok(match crate::fsread::read(want_str(name, &args[0])?) {
-                Ok(b) => ok(bytes_val(b)),
-                Err(e) => io_err(e),
-            })
-        }
         "fs.write_bytes_raw" => {
             arity(name, &args, 2)?;
             let p = want_str(name, &args[0])?.to_string();
@@ -953,18 +908,31 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 },
             })
         }
-        "fs.modified_at" => {
+        // fs.stat (stdlib/fs.almd `FileStat`, fields in declaration order):
+        // the size, the two kind predicates, and the modification time in
+        // whole Unix seconds (0 when the platform has none)
+        "fs.stat" => {
             arity(name, &args, 1)?;
-            Ok(
-                match std::fs::metadata(&**want_str(name, &args[0])?).and_then(|m| m.modified()) {
-                    Ok(t) => ok(Value::Int(
-                        t.duration_since(std::time::UNIX_EPOCH)
-                            .map(|d| d.as_secs() as i64)
-                            .unwrap_or(0),
-                    )),
-                    Err(e) => io_err(e),
-                },
-            )
+            Ok(match std::fs::metadata(&**want_str(name, &args[0])?) {
+                Ok(m) => {
+                    let modified = m
+                        .modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0);
+                    ok(Value::Record {
+                        type_name: Some(Rc::from("FileStat")),
+                        fields: Rc::new(vec![
+                            (Rc::from("size"), Value::Int(m.len() as i64)),
+                            (Rc::from("is_dir"), Value::Bool(m.is_dir())),
+                            (Rc::from("is_file"), Value::Bool(m.is_file())),
+                            (Rc::from("modified"), Value::Int(modified)),
+                        ]),
+                    })
+                }
+                Err(e) => io_err(e),
+            })
         }
         "fs.walk" => {
             arity(name, &args, 1)?;
@@ -1053,19 +1021,19 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(Value::Unit)
         }
         // cursor writers: append at the end, in place (bytes_writer_family)
-        "bytes.write_u8" | "bytes.write_bool" => {
+        // append_bool (stdlib/bytes.almd, almide_rt_bytes_write_bool): 1 or 0
+        "bytes.write_bool" | "bytes.append_bool" => {
             arity(name, &args, 2)?;
             let b = want_bytes(name, &args[0])?;
-            let x = match (&args[1], name) {
-                (Value::Bool(v), "bytes.write_bool") => *v as u8,
-                (v, _) => want_int(name, v)? as u8,
+            let x = match &args[1] {
+                Value::Bool(v) => *v as u8,
+                other => return mismatch(name, "Bool", other),
             };
             b.borrow_mut().push(x);
             Ok(Value::Unit)
         }
         "bytes.write_u16_le" | "bytes.write_u16_be" | "bytes.write_u32_le"
-        | "bytes.write_u32_be" | "bytes.write_i32_le" | "bytes.write_i32_be"
-        | "bytes.write_i64_le" | "bytes.write_i64_be" => {
+        | "bytes.write_i32_le" | "bytes.write_i32_be" | "bytes.write_i64_le" => {
             arity(name, &args, 2)?;
             let b = want_bytes(name, &args[0])?;
             let raw = want_int(name, &args[1])? as u64;
@@ -1088,27 +1056,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 4,
                 false,
             );
-            Ok(Value::Unit)
-        }
-        "bytes.write_f64_be" => {
-            arity(name, &args, 2)?;
-            let b = want_bytes(name, &args[0])?;
-            push_int(
-                &mut b.borrow_mut(),
-                obs_bits_f64(want_float(name, &args[1])?),
-                8,
-                true,
-            );
-            Ok(Value::Unit)
-        }
-        "bytes.write_string_be" => {
-            // u32 BE length prefix + UTF-8 bytes (bytes_writer_family cursor_utf8)
-            arity(name, &args, 2)?;
-            let b = want_bytes(name, &args[0])?;
-            let s = want_str(name, &args[1])?;
-            let mut v = b.borrow_mut();
-            push_int(&mut v, s.len() as u64, 4, true);
-            v.extend_from_slice(s.as_bytes());
             Ok(Value::Unit)
         }
 
@@ -1224,36 +1171,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ string / list / result / map leftovers ══════════════════════
-        "string.run_length_encode" => {
-            arity(name, &args, 1)?;
-            let cs: Vec<char> = want_str(name, &args[0])?.chars().collect();
-            let mut out: Vec<Value> = Vec::new();
-            let mut i = 0;
-            while i < cs.len() {
-                let mut j = i + 1;
-                while j < cs.len() && cs[j] == cs[i] {
-                    j += 1;
-                }
-                out.push(Value::Tuple(Rc::new(vec![
-                    Value::str(&cs[i].to_string()),
-                    Value::Int((j - i) as i64),
-                ])));
-                i = j;
-            }
-            Ok(Value::List(Rc::new(out)))
-        }
         "list.length" => {
             arity(name, &args, 1)?;
             Ok(Value::Int(want_list(name, &args[0])?.len() as i64))
-        }
-        "list.tail" => {
-            arity(name, &args, 1)?;
-            let xs = want_list(name, &args[0])?;
-            Ok(Value::List(Rc::new(if xs.is_empty() {
-                Vec::new()
-            } else {
-                xs[1..].to_vec()
-            })))
         }
         "list.with_capacity" => {
             // a capacity HINT: allocates nothing observable (list_with_capacity

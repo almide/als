@@ -41,7 +41,6 @@ const PRELUDE_FNS: &[&str] = &["println", "eprintln", "assert", "assert_eq", "as
 const LIST_FNS: &[&str] = &[
     "list.len",
     "list.get",
-    "list.get_or",
     "list.set",
     "list.swap",
     "list.sort",
@@ -56,7 +55,6 @@ const LIST_FNS: &[&str] = &[
     "list.index_of",
     "list.last",
     "list.chunk",
-    "list.windows",
     "list.sum",
     "list.product",
     "list.first",
@@ -103,7 +101,6 @@ const STRING_FNS: &[&str] = &[
     "string.trim_start",
     "string.trim_end",
     "string.split",
-    "string.join",
     "string.len",
     "string.contains",
     "string.starts_with",
@@ -112,8 +109,6 @@ const STRING_FNS: &[&str] = &[
     "string.byte_slice",
     "string.pad_start",
     "string.pad_end",
-    "string.to_bytes",
-    "string.from_bytes",
     "string.capitalize",
     "string.to_upper",
     "string.to_lower",
@@ -152,7 +147,6 @@ const STRING_FNS: &[&str] = &[
 const INT_FNS: &[&str] = &[
     "int.to_string",
     "int.parse",
-    "int.from_hex",
     "int.abs",
     "int.min",
     "int.max",
@@ -167,23 +161,16 @@ const INT_FNS: &[&str] = &[
     "int.wrap",
     "int.rotate_left",
     "int.rotate_right",
-    "int.to_u32",
-    "int.to_u8",
     "int.clamp",
-    "int.to_float",
+    "int.pow",
+    "int.parse_radix",
 ];
 const FLOAT_FNS: &[&str] = &[
     "float.to_string",
-    "float.to_int",
-    "float.to_int64_checked",
-    "float.to_int_checked",
-    "float.to_int_saturating",
     "float.round",
     "float.floor",
     "float.ceil",
     "float.abs",
-    "float.sqrt",
-    "float.from_int",
     "float.min",
     "float.max",
     "float.to_fixed",
@@ -193,17 +180,10 @@ const FLOAT_FNS: &[&str] = &[
     "float.is_infinite",
     "float.to_bits",
     "float.bits_to_float",
+    "float.from_bits",
     "float.parse",
 ];
-const MATH_FNS: &[&str] = &[
-    "math.min",
-    "math.max",
-    "math.abs",
-    "math.pow",
-    "math.fmin",
-    "math.fmax",
-    "math.sqrt",
-];
+const MATH_FNS: &[&str] = &["math.sqrt"];
 const OPTION_FNS: &[&str] = &[
     "option.map",
     "option.flat_map",
@@ -233,7 +213,6 @@ const RESULT_FNS: &[&str] = &[
 const MAP_FNS: &[&str] = &[
     "map.new",
     "map.get",
-    "map.get_or",
     "map.set",
     "map.contains",
     "map.remove",
@@ -253,8 +232,6 @@ const MAP_FNS: &[&str] = &[
     "map.count",
     "map.find",
     "map.update",
-    "map.insert",
-    "map.delete",
     "map.clear",
 ];
 const SET_FNS: &[&str] = &[
@@ -606,16 +583,6 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 Value::Some(Rc::new(xs[i as usize].clone()))
             })
         }
-        "list.get_or" => {
-            arity(name, &args, 3)?;
-            let xs = want_list(name, &args[0])?;
-            let i = want_int(name, &args[1])?;
-            Ok(if i < 0 || i as usize >= xs.len() {
-                args[2].clone()
-            } else {
-                xs[i as usize].clone()
-            })
-        }
         "list.first" | "list.last" => {
             arity(name, &args, 1)?;
             let xs = want_list(name, &args[0])?;
@@ -786,30 +753,20 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::List(Rc::new(out)))
         }
-        "list.chunk" | "list.windows" => {
+        "list.chunk" => {
             arity(name, &args, 2)?;
             let xs = want_list(name, &args[0])?;
             let n = want_int(name, &args[1])?;
             // ALS-T4: a size of 0 or less aborts (T6 form); a negative size is 0 (#4147)
             if n <= 0 {
-                return Err(Flow::Abort(if name == "list.chunk" {
-                    "chunk size must be positive".into()
-                } else {
-                    "window size must be positive".into()
-                }));
+                return Err(Flow::Abort("chunk size must be positive".into()));
             }
             let n = n as usize;
             let mut out = Vec::new();
-            if name == "list.chunk" {
-                let mut i = 0;
-                while i < xs.len() {
-                    out.push(Value::List(Rc::new(xs[i..(i + n).min(xs.len())].to_vec())));
-                    i += n;
-                }
-            } else if n <= xs.len() {
-                for i in 0..=xs.len() - n {
-                    out.push(Value::List(Rc::new(xs[i..i + n].to_vec())));
-                }
+            let mut i = 0;
+            while i < xs.len() {
+                out.push(Value::List(Rc::new(xs[i..(i + n).min(xs.len())].to_vec())));
+                i += n;
             }
             Ok(Value::List(Rc::new(out)))
         }
@@ -852,7 +809,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(best.map(|v| Value::Some(Rc::new(v))).unwrap_or(Value::None))
         }
-        "list.join" | "string.join" => {
+        "list.join" => {
             arity(name, &args, 2)?;
             let xs = want_list(name, &args[0])?.clone();
             let sep = want_str(name, &args[1])?.to_string();
@@ -1508,24 +1465,6 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::List(Rc::new(out)))
         }
-        "string.to_bytes" => {
-            arity(name, &args, 1)?;
-            Ok(Value::List(Rc::new(
-                want_str(name, &args[0])?
-                    .bytes()
-                    .map(|b| Value::Int(b as i64))
-                    .collect(),
-            )))
-        }
-        "string.from_bytes" => {
-            arity(name, &args, 1)?;
-            let xs = want_list(name, &args[0])?.clone();
-            let mut bytes = Vec::with_capacity(xs.len());
-            for x in xs.iter() {
-                bytes.push(want_int(name, x)? as u8);
-            }
-            Ok(Value::str(&String::from_utf8_lossy(&bytes)))
-        }
         "string.capitalize" => {
             arity(name, &args, 1)?;
             let mut cs = want_str(name, &args[0])?.chars();
@@ -1658,82 +1597,34 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             Ok(parse_i64(want_str(name, &args[0])?))
         }
 
-        "int.from_hex" => {
-            arity(name, &args, 1)?;
-            // int_from_hex pins the real grammar (T8's from_str_radix claim
-            // is inexact — a finding): whitespace is trimmed, LOWERCASE "0x"
-            // prefixes strip repeatedly ("0x0x0x10" parses), "0X" does not,
-            // and the sign may follow the prefix ("0x-ff" = -255)
+        // int.parse_radix (stdlib/int.almd): radix outside 2..36 panics; the
+        // ALS-T1 trim, an optional sign, then an optional 0x/0o/0b prefix only
+        // in its own radix and only when a digit follows; the digits
+        // accumulate NEGATIVELY so i64::MIN parses, each one checked for its
+        // radix before the overflow test
+        "int.parse_radix" => {
+            arity(name, &args, 2)?;
             let s0 = want_str(name, &args[0])?;
-            let all: Vec<char> = s0.chars().collect();
-            let mut lo = 0;
-            let mut hi = all.len();
-            while lo < hi && is_als_whitespace(all[lo]) {
-                lo += 1;
+            let radix = want_int(name, &args[1])?;
+            if !(2..=36).contains(&radix) {
+                return it.abstain_pub(
+                    "stdlib:panic",
+                    format!("int.parse_radix: radix must be in 2..36, got {radix} — a panic (C-219), not rendered yet"),
+                );
             }
-            while hi > lo && is_als_whitespace(all[hi - 1]) {
-                hi -= 1;
-            }
-            let mut cs: &[char] = &all[lo..hi];
-            while cs.len() >= 2 && cs[0] == '0' && cs[1] == 'x' {
-                cs = &cs[2..];
-            }
-            if cs.is_empty() {
-                return Ok(Value::Err(Rc::new(Value::str(
-                    "cannot parse integer from empty string",
-                ))));
-            }
-            let (neg, digits) = match cs[0] {
-                '+' => (false, &cs[1..]),
-                '-' => (true, &cs[1..]),
-                _ => (false, cs),
-            };
-            if digits.is_empty() {
-                return Ok(Value::Err(Rc::new(Value::str(
-                    "invalid digit found in string",
-                ))));
-            }
-            let mut acc: i64 = 0;
-            for &c in digits {
-                let d = match c.to_digit(16) {
-                    Some(d) => d as i64,
-                    None => {
-                        return Ok(Value::Err(Rc::new(Value::str(
-                            "invalid digit found in string",
-                        ))))
-                    }
-                };
-                acc = match acc.checked_mul(16).and_then(|a| {
-                    if neg {
-                        a.checked_sub(d)
-                    } else {
-                        a.checked_add(d)
-                    }
-                }) {
-                    Some(a) => a,
-                    None => {
-                        return Ok(Value::Err(Rc::new(Value::str(if neg {
-                            "number too small to fit in target type"
-                        } else {
-                            "number too large to fit in target type"
-                        }))))
-                    }
-                };
-            }
-            Ok(Value::Ok(Rc::new(Value::Int(acc))))
+            Ok(parse_radix_t8(s0, radix))
         }
-        "int.abs" | "math.abs" => {
+        "int.abs" => {
             arity(name, &args, 1)?;
             match &args[0] {
                 Value::Int(n) => match n.checked_abs() {
                     Some(v) => Ok(Value::Int(v)),
                     None => Err(Flow::Abort("integer overflow".into())),
                 },
-                Value::Float(f) if name == "math.abs" => Ok(Value::Float(F64(f.0.abs()))),
                 other => mismatch(name, "Int", other),
             }
         }
-        "int.min" | "int.max" | "math.min" | "math.max" => {
+        "int.min" | "int.max" => {
             arity(name, &args, 2)?;
             match (&args[0], &args[1]) {
                 (Value::Int(a), Value::Int(b)) => Ok(Value::Int(if name.ends_with("min") {
@@ -1812,14 +1703,6 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 (a as u64).rotate_right(s)
             } as i64))
         }
-        "int.to_u32" => {
-            arity(name, &args, 1)?;
-            Ok(Value::Int((want_int(name, &args[0])? as u32) as i64))
-        }
-        "int.to_u8" => {
-            arity(name, &args, 1)?;
-            Ok(Value::Int((want_int(name, &args[0])? as u8) as i64))
-        }
         "int.clamp" => {
             arity(name, &args, 3)?;
             let (n, lo, hi) = (
@@ -1832,11 +1715,8 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Int(n.clamp(lo, hi)))
         }
-        "int.to_float" => {
-            arity(name, &args, 1)?;
-            Ok(Value::Float(F64(want_int(name, &args[0])? as f64)))
-        }
-        "math.pow" => {
+        // int.pow (stdlib/int.almd: math.__pow) — also the Int `**` (ALS-E29)
+        "int.pow" => {
             arity(name, &args, 2)?;
             let (b, e) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
             if e < 0 {
@@ -1857,7 +1737,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Int(acc))
         }
-        "math.sqrt" | "float.sqrt" => {
+        "math.sqrt" => {
             arity(name, &args, 1)?;
             // ALS-T22: sqrt is correctly rounded (0 ulp); a negative operand gives the
             // fixed +qNaN 0x7FF8000000000000 (C-055), never the host-signed sqrt NaN.
@@ -1868,36 +1748,12 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 x.sqrt()
             })))
         }
-        "math.fmin" | "math.fmax" => {
-            arity(name, &args, 2)?;
-            let (a, b) = (want_float(name, &args[0])?, want_float(name, &args[1])?);
-            Ok(Value::Float(F64(ieee_min_max(a, b, name == "math.fmax"))))
-        }
-
         // ═══ float (ALS-T2, T9, T13, T15, T23, T24) ═══════════════════
         "float.to_string" => {
             arity(name, &args, 1)?;
             Ok(Value::str(&fmtfloat::to_string_form(F64(want_float(
                 name, &args[0],
             )?))))
-        }
-        "float.to_int" | "float.to_int_saturating" => {
-            arity(name, &args, 1)?;
-            // ALS-T24: truncate toward zero, saturate, NaN → 0 (Rust `as` semantics)
-            let x = want_float(name, &args[0])?;
-            Ok(Value::Int(x as i64))
-        }
-        // ALS-T24: Some iff x is an integer in the 64-bit range (Int is 64-bit)
-        "float.to_int64_checked" | "float.to_int_checked" => {
-            arity(name, &args, 1)?;
-            let x = want_float(name, &args[0])?;
-            Ok(
-                if x.is_finite() && x.trunc() == x && x >= -(2f64.powi(63)) && x < 2f64.powi(63) {
-                    Value::Some(Rc::new(Value::Int(x as i64)))
-                } else {
-                    Value::None
-                },
-            )
         }
         "float.round" => {
             arity(name, &args, 1)?;
@@ -1914,10 +1770,6 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "float.abs" => {
             arity(name, &args, 1)?;
             Ok(Value::Float(F64(want_float(name, &args[0])?.abs())))
-        }
-        "float.from_int" => {
-            arity(name, &args, 1)?;
-            Ok(Value::Float(F64(want_int(name, &args[0])? as f64)))
         }
         "float.min" | "float.max" => {
             arity(name, &args, 2)?;
@@ -1986,7 +1838,8 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }; // C-210 canonical NaN
             Ok(Value::Int(bits as i64))
         }
-        "float.bits_to_float" => {
+        // float.from_bits (stdlib/float.almd: int.__bits_to_float)
+        "float.bits_to_float" | "float.from_bits" => {
             arity(name, &args, 1)?;
             Ok(Value::Float(F64(f64::from_bits(
                 want_int(name, &args[0])? as u64
@@ -2204,25 +2057,23 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 1)?;
             Ok(Value::Bool(want_map(name, &args[0])?.is_empty()))
         }
-        "map.get" | "map.get_or" | "map.contains" => {
-            arity(name, &args, if name == "map.get_or" { 3 } else { 2 })?;
+        "map.get" | "map.contains" => {
+            arity(name, &args, 2)?;
             let m = want_map(name, &args[0])?.clone();
             for (k, v) in m.iter() {
                 if eq_strict(name, k, &args[1])? {
                     return Ok(match name {
                         "map.get" => Value::Some(Rc::new(v.clone())),
-                        "map.get_or" => v.clone(),
                         _ => Value::Bool(true),
                     });
                 }
             }
             Ok(match name {
                 "map.get" => Value::None,
-                "map.get_or" => args[2].clone(),
                 _ => Value::Bool(false),
             })
         }
-        "map.set" | "map.insert" => {
+        "map.set" => {
             arity(name, &args, 3)?;
             let m = want_map(name, &args[0])?;
             let mut v = (**m).clone();
@@ -2239,7 +2090,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Map(Rc::new(v)))
         }
-        "map.remove" | "map.delete" => {
+        "map.remove" => {
             arity(name, &args, 2)?;
             let m = want_map(name, &args[0])?;
             let mut v = Vec::with_capacity(m.len());
@@ -2854,6 +2705,72 @@ fn parse_f64_pure(s: &str, finite_only: bool) -> Value {
         return Value::Err(Rc::new(Value::str("float literal out of range")));
     }
     Value::Ok(Rc::new(Value::Float(F64(if neg { -v } else { v }))))
+}
+
+/// int.parse_radix's body (stdlib/int.almd) for a radix already in 2..36.
+fn parse_radix_t8(s: &str, radix: i64) -> Value {
+    let err = |m: &str| Value::Err(Rc::new(Value::str(m)));
+    let cs: Vec<char> = s.chars().collect();
+    let (mut lo, mut hi) = (0, cs.len());
+    while lo < hi && is_als_whitespace(cs[lo]) {
+        lo += 1;
+    }
+    while hi > lo && is_als_whitespace(cs[hi - 1]) {
+        hi -= 1;
+    }
+    let t: String = cs[lo..hi].iter().collect();
+    let bytes = t.as_bytes();
+    if bytes.is_empty() {
+        return err("cannot parse integer from empty string");
+    }
+    let (negative, rest) = match bytes[0] {
+        b'-' => (true, &bytes[1..]),
+        b'+' => (false, &bytes[1..]),
+        _ => (false, bytes),
+    };
+    // `[48, p, d, ..rest]`: a prefix is stripped only in its own radix and
+    // only when at least one byte follows it
+    let prefix_radix = |p: u8| match p {
+        b'x' | b'X' => 16,
+        b'o' | b'O' => 8,
+        b'b' | b'B' => 2,
+        _ => 0,
+    };
+    let digits = if rest.len() >= 3 && rest[0] == b'0' && prefix_radix(rest[1]) == radix {
+        &rest[2..]
+    } else {
+        rest
+    };
+    if digits.is_empty() {
+        return err("invalid digit found in string");
+    }
+    let mut acc: i64 = 0;
+    for &b in digits {
+        let d: i64 = match b {
+            b'0'..=b'9' => (b - b'0') as i64,
+            b'a'..=b'z' => (b - b'a') as i64 + 10,
+            b'A'..=b'Z' => (b - b'A') as i64 + 10,
+            _ => 99,
+        };
+        if d >= radix {
+            return err("invalid digit found in string");
+        }
+        if acc < (i64::MIN + d) / radix {
+            return err(if negative {
+                "number too small to fit in target type"
+            } else {
+                "number too large to fit in target type"
+            });
+        }
+        acc = acc * radix - d;
+    }
+    if negative {
+        Value::Ok(Rc::new(Value::Int(acc)))
+    } else if acc == i64::MIN {
+        err("number too large to fit in target type")
+    } else {
+        Value::Ok(Rc::new(Value::Int(-acc)))
+    }
 }
 
 /// int.parse (ALS-T8) as a plain Result — for the normative json parser,

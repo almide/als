@@ -179,7 +179,7 @@ const STD_MODULES: &[&str] = &[
     "process", "testing", "path", "args", "net", "zlib", "base64", "hex", "html", "fan", "compute",
     "duration", "i8", "i16", "i32", "u8", "u16", "u32", "u64", "i64", "bool", "char", "tuple",
     "time", "url", "log", "hash", "base", "testing", "uuid", "csv", "toml", "yaml", "bigint",
-    "secret",
+    "secret", "float64", "deque", "ffi",
 ];
 
 /// stdlib mutators that update their first argument IN PLACE and return Unit
@@ -221,8 +221,6 @@ const IN_PLACE: &[&str] = &[
     "list.push",
     "list.pop",
     "list.clear",
-    "map.insert",
-    "map.delete",
     "map.clear",
     "string.push",
 ];
@@ -1192,7 +1190,7 @@ impl Interp {
             Value::Range(..) => "list",
             Value::Dyn(_) => "value",
             Value::Bytes(_) => "bytes",
-            Value::Path(_) => "json",
+            Value::Path(_) => "value",
             Value::Matrix(_) => "matrix",
             Value::Sized { bits, signed, .. } => match (bits, signed) {
                 (8, true) => "int8",
@@ -2517,6 +2515,10 @@ impl Interp {
                     (UnOp::Neg, Value::Int(n)) => Ok(Value::Int(n.wrapping_neg())),
                     (UnOp::Neg, Value::Float(f)) => Ok(Value::Float(F64(fnan(-f.0)))),
                     (UnOp::Neg, Value::Float32(g)) => Ok(Value::Float32(-g)),
+                    // `-m` on Matrix (stdlib/matrix.almd `__neg`): the sign flip
+                    (UnOp::Neg, m @ Value::Matrix(_)) => {
+                        stdlib::call(self, "matrix.__neg", vec![m])
+                    }
                     (UnOp::Not, Value::Bool(b)) => Ok(Value::Bool(!b)),
                     (op, v) => Err(Flow::Fatal(format!("unary {op:?} on a {}", v.type_name()))),
                 }
@@ -2810,8 +2812,8 @@ impl Interp {
                 }
             }
             (Pow, Value::Int(a), Value::Int(b)) => {
-                // ALS-E29: `**` on Int desugars to math.pow
-                stdlib::call(self, "math.pow", vec![Value::Int(*a), Value::Int(*b)])
+                // ALS-E29: `**` on Int desugars to int.pow (math.__pow)
+                stdlib::call(self, "int.pow", vec![Value::Int(*a), Value::Int(*b)])
             }
             (Add, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 + b.0)))),
             (Sub, Value::Float(a), Value::Float(b)) => Ok(Value::Float(F64(fnan(a.0 - b.0)))),
@@ -3011,6 +3013,24 @@ impl Interp {
                 // ALS-DT2: bulk concat costs 1 + result_len/16 units
                 self.charge(1 + (s.len() as u64) / 16)?;
                 Ok(Value::str(&s))
+            }
+            // `+` on Bytes (stdlib/bytes.almd `__concat`): a new buffer
+            (Add, Value::Bytes(a), Value::Bytes(b)) => {
+                let mut v = a.borrow().clone();
+                v.extend_from_slice(&b.borrow());
+                Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(v))))
+            }
+            // `+ - * /` on Matrix (stdlib/matrix.almd `__add` / `__sub` /
+            // `__mul` / `__div`): the elementwise zips truncate to the
+            // overlap, `*` is the matrix product
+            (Add | Sub | Mul | Div, Value::Matrix(_), Value::Matrix(_)) => {
+                let f = match op {
+                    Add => "matrix.__add",
+                    Sub => "matrix.__sub",
+                    Mul => "matrix.__mul",
+                    _ => "matrix.__div",
+                };
+                stdlib::call(self, f, vec![l.clone(), r.clone()])
             }
             (Add, Value::List(a), Value::List(b)) => {
                 let mut v = (**a).clone();

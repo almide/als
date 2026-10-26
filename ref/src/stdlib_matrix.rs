@@ -27,8 +27,6 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.to_lists",
     "matrix.row_dot",
     "matrix.dot_row",
-    "matrix.pow",
-    "matrix.select_rows_f32",
     "matrix.from_bytes_f32_le",
     "matrix.from_bytes_f16_le",
     "matrix.from_bytes_f64_le",
@@ -36,38 +34,24 @@ pub const MATRIX_FNS: &[&str] = &[
     // signed-zero rules, and the exact-arithmetic kernels they govern.
     "matrix.cols",
     "matrix.transpose",
-    "matrix.neg",
     "matrix.scale",
     "matrix.map",
-    "matrix.add",
-    "matrix.sub",
-    "matrix.div",
     "matrix.broadcast_add_row",
-    "matrix.mul",
-    "matrix.linear_row",
-    "matrix.linear_row_no_bias",
     "matrix.slice_rows",
+    "matrix.gather_rows",
     "matrix.split_cols_even",
     "matrix.concat_cols",
     "matrix.concat_cols_many",
-    "matrix.conv1d",
-    // C-161's composition family (stdlib/matrix_fused.almd in the
-    // implementation): each is a composition of the kernels above, so it is
-    // written here as that composition — fma = add∘scale (zip shape, two
-    // rounded products and a rounded sum, never fused), mul_scaled =
-    // scale∘mul, the `_f32` names alias the f64 arithmetic.
-    "matrix.fma",
-    "matrix.fma3",
-    "matrix.mul_scaled",
-    "matrix.mul_f32",
-    "matrix.mul_f32_scaled",
-    "matrix.mul_f32_t",
-    "matrix.mul_f32_t_scaled",
-    "matrix.zeros_f32",
-    "matrix.ones_f32",
-    "matrix.append_rows",
-    "matrix.linear_f32_row_no_bias",
+    "matrix.concat_rows",
     "matrix.to_bytes_f32_le",
+    // the operator kernels (stdlib/matrix.almd): `+ - * /` and unary `-`
+    // on Matrix desugar to these, and concat_rows folds __append_rows
+    "matrix.__add",
+    "matrix.__sub",
+    "matrix.__div",
+    "matrix.__mul",
+    "matrix.__neg",
+    "matrix.__append_rows",
 ];
 
 /// C-161: 2^28 elements (2 GiB of f64, inside wasm32's address space), and
@@ -334,7 +318,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // C-355: negation is a SIGN FLIP, so neg(+0.0) is -0.0 — `0.0 - x`
         // would answer +0.0 for a zero element (ALS-T23).
-        "matrix.neg" => {
+        "matrix.__neg" => {
             arity(name, &args, 1)?;
             let m = want_mat(name, &args[0])?;
             Ok(mat(m.rows, m.cols, m.data.iter().map(|x| -x).collect()))
@@ -366,7 +350,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // The ELEMENTWISE pair family (C-353's stated exception): rows and
         // cols ZIP-truncate to the shorter operand on every leg.
-        "matrix.add" | "matrix.sub" | "matrix.div" => {
+        "matrix.__add" | "matrix.__sub" | "matrix.__div" => {
             arity(name, &args, 2)?;
             let a = want_mat(name, &args[0])?;
             let b = want_mat(name, &args[1])?;
@@ -380,8 +364,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                         b.data[(r * b.cols + c) as usize],
                     );
                     data.push(match name {
-                        "matrix.add" => x + y,
-                        "matrix.sub" => x - y,
+                        "matrix.__add" => x + y,
+                        "matrix.__sub" => x - y,
                         _ => x / y,
                     });
                 }
@@ -403,7 +387,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // C-353: the inner dimension is a PRECONDITION. The empty
         // short-circuit answers first (C-278's empty-operand rule).
-        "matrix.mul" => {
+        "matrix.__mul" => {
             arity(name, &args, 2)?;
             let a = want_mat(name, &args[0])?;
             let b = want_mat(name, &args[1])?;
@@ -428,42 +412,47 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         // C-353: y[i][j] = sum_k x[i][k]*w[j][k] (+ bias[j]), k ascending,
         // bias added last; cols(x) == cols(w) and len(bias) == rows(w).
-        "matrix.linear_row" | "matrix.linear_row_no_bias" => {
-            let with_bias = name == "matrix.linear_row";
-            arity(name, &args, if with_bias { 3 } else { 2 })?;
-            let x = want_mat(name, &args[0])?;
-            let w = want_mat(name, &args[1])?;
-            let bias = if with_bias {
-                want_floats(name, &args[2])?
-            } else {
-                Vec::new()
-            };
-            if x.rows == 0 || w.rows == 0 {
+        // gather_rows (almide_rt_matrix_gather_rows): a 0-row m answers 0 x 0;
+        // otherwise one row per index, an index outside 0..rows (a negative
+        // one included) the zero row of m's width
+        "matrix.gather_rows" => {
+            arity(name, &args, 2)?;
+            let m = want_mat(name, &args[0])?;
+            let ids = want_rids(name, &args[1])?;
+            if m.rows == 0 {
                 return Ok(mat(0, 0, Vec::new()));
             }
-            shape_eq(w.cols, x.cols)?;
-            if with_bias {
-                shape_eq(bias.len() as i64, w.rows)?;
-            }
-            let (r, n_in, n_out) = (x.rows, x.cols, w.rows);
-            let mut data = Vec::with_capacity((r * n_out) as usize);
-            for i in 0..r {
-                for j in 0..n_out {
-                    let mut acc = 0.0f64;
-                    for kk in 0..n_in {
-                        acc += x.data[(i * n_in + kk) as usize] * w.data[(j * n_in + kk) as usize];
-                    }
-                    data.push(if with_bias {
-                        acc + bias[j as usize]
-                    } else {
-                        acc
-                    });
+            let cols = m.cols as usize;
+            let mut data = Vec::with_capacity(ids.len() * cols);
+            for id in ids.iter() {
+                if *id >= 0 && *id < m.rows {
+                    let at = *id as usize * cols;
+                    data.extend_from_slice(&m.data[at..at + cols]);
+                } else {
+                    data.extend(std::iter::repeat_n(0.0f64, cols));
                 }
             }
-            Ok(mat(r, n_out, data))
+            Ok(mat(ids.len() as i64, m.cols, data))
         }
-        // C-354: `list.slice` over the rows — both bounds clamp into
-        // [0, rows(m)] (a negative bound is 0, #4147), start >= end is EMPTY.
+        // concat_rows (stdlib/matrix.almd): __append_rows folded over the
+        // list from the 0 x 0 matrix
+        "matrix.concat_rows" => {
+            arity(name, &args, 1)?;
+            let xs = match &args[0] {
+                Value::List(xs) => xs.clone(),
+                other => {
+                    return Err(Flow::Fatal(format!(
+                        "{name}: expected List of Matrix, got {}",
+                        other.type_name()
+                    )))
+                }
+            };
+            let mut acc = mat(0, 0, Vec::new());
+            for m in xs.iter() {
+                acc = dispatch(it, "matrix.__append_rows", vec![acc, m.clone()])?;
+            }
+            Ok(acc)
+        }
         "matrix.slice_rows" => {
             arity(name, &args, 3)?;
             let m = want_mat(name, &args[0])?;
@@ -545,93 +534,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         // C-354 counts + C-353 shapes: stride is a positive STEP, kernel and
         // padding are widths that clamp at 0, the weight row is
         // `in_ch * kernel` taps and the bias one entry per output channel.
-        "matrix.conv1d" => {
-            arity(name, &args, 6)?;
-            let input = want_mat(name, &args[0])?;
-            let weight = want_mat(name, &args[1])?;
-            let bias = want_floats(name, &args[2])?;
-            let kernel = want_int(name, &args[3])?;
-            let stride = want_int(name, &args[4])?;
-            let padding = want_int(name, &args[5])?;
-            let (t_in, out_ch) = (input.rows, weight.rows);
-            if t_in == 0 || out_ch == 0 {
-                return Ok(mat(0, 0, Vec::new()));
-            }
-            if stride < 1 {
-                return Err(Flow::Abort("stride must be positive".into()));
-            }
-            let in_ch = input.cols;
-            let k = kernel.max(0);
-            let p = padding.max(0);
-            if p > DIM_CEILING {
-                return Err(Flow::Abort("matrix dimensions too large".into()));
-            }
-            shape_eq(weight.cols, in_ch.saturating_mul(k))?;
-            shape_eq(bias.len() as i64, out_ch)?;
-            let t_padded = t_in + 2 * p;
-            if t_padded < k {
-                return Ok(mat(0, 0, Vec::new()));
-            }
-            let (t_out, out_ch) = norm_dims((t_padded - k) / stride + 1, out_ch)?;
-            let mut data = Vec::with_capacity((t_out * out_ch) as usize);
-            for t in 0..t_out {
-                let base = t * stride;
-                for o in 0..out_ch {
-                    let mut sum = bias[o as usize];
-                    for c in 0..in_ch {
-                        for ki in 0..k {
-                            let tp = base + ki;
-                            if tp >= p && tp < p + t_in {
-                                let tc = tp - p;
-                                sum += weight.data[(o * weight.cols + c * k + ki) as usize]
-                                    * input.data[(tc * in_ch + c) as usize];
-                            }
-                        }
-                    }
-                    data.push(sum);
-                }
-            }
-            Ok(mat(t_out, out_ch, data))
-        }
-        "matrix.pow" => {
-            arity(name, &args, 2)?;
-            let m = want_mat(name, &args[0])?;
-            let e = want_float(name, &args[1])?;
-            // C-223: through the vendored musl-libm on both legs
-            let data = m
-                .data
-                .iter()
-                .map(|x| crate::libm::almide_rt_libm_pow(*x, e))
-                .collect();
-            Ok(mat(m.rows, m.cols, data))
-        }
-        "matrix.select_rows_f32" => {
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?.max(0);
-            let cols = want_int(name, &args[2])?.max(0);
-            let rids = want_rids(name, &args[3])?;
-            // C-161: the `len(ids) x cols` shape takes the shared ceiling
-            // before anything is allocated
-            let (_, cols) = norm_dims(rids.len() as i64, cols)?;
-            let mut data = vec![0.0f64; rids.len() * cols as usize];
-            for (i, rid) in rids.iter().enumerate() {
-                // C-229: a negative row id clamps to row 0; a row whose byte
-                // range leaves the buffer is the all-zero row
-                let rid = (*rid).max(0);
-                let start = off as i128 + rid as i128 * cols as i128 * 4;
-                let end = start + cols as i128 * 4;
-                if start < 0 || end > b.len() as i128 {
-                    continue;
-                }
-                for c in 0..cols as usize {
-                    let p = start as usize + c * 4;
-                    let raw = u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]]);
-                    data[i * cols as usize + c] = f32::from_bits(raw) as f64;
-                }
-            }
-            Ok(mat(rids.len() as i64, cols, data))
-        }
         "matrix.from_bytes_f32_le" | "matrix.from_bytes_f16_le" | "matrix.from_bytes_f64_le" => {
             arity(name, &args, 4)?;
             let b = want_bytes(name, &args[0])?;
@@ -678,48 +580,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 .collect();
             Ok(Value::Some(Rc::new(mat(r, c, data))))
         }
-        "matrix.zeros_f32" | "matrix.ones_f32" => {
-            let base = if name == "matrix.ones_f32" {
-                "matrix.ones"
-            } else {
-                "matrix.zeros"
-            };
-            dispatch(it, base, args)
-        }
-        "matrix.fma" => {
-            arity(name, &args, 4)?;
-            let sa = dispatch(it, "matrix.scale", vec![args[0].clone(), args[1].clone()])?;
-            let sb = dispatch(it, "matrix.scale", vec![args[2].clone(), args[3].clone()])?;
-            dispatch(it, "matrix.add", vec![sa, sb])
-        }
-        "matrix.fma3" => {
-            arity(name, &args, 6)?;
-            let ab = dispatch(it, "matrix.fma", args[0..4].to_vec())?;
-            let sc = dispatch(it, "matrix.scale", vec![args[4].clone(), args[5].clone()])?;
-            dispatch(it, "matrix.add", vec![ab, sc])
-        }
-        "matrix.mul_f32" => {
-            arity(name, &args, 2)?;
-            dispatch(it, "matrix.mul", args)
-        }
-        "matrix.mul_f32_t" => {
-            arity(name, &args, 2)?;
-            let t = dispatch(it, "matrix.transpose", vec![args[1].clone()])?;
-            dispatch(it, "matrix.mul", vec![args[0].clone(), t])
-        }
-        "matrix.mul_scaled" | "matrix.mul_f32_scaled" | "matrix.mul_f32_t_scaled" => {
-            arity(name, &args, 3)?;
-            let b = if name == "matrix.mul_f32_t_scaled" {
-                dispatch(it, "matrix.transpose", vec![args[2].clone()])?
-            } else {
-                args[2].clone()
-            };
-            let p = dispatch(it, "matrix.mul", vec![args[0].clone(), b])?;
-            dispatch(it, "matrix.scale", vec![p, args[1].clone()])
-        }
         // An operand with no rows yields the other; else base's rows then
         // extra's, and two non-empty operands must be the same width (C-353).
-        "matrix.append_rows" => {
+        "matrix.__append_rows" => {
             arity(name, &args, 2)?;
             let base = want_mat(name, &args[0])?;
             let extra = want_mat(name, &args[1])?;
@@ -734,44 +597,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let mut data = base.data.clone();
             data.extend_from_slice(&extra.data);
             Ok(mat(r, c, data))
-        }
-        // The sequential widen-mul-add dot over the f32 weight rows read out of
-        // the byte buffer. An empty x or a zero out/in extent is
-        // `zeros(rows(x), w_rows)` (the C-161 ceiling included); a negative
-        // offset reads from 0; weights that do not fit the buffer decode as
-        // the all-zero rows.
-        "matrix.linear_f32_row_no_bias" => {
-            arity(name, &args, 5)?;
-            let x = want_mat(name, &args[0])?;
-            let b = want_bytes(name, &args[1])?;
-            let off = want_int(name, &args[2])?.max(0);
-            let w_rows = want_int(name, &args[3])?;
-            let w_cols = want_int(name, &args[4])?;
-            if x.rows == 0 || w_rows <= 0 || w_cols <= 0 {
-                return dispatch(
-                    it,
-                    "matrix.zeros",
-                    vec![Value::Int(x.rows), Value::Int(w_rows)],
-                );
-            }
-            let (r, c) = norm_dims(w_rows, w_cols)?;
-            let len = b.len() as i128;
-            let need = r as i128 * c as i128 * 4;
-            let fits = off as i128 <= len && need <= len - off as i128;
-            let data: Vec<f64> = (0..(r * c) as usize)
-                .map(|i| {
-                    if !fits {
-                        return 0.0;
-                    }
-                    let p = off as usize + i * 4;
-                    f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]])) as f64
-                })
-                .collect();
-            dispatch(
-                it,
-                "matrix.linear_row_no_bias",
-                vec![args[0].clone(), mat(r, c, data)],
-            )
         }
         "matrix.to_bytes_f32_le" => {
             arity(name, &args, 1)?;

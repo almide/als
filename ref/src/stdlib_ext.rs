@@ -10,11 +10,20 @@ use crate::eval::{Flow, Interp};
 use crate::value::{dyn_text, json_quote, values_eq, Dyn, PathSeg, Value, F64};
 
 pub const EXT_FNS: &[&str] = &[
-    // error (ALS-R5 / C-418: the label is escaped)
-    "error.context",
     // value
-    "value.field",
-    "value.keys",
+    "value.get",
+    "value.get_string",
+    "value.get_int",
+    "value.get_float",
+    "value.get_bool",
+    "value.get_array",
+    "value.as_object",
+    "value.root",
+    "value.key",
+    "value.index",
+    "value.get_path",
+    "value.set_path",
+    "value.remove_path",
     "value.as_string",
     "value.as_int",
     "value.as_float",
@@ -31,22 +40,10 @@ pub const EXT_FNS: &[&str] = &[
     "value.pick",
     "value.omit",
     "value.merge",
-    "value.stringify",
     // json
     "json.parse",
     "json.stringify",
     "json.stringify_pretty",
-    "json.get_string",
-    "json.get_int",
-    "json.get_float",
-    "json.get_bool",
-    "json.get_array",
-    "json.root",
-    "json.field",
-    "json.index",
-    "json.get_path",
-    "json.set_path",
-    "json.remove_path",
     "json.null",
     "json.object",
     "json.array",
@@ -65,38 +62,111 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.len",
     "bytes.is_empty",
     "bytes.get",
-    "bytes.get_or",
     "bytes.slice",
-    "bytes.concat",
     "bytes.repeat",
     "bytes.set",
     "bytes.push",
     "bytes.clear",
     "bytes.append",
+    "bytes.append_bytes",
+    "bytes.compare",
+    "bytes.is_eof",
+    "bytes.map",
+    "bytes.next_bytes",
+    "bytes.to_string_lossy",
+    "bytes.contains",
+    "bytes.index_of",
+    "ffi.address",
+    "ffi.read",
+    "ffi.write",
+    "deque.from_list",
+    "deque.len",
+    "deque.to_list",
     "bytes.to_string",
     "bytes.append_i16_le",
-    "bytes.write_uint16",
-    "bytes.write_uint32",
-    "bytes.write_int32",
-    "bytes.write_float32",
-    "bytes.set_float32",
-    "bytes.set_uint16",
-    "bytes.set_uint32",
-    "bytes.read_uint16",
-    "bytes.read_uint32",
-    "bytes.read_int32",
-    "bytes.read_float32",
     "bytes.as_ptr",
     "bytes.as_mut_ptr",
     "bytes.from_raw_ptr",
     "bytes.copy_to_ptr",
-    "bytes.set_at",
     "bytes.fill",
     "bytes.copy_from",
-    "bytes.read_string_at",
-    "bytes.read_length_prefixed_strings_le",
-    "bytes.skip_length_prefixed_le",
-    "bytes.read_u8",
+    // the width decoders/encoders stdlib/bytes.almd's typed IO sits on
+    "bytes.__read_u16_le",
+    "bytes.__read_u16_be",
+    "bytes.__read_i16_le",
+    "bytes.__read_i16_be",
+    "bytes.__read_u32_le",
+    "bytes.__read_u32_be",
+    "bytes.__read_i32_le",
+    "bytes.__read_i32_be",
+    "bytes.__read_i64_le",
+    "bytes.__read_i64_be",
+    "bytes.__read_f32_le",
+    "bytes.__read_f32_be",
+    "bytes.__read_f64_le",
+    "bytes.__read_f64_be",
+    "bytes.__set_u16_le",
+    "bytes.__set_u16_be",
+    "bytes.__set_i16_le",
+    "bytes.__set_i16_be",
+    "bytes.__set_u32_le",
+    "bytes.__set_u32_be",
+    "bytes.__set_i32_le",
+    "bytes.__set_i32_be",
+    "bytes.__set_i64_le",
+    "bytes.__set_i64_be",
+    "bytes.__set_f32_le",
+    "bytes.__set_f32_be",
+    "bytes.__set_f64_le",
+    "bytes.__set_f64_be",
+    "bytes.__set_u8",
+    // typed IO (R-bytes-01): get_ (none unless the window fits), next_
+    // (cursor), put_ (in place; a window outside 0..len is a panic)
+    "bytes.get_u8",
+    "bytes.get_u16_le",
+    "bytes.get_u16_be",
+    "bytes.get_i16_le",
+    "bytes.get_i16_be",
+    "bytes.get_u32_le",
+    "bytes.get_u32_be",
+    "bytes.get_i32_le",
+    "bytes.get_i32_be",
+    "bytes.get_i64_le",
+    "bytes.get_i64_be",
+    "bytes.get_f32_le",
+    "bytes.get_f32_be",
+    "bytes.get_f64_le",
+    "bytes.get_f64_be",
+    "bytes.next_u8",
+    "bytes.next_u16_le",
+    "bytes.next_u16_be",
+    "bytes.next_i16_le",
+    "bytes.next_i16_be",
+    "bytes.next_u32_le",
+    "bytes.next_u32_be",
+    "bytes.next_i32_le",
+    "bytes.next_i32_be",
+    "bytes.next_i64_le",
+    "bytes.next_i64_be",
+    "bytes.next_f32_le",
+    "bytes.next_f32_be",
+    "bytes.next_f64_le",
+    "bytes.next_f64_be",
+    "bytes.put_u8",
+    "bytes.put_u16_le",
+    "bytes.put_u16_be",
+    "bytes.put_i16_le",
+    "bytes.put_i16_be",
+    "bytes.put_u32_le",
+    "bytes.put_u32_be",
+    "bytes.put_i32_le",
+    "bytes.put_i32_be",
+    "bytes.put_i64_le",
+    "bytes.put_i64_be",
+    "bytes.put_f32_le",
+    "bytes.put_f32_be",
+    "bytes.put_f64_le",
+    "bytes.put_f64_be",
     "bytes.read_u16_le",
     "bytes.read_u32_le",
     "bytes.read_i32_le",
@@ -156,7 +226,6 @@ pub const EXT_FNS: &[&str] = &[
     "fs.copy",
     "fs.rename",
     "fs.remove_all",
-    "fs.file_size",
     "fs.temp_dir",
     "fs.create_temp_file",
     "fs.create_temp_dir",
@@ -174,10 +243,8 @@ pub const EXT_FNS: &[&str] = &[
     "env.set",
     "env.sleep_ms",
     "env.cwd",
-    "env.temp_dir",
     "env.os",
     "io.print",
-    "process.args",
     "process.exit",
     // late arrivals for the core modules
     "string.push",
@@ -229,16 +296,6 @@ fn want_float(name: &str, v: &Value) -> Result<f64, Flow> {
     }
 }
 
-/// The binary32 value a Float32 writer receives: a Float32, or a Float literal
-/// narrowed to one (C-182: a literal takes its Float32 context).
-fn want_float32(name: &str, v: &Value) -> Result<f32, Flow> {
-    match v {
-        Value::Float32(g) => Ok(*g),
-        Value::Float(f) => Ok(f.0 as f32),
-        other => mismatch(name, "Float32", other),
-    }
-}
-
 /// C-210: every bytes float writer is a NaN-observation boundary — a NaN of
 /// any sign or payload writes the one canonical f64 pattern. The whole writer
 /// family (append, set, write) reads its bits from here.
@@ -277,18 +334,6 @@ fn want_dyn<'a>(name: &str, v: &'a Value) -> Result<&'a Dyn, Flow> {
     match v {
         Value::Dyn(d) => Ok(d),
         other => mismatch(name, "Value", other),
-    }
-}
-
-fn want_endian(name: &str, v: &Value) -> Result<bool, Flow> {
-    match v {
-        Value::Variant {
-            type_name, case, ..
-        } if &**type_name == "Endian" => Ok(&**case == "LittleEndian"),
-        other => Err(Flow::Fatal(format!(
-            "{name}: expected an Endian, got {}",
-            other.type_name()
-        ))),
     }
 }
 
@@ -478,7 +523,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(Value::Dyn(Dyn::O(Rc::new(out))))
         }
-        "value.keys" | "json.keys" => {
+        "json.keys" => {
             arity(name, &args, 1)?;
             match want_dyn(name, &args[0])? {
                 Dyn::O(fields) => Ok(Value::List(Rc::new(
@@ -487,31 +532,28 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 _ => Ok(Value::List(Rc::new(Vec::new()))),
             }
         }
-        "error.context" => {
-            arity(name, &args, 2)?;
-            let label = want_str(name, &args[1])?.clone();
-            match &args[0] {
-                Value::Ok(_) => Ok(args[0].clone()),
-                Value::Err(e) => match &**e {
-                    Value::Str(inner) => Ok(err_str(&format!("{}: {inner}", err_escape(&label)))),
-                    other => mismatch(name, "Result[_, String]", other),
-                },
-                other => mismatch(name, "Result", other),
-            }
+        // value.as_object (almide_rt_value_as_object): the pairs in order, or
+        // the kind-naming err
+        "value.as_object" => {
+            arity(name, &args, 1)?;
+            Ok(match want_dyn(name, &args[0])? {
+                Dyn::O(fields) => ok(Value::List(Rc::new(
+                    fields
+                        .iter()
+                        .map(|(k, v)| {
+                            Value::Tuple(Rc::new(vec![
+                                Value::Str(k.clone()),
+                                Value::Dyn(v.clone()),
+                            ]))
+                        })
+                        .collect(),
+                ))),
+                other => err_str(&format!("expected Object, received {}", dyn_kind(other))),
+            })
         }
-        "value.field" => {
-            arity(name, &args, 2)?;
-            let key = want_str(name, &args[1])?.clone();
-            match want_dyn(name, &args[0])? {
-                Dyn::O(fields) => Ok(match fields.iter().find(|(k, _)| *k == key) {
-                    Some((_, v)) => ok(Value::Dyn(v.clone())),
-                    // C-418 (#4126): the key, escaped.
-                    None => err_str(&format!("missing field '{}'", err_escape(&key))),
-                }),
-                _ => Ok(err_str("expected Object")),
-            }
-        }
-        "json.get" => {
+        // value.get (stdlib/value.almd): `__field` as an Option — none when
+        // v is not an Object or the key is absent
+        "json.get" | "value.get" => {
             arity(name, &args, 2)?;
             let key = want_str(name, &args[1])?.clone();
             match want_dyn(name, &args[0])? {
@@ -604,7 +646,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 (_, b) => Ok(Value::Dyn(b.clone())),
             }
         }
-        "value.stringify" | "json.stringify" => {
+        "json.stringify" => {
             arity(name, &args, 1)?;
             Ok(Value::str(&dyn_text(want_dyn(name, &args[0])?)))
         }
@@ -616,8 +658,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             Ok(json_parse(want_str(name, &args[0])?))
         }
-        "json.get_string" | "json.get_int" | "json.get_float" | "json.get_bool"
-        | "json.get_array" => {
+        // value.get_<kind> (stdlib/value.almd): value.get then as_<kind> as an
+        // Option — an Int is never truncated, get_float widens an Int
+        "value.get_string" | "value.get_int" | "value.get_float" | "value.get_bool"
+        | "value.get_array" => {
             arity(name, &args, 2)?;
             let key = want_str(name, &args[1])?.clone();
             let field = match want_dyn(name, &args[0])? {
@@ -629,58 +673,58 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             };
             Ok(match (name, field) {
                 (_, None) => Value::None,
-                ("json.get_string", Some(Dyn::S(s))) => some(Value::Str(s)),
-                ("json.get_int", Some(Dyn::I(n))) => some(Value::Int(n)),
-                ("json.get_float", Some(Dyn::F(f))) => some(Value::Float(F64(f))),
-                ("json.get_float", Some(Dyn::I(n))) => some(Value::Float(F64(n as f64))),
-                ("json.get_bool", Some(Dyn::B(b))) => some(Value::Bool(b)),
-                ("json.get_array", Some(Dyn::A(items))) => some(Value::List(Rc::new(
+                ("value.get_string", Some(Dyn::S(s))) => some(Value::Str(s)),
+                ("value.get_int", Some(Dyn::I(n))) => some(Value::Int(n)),
+                ("value.get_float", Some(Dyn::F(f))) => some(Value::Float(F64(f))),
+                ("value.get_float", Some(Dyn::I(n))) => some(Value::Float(F64(n as f64))),
+                ("value.get_bool", Some(Dyn::B(b))) => some(Value::Bool(b)),
+                ("value.get_array", Some(Dyn::A(items))) => some(Value::List(Rc::new(
                     items.iter().map(|d| Value::Dyn(d.clone())).collect(),
                 ))),
                 _ => Value::None,
             })
         }
-        "json.root" => {
+        // ── value.Path (stdlib/value.almd, R-value-03): key and index steps
+        // from the root; a NEGATIVE index is out of range, it never counts
+        // from the end ──
+        "value.root" => {
             arity(name, &args, 0)?;
             Ok(Value::Path(Rc::new(Vec::new())))
         }
-        "json.field" => {
+        "value.key" => {
             arity(name, &args, 2)?;
             let mut p = (**want_path(name, &args[0])?).clone();
             p.push(PathSeg::Field(want_str(name, &args[1])?.clone()));
             Ok(Value::Path(Rc::new(p)))
         }
-        "json.index" => {
+        "value.index" => {
             arity(name, &args, 2)?;
             let mut p = (**want_path(name, &args[0])?).clone();
             p.push(PathSeg::Index(want_int(name, &args[1])?));
             Ok(Value::Path(Rc::new(p)))
         }
-        "json.get_path" => {
+        "value.get_path" => {
             arity(name, &args, 2)?;
             let mut cur = want_dyn(name, &args[0])?.clone();
             for seg in want_path(name, &args[1])?.iter() {
-                match (seg, &cur) {
-                    (PathSeg::Field(k), Dyn::O(fields)) => {
-                        match fields.iter().find(|(k2, _)| k2 == k) {
-                            Some((_, v)) => cur = v.clone(),
-                            None => return Ok(Ok(Value::None)),
-                        }
-                    }
+                let next = match (seg, &cur) {
+                    (PathSeg::Field(k), Dyn::O(fields)) => fields
+                        .iter()
+                        .find(|(k2, _)| k2 == k)
+                        .map(|(_, v)| v.clone()),
                     (PathSeg::Index(i), Dyn::A(items)) => {
-                        // C-031: a negative index normalizes (len + i)
-                        let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
-                        if idx < 0 || idx as usize >= items.len() {
-                            return Ok(Ok(Value::None));
-                        }
-                        cur = items[idx as usize].clone();
+                        path_slot(*i, items.len()).map(|ix| items[ix].clone())
                     }
-                    _ => return Ok(Ok(Value::None)), // D1: type-mismatch node degrades to none
+                    _ => None, // a step over the other kind misses
+                };
+                match next {
+                    Some(v) => cur = v,
+                    None => return Ok(Ok(Value::None)),
                 }
             }
             Ok(some(Value::Dyn(cur)))
         }
-        "json.set_path" => {
+        "value.set_path" => {
             arity(name, &args, 3)?;
             let root = want_dyn(name, &args[0])?.clone();
             let segs = want_path(name, &args[1])?;
@@ -692,37 +736,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(ok(Value::Dyn(json_set_at(&root, segs, &v))))
         }
-        "json.remove_path" => {
+        "value.remove_path" => {
             arity(name, &args, 2)?;
             let root = want_dyn(name, &args[0])?.clone();
             let segs = want_path(name, &args[1])?;
-            Ok(Value::Dyn(json_remove_at(&root, segs)))
-        }
-        "json.to_map" => {
-            arity(name, &args, 1)?;
-            Ok(match want_dyn(name, &args[0])? {
-                // C-380: one entry per key — a repeated key keeps its first
-                // position and takes its last value (an upsert per field); a
-                // Str value is taken verbatim, any other is its stringify.
-                Dyn::O(fields) => {
-                    let mut out: Vec<(Value, Value)> = Vec::new();
-                    for (k, v) in fields.iter() {
-                        let text = match v {
-                            Dyn::S(s) => Value::Str(s.clone()),
-                            other => Value::str(&dyn_text(other)),
-                        };
-                        match out
-                            .iter_mut()
-                            .find(|(ok, _)| matches!(ok, Value::Str(a) if *a == *k))
-                        {
-                            Some(slot) => slot.1 = text,
-                            None => out.push((Value::Str(k.clone()), text)),
-                        }
-                    }
-                    some(Value::Map(Rc::new(out)))
-                }
-                _ => Value::None,
-            })
+            // the root path removes the whole value: null
+            Ok(Value::Dyn(if segs.is_empty() {
+                Dyn::Null
+            } else {
+                json_remove_at(&root, segs)
+            }))
         }
 
         // ═══ bytes (ALS-D5/D7) — REFERENCE semantics, total reads ═══════
@@ -770,142 +793,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let n = want_int(name, &args[1])?;
             b.borrow_mut().extend_from_slice(&(n as i16).to_le_bytes());
             Ok(Value::Unit)
-        }
-        // ── C-213: the Endian-parameterized sized-typed surface — the byte
-        // order is an ARGUMENT; writes append, sets splice (no-fit no-op),
-        // reads answer the SIZED value (0 of the width when out of range) ──
-        "bytes.write_uint16" | "bytes.write_uint32" | "bytes.write_int32" => {
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let n = want_int(name, &args[1])?;
-            let le = want_endian(name, &args[2])?;
-            let mut bytes_out: Vec<u8> = if name.ends_with("16") {
-                if le {
-                    (n as u16).to_le_bytes().to_vec()
-                } else {
-                    (n as u16).to_be_bytes().to_vec()
-                }
-            } else if le {
-                (n as u32).to_le_bytes().to_vec()
-            } else {
-                (n as u32).to_be_bytes().to_vec()
-            };
-            b.borrow_mut().append(&mut bytes_out);
-            Ok(Value::Unit)
-        }
-        "bytes.write_float32" => {
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let bits = obs_bits_f32(want_float32(name, &args[1])?);
-            let le = want_endian(name, &args[2])?;
-            let raw = if le {
-                bits.to_le_bytes()
-            } else {
-                bits.to_be_bytes()
-            };
-            b.borrow_mut().extend_from_slice(&raw);
-            Ok(Value::Unit)
-        }
-        "bytes.set_float32" => {
-            // OOB is a silent NO-OP, like every set_* (bytes_negative_offset_family)
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?;
-            let bits = obs_bits_f32(want_float32(name, &args[2])?);
-            let le = want_endian(name, &args[3])?;
-            let raw = if le {
-                bits.to_le_bytes()
-            } else {
-                bits.to_be_bytes()
-            };
-            let mut buf = b.borrow_mut();
-            if off >= 0 && (off as u64).saturating_add(4) <= buf.len() as u64 {
-                let off = off as usize;
-                buf[off..off + 4].copy_from_slice(&raw);
-            }
-            Ok(Value::Unit)
-        }
-        "bytes.set_uint16" | "bytes.set_uint32" => {
-            arity(name, &args, 4)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?;
-            let n = want_int(name, &args[2])?;
-            let le = want_endian(name, &args[3])?;
-            let raw: Vec<u8> = if name.ends_with("16") {
-                if le {
-                    (n as u16).to_le_bytes().to_vec()
-                } else {
-                    (n as u16).to_be_bytes().to_vec()
-                }
-            } else if le {
-                (n as u32).to_le_bytes().to_vec()
-            } else {
-                (n as u32).to_be_bytes().to_vec()
-            };
-            let mut buf = b.borrow_mut();
-            if off >= 0 && (off as usize) + raw.len() <= buf.len() {
-                let off = off as usize;
-                buf[off..off + raw.len()].copy_from_slice(&raw);
-            }
-            Ok(Value::Unit)
-        }
-        "bytes.read_uint16" | "bytes.read_uint32" | "bytes.read_int32" | "bytes.read_float32" => {
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let off = want_int(name, &args[1])?;
-            let le = want_endian(name, &args[2])?;
-            let width = if name.ends_with("16") { 2 } else { 4 };
-            let buf = b.borrow();
-            let mut raw = [0u8; 4];
-            if off >= 0 && (off as usize) + width <= buf.len() {
-                raw[..width].copy_from_slice(&buf[off as usize..off as usize + width]);
-            }
-            Ok(match &name[11..] {
-                "uint16" => {
-                    let v = if le {
-                        u16::from_le_bytes([raw[0], raw[1]])
-                    } else {
-                        u16::from_be_bytes([raw[0], raw[1]])
-                    };
-                    Value::Sized {
-                        bits: 16,
-                        signed: false,
-                        v: v as i64,
-                    }
-                }
-                "uint32" => {
-                    let v = if le {
-                        u32::from_le_bytes(raw)
-                    } else {
-                        u32::from_be_bytes(raw)
-                    };
-                    Value::Sized {
-                        bits: 32,
-                        signed: false,
-                        v: v as i64,
-                    }
-                }
-                "int32" => {
-                    let v = if le {
-                        i32::from_le_bytes(raw)
-                    } else {
-                        i32::from_be_bytes(raw)
-                    };
-                    Value::Sized {
-                        bits: 32,
-                        signed: true,
-                        v: v as i64,
-                    }
-                }
-                _ => {
-                    let v = if le {
-                        f32::from_le_bytes(raw)
-                    } else {
-                        f32::from_be_bytes(raw)
-                    };
-                    Value::Float32(v)
-                }
-            })
         }
         // ── C-062: the RawPtr / linear-memory bridge — an empty buffer hands
         // out NULL and every bridge op through null moves nothing ──
@@ -974,8 +861,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let e = b.borrow().is_empty();
             Ok(Value::Bool(e))
         }
-        "bytes.get" | "bytes.get_or" => {
-            arity(name, &args, if name == "bytes.get" { 2 } else { 3 })?;
+        "bytes.get" | "bytes.get_u8" => {
+            arity(name, &args, 2)?;
             let b = want_bytes(name, &args[0])?;
             let i = want_int(name, &args[1])?;
             let hit = if i < 0 {
@@ -983,11 +870,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             } else {
                 b.borrow().get(i as usize).copied()
             };
-            Ok(match (name, hit) {
-                ("bytes.get", Some(v)) => some(Value::Int(v as i64)),
-                ("bytes.get", None) => Value::None,
-                (_, Some(v)) => Value::Int(v as i64),
-                (_, None) => args[2].clone(),
+            Ok(match hit {
+                Some(v) => some(Value::Int(v as i64)),
+                None => Value::None,
             })
         }
         "bytes.slice" => {
@@ -1002,14 +887,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             } else {
                 b[a..e].to_vec()
             }))
-        }
-        "bytes.concat" => {
-            arity(name, &args, 2)?;
-            let x = want_bytes(name, &args[0])?;
-            let y = want_bytes(name, &args[1])?;
-            let mut v = x.borrow().clone();
-            v.extend_from_slice(&y.borrow());
-            Ok(bytes_val(v))
         }
         "bytes.repeat" => {
             arity(name, &args, 2)?;
@@ -1050,7 +927,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             b.borrow_mut().push(x);
             Ok(Value::Unit)
         }
-        "bytes.append" => {
+        // append_bytes (stdlib/bytes.almd): src's bytes onto b, in place
+        "bytes.append" | "bytes.append_bytes" => {
             arity(name, &args, 2)?;
             let dst = want_bytes(name, &args[0])?;
             let src = want_bytes(name, &args[1])?;
@@ -1061,18 +939,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "bytes.clear" => {
             arity(name, &args, 1)?;
             want_bytes(name, &args[0])?.borrow_mut().clear();
-            Ok(Value::Unit)
-        }
-        "bytes.set_at" => {
-            // in-place single byte; OOB is a silent no-op (bytes_writer_family)
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let i = want_int(name, &args[1])?;
-            let x = want_int(name, &args[2])? as u8;
-            let mut v = b.borrow_mut();
-            if i >= 0 && (i as usize) < v.len() {
-                v[i as usize] = x;
-            }
             Ok(Value::Unit)
         }
         "bytes.fill" => {
@@ -1105,75 +971,207 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(Value::Unit)
         }
-        "bytes.read_string_be" => {
-            // u32 BE length prefix + UTF-8 bytes (the read twin of
-            // write_string_be); any OOB window yields ""
+        // compare (almide_rt_bytes_cmp): lexicographic over the bytes, a
+        // proper prefix first — -1, 0 or 1
+        "bytes.compare" => {
             arity(name, &args, 2)?;
-            let b = want_bytes(name, &args[0])?;
-            let b = b.borrow();
-            let p = want_int(name, &args[1])?;
-            if p < 0 || (p as u64).saturating_add(4) > b.len() as u64 {
-                return Ok(Ok(Value::str("")));
-            }
-            let q = p as usize;
-            let len = (u32::from(b[q]) << 24
-                | u32::from(b[q + 1]) << 16
-                | u32::from(b[q + 2]) << 8
-                | u32::from(b[q + 3])) as u64;
-            if (q as u64 + 4).saturating_add(len) > b.len() as u64 {
-                return Ok(Ok(Value::str("")));
-            }
-            let s = String::from_utf8_lossy(&b[q + 4..q + 4 + len as usize]).to_string();
-            Ok(Value::str(&s))
-        }
-        "bytes.read_string_at" => {
-            // any OOB/negative window yields "" (bytes_string_window_domain)
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let b = b.borrow();
-            let (p, n) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
-            if p < 0 || n < 0 || (p as u64).saturating_add(n as u64) > b.len() as u64 {
-                return Ok(Ok(Value::str("")));
-            }
-            let s = String::from_utf8_lossy(&b[p as usize..(p + n) as usize]).to_string();
-            Ok(Value::str(&s))
-        }
-        "bytes.read_length_prefixed_strings_le" | "bytes.skip_length_prefixed_le" => {
-            // totality per bytes_string_window_domain: an unreadable length
-            // prefix STOPS the walk (skip returns the position reached;
-            // the reader returns what it collected)
-            arity(name, &args, 3)?;
-            let b = want_bytes(name, &args[0])?;
-            let b = b.borrow();
-            let (p0, count) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
-            let mut p: i64 = p0;
-            let mut out: Vec<Value> = Vec::new();
-            let mut k: i64 = 0;
-            while k < count {
-                if p < 0 || (p as u64).saturating_add(4) > b.len() as u64 {
+            let a = want_bytes(name, &args[0])?.borrow().clone();
+            let b = want_bytes(name, &args[1])?.borrow().clone();
+            let mut ord = Ordering::Equal;
+            for (x, y) in a.iter().zip(b.iter()) {
+                if x != y {
+                    ord = if x < y {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    };
                     break;
                 }
-                let q = p as usize;
-                let len = u32::from(b[q])
-                    | u32::from(b[q + 1]) << 8
-                    | u32::from(b[q + 2]) << 16
-                    | u32::from(b[q + 3]) << 24;
-                let body = q + 4;
-                if (body as u64).saturating_add(len as u64) > b.len() as u64 {
-                    break;
-                }
-                if name == "bytes.read_length_prefixed_strings_le" {
-                    let s = String::from_utf8_lossy(&b[body..body + len as usize]).to_string();
-                    out.push(Value::str(&s));
-                }
-                p = (body + len as usize) as i64;
-                k += 1;
             }
-            Ok(if name == "bytes.skip_length_prefixed_le" {
-                Value::Int(p)
+            if ord == Ordering::Equal {
+                ord = a.len().cmp(&b.len());
+            }
+            Ok(Value::Int(match ord {
+                Ordering::Less => -1,
+                Ordering::Equal => 0,
+                Ordering::Greater => 1,
+            }))
+        }
+        // to_string_lossy (almide_rt_bytes_to_string_lossy): each invalid
+        // UTF-8 sequence becomes U+FFFD
+        "bytes.to_string_lossy" => {
+            arity(name, &args, 1)?;
+            let b = want_bytes(name, &args[0])?.borrow().clone();
+            Ok(Value::str(&String::from_utf8_lossy(&b)))
+        }
+        // contains / index_of (almide_rt_bytes_index_of): the first window
+        // equal to the needle; an empty needle is at 0
+        "bytes.contains" | "bytes.index_of" => {
+            arity(name, &args, 2)?;
+            let b = want_bytes(name, &args[0])?.borrow().clone();
+            let pat = want_bytes(name, &args[1])?.borrow().clone();
+            let at = if pat.is_empty() {
+                Some(0)
+            } else if pat.len() > b.len() {
+                None
             } else {
+                (0..=b.len() - pat.len()).find(|&i| b[i..i + pat.len()] == pat[..])
+            };
+            Ok(if name == "bytes.contains" {
+                Value::Bool(at.is_some())
+            } else {
+                match at {
+                    Some(i) => some(Value::Int(i as i64)),
+                    None => Value::None,
+                }
+            })
+        }
+        // ── ffi (stdlib/ffi.almd, R-L0-45): the address of a Bytes block
+        // (null for an empty one); read/write move bytes through it and are
+        // effect fns. The block an address names is the one it was taken
+        // from — rebinding the variable later does not move it (C-062) ──
+        "ffi.address" => {
+            arity(name, &args, 1)?;
+            let b = want_bytes(name, &args[0])?;
+            let empty = b.borrow().is_empty();
+            Ok(Value::Ptr(if empty { None } else { Some(b) }))
+        }
+        "ffi.read" => {
+            arity(name, &args, 2)?;
+            let n = want_int(name, &args[1])?;
+            Ok(ok(match &args[0] {
+                Value::Ptr(Some(src)) if n > 0 => {
+                    let s = src.borrow();
+                    if n as u64 > s.len() as u64 {
+                        // past the block is memory the ALS does not describe
+                        return Ok(it.abstain_pub(
+                            "semantics:ffi-read-past-block",
+                            format!("{name}({n}) reads past a {}-byte block", s.len()),
+                        ));
+                    }
+                    bytes_val(s[..n as usize].to_vec())
+                }
+                Value::Ptr(_) => bytes_val(Vec::new()),
+                other => return mismatch(name, "RawPtr", other),
+            }))
+        }
+        "ffi.write" => {
+            arity(name, &args, 3)?;
+            let src = want_bytes(name, &args[1])?.borrow().clone();
+            let cap = want_int(name, &args[2])?;
+            Ok(ok(match &args[0] {
+                Value::Ptr(Some(dst)) => {
+                    // the count is min(len(b), cap as unsigned)
+                    let n = if cap < 0 {
+                        src.len()
+                    } else {
+                        src.len().min(cap as usize)
+                    };
+                    let mut d = dst.borrow_mut();
+                    if n > d.len() {
+                        return Ok(it.abstain_pub(
+                            "semantics:ffi-write-past-block",
+                            format!("{name} writes {n} bytes into a {}-byte block", d.len()),
+                        ));
+                    }
+                    d[..n].copy_from_slice(&src[..n]);
+                    Value::Int(n as i64)
+                }
+                Value::Ptr(None) => Value::Int(0),
+                other => return mismatch(name, "RawPtr", other),
+            }))
+        }
+        // ── deque (stdlib/deque.almd): the record { front, back }, the front
+        // stored reversed ──
+        "deque.from_list" => {
+            arity(name, &args, 1)?;
+            let xs = want_list(name, &args[0])?.clone();
+            Ok(Value::Record {
+                type_name: Some(Rc::from("Deque")),
+                fields: Rc::new(vec![
+                    (Rc::from("front"), Value::List(Rc::new(Vec::new()))),
+                    (Rc::from("back"), Value::List(xs)),
+                ]),
+            })
+        }
+        "deque.len" | "deque.to_list" => {
+            arity(name, &args, 1)?;
+            let (front, back) = match &args[0] {
+                Value::Record { fields, .. } => {
+                    let get = |k: &str| match fields.iter().find(|(n, _)| &**n == k) {
+                        Some((_, Value::List(xs))) => Some(xs.clone()),
+                        _ => None,
+                    };
+                    match (get("front"), get("back")) {
+                        (Some(f), Some(b)) => (f, b),
+                        _ => return mismatch(name, "Deque", &args[0]),
+                    }
+                }
+                other => return mismatch(name, "Deque", other),
+            };
+            Ok(if name == "deque.len" {
+                Value::Int((front.len() + back.len()) as i64)
+            } else {
+                let mut out: Vec<Value> = front.iter().rev().cloned().collect();
+                out.extend(back.iter().cloned());
                 Value::List(Rc::new(out))
             })
+        }
+        // is_eof (almide_rt_bytes_eof): `pos as usize >= len`, so a negative
+        // position is past the end too
+        "bytes.is_eof" => {
+            arity(name, &args, 2)?;
+            let n = want_bytes(name, &args[0])?.borrow().len();
+            let pos = want_int(name, &args[1])?;
+            Ok(Value::Bool(pos < 0 || pos as u64 >= n as u64))
+        }
+        // map (almide_rt_bytes_map_each): f over every byte, the low 8 bits kept
+        "bytes.map" => {
+            arity(name, &args, 2)?;
+            let src = want_bytes(name, &args[0])?.borrow().clone();
+            let c = match &args[1] {
+                Value::Fn(c) => c.clone(),
+                other => return mismatch(name, "(Int) -> Int", other),
+            };
+            let mut out = Vec::with_capacity(src.len());
+            for x in src.iter() {
+                let y = it.call_value(&c, vec![Value::Int(*x as i64)])?;
+                out.push(want_int(name, &y)? as u8);
+            }
+            Ok(bytes_val(out))
+        }
+        // next_bytes (stdlib/bytes.almd over almide_rt_bytes_take_at): the n
+        // bytes at pos and pos + n, or (none, pos) when n < 0 or the window
+        // leaves 0..len
+        "bytes.next_bytes" => {
+            arity(name, &args, 3)?;
+            let b = want_bytes(name, &args[0])?.borrow().clone();
+            let (pos, n) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
+            let fits =
+                n >= 0 && pos >= 0 && (pos as u64).saturating_add(n as u64) <= b.len() as u64;
+            Ok(Value::Tuple(Rc::new(if fits {
+                let p = pos as usize;
+                vec![
+                    some(bytes_val(b[p..p + n as usize].to_vec())),
+                    Value::Int(pos + n),
+                ]
+            } else {
+                vec![Value::None, Value::Int(pos)]
+            })))
+        }
+        // the width decoders/encoders under the typed IO: the same total
+        // read (0 outside the buffer) and no-op write as the read_/set_ rows
+        n2 if n2.starts_with("bytes.__read_") => {
+            read_bytes_fn(it, &n2.replacen("bytes.__read_", "bytes.read_", 1), &args)?
+        }
+        n2 if n2.starts_with("bytes.__set_") => {
+            write_bytes_fn(it, &n2.replacen("bytes.__set_", "bytes.set_", 1), &args)?
+        }
+        n2 if n2.starts_with("bytes.get_")
+            || n2.starts_with("bytes.next_")
+            || n2.starts_with("bytes.put_") =>
+        {
+            typed_io(it, n2, &args)?
         }
         n2 if n2.starts_with("bytes.read_") => read_bytes_fn(it, n2, &args)?,
         n2 if n2.starts_with("bytes.set_") || n2.starts_with("bytes.append_") => {
@@ -1448,14 +1446,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Err(e) => io_err(e),
             })
         }
-        "fs.file_size" => {
-            arity(name, &args, 1)?;
-            Ok(match std::fs::metadata(&**want_str(name, &args[0])?) {
-                Ok(m) => ok(Value::Int(m.len() as i64)),
-                Err(e) => io_err(e),
-            })
-        }
-        "fs.temp_dir" | "env.temp_dir" => {
+        "fs.temp_dir" => {
             arity(name, &args, 0)?;
             Ok(Value::str(&std::env::temp_dir().to_string_lossy()))
         }
@@ -1487,12 +1478,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             // ALS-R5: argv without the program name; the ref protocol runs
             // the program with no arguments
             Ok(Value::List(Rc::new(Vec::new())))
-        }
-        "process.args" => {
-            arity(name, &args, 0)?;
-            // process.args INCLUDES argv0 (process_args: len 1, nonempty);
-            // its content is host-specific and never pinned beyond that
-            Ok(Value::List(Rc::new(vec![Value::str("als-ref")])))
         }
         "env.get" => {
             arity(name, &args, 1)?;
@@ -1762,6 +1747,61 @@ fn write_bytes_fn(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Valu
         v.extend_from_slice(&chunk);
     }
     Ok(Ok(Value::Unit))
+}
+
+/// The typed IO rows of stdlib/bytes.almd (R-bytes-01): `get_<t>` reads the
+/// width decoder when the window fits (`pos >= 0 and pos <= len - w`) and is
+/// none otherwise; `next_<t>` is `(get_<t>, pos + w)`, the position kept when
+/// nothing is read; `put_<t>` writes in place when the window fits and is a
+/// `panic` otherwise — C-219's `PANIC:` form, which this evaluator does not
+/// render yet, so that edge abstains as `stdlib:panic` (as bigint's does).
+fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flow>, Flow> {
+    let (verb, ty) = match name.trim_start_matches("bytes.").split_once('_') {
+        Some((v, t)) => (v, t),
+        None => return Err(Flow::Fatal("__not_ext__".into())),
+    };
+    let width: i64 = match ty {
+        "u8" => 1,
+        "u16_le" | "u16_be" | "i16_le" | "i16_be" => 2,
+        "u32_le" | "u32_be" | "i32_le" | "i32_be" | "f32_le" | "f32_be" => 4,
+        "i64_le" | "i64_be" | "f64_le" | "f64_be" => 8,
+        _ => return Err(Flow::Fatal("__not_ext__".into())),
+    };
+    arity(name, args, if verb == "put" { 3 } else { 2 })?;
+    let len = want_bytes(name, &args[0])?.borrow().len() as i64;
+    let pos = want_int(name, &args[1])?;
+    let fits = pos >= 0 && pos <= len - width;
+    let rd = format!("bytes.read_{ty}");
+    match verb {
+        "get" | "next" => {
+            let got = if fits {
+                match read_bytes_fn(it, &rd, &args[..2])? {
+                    Ok(v) => some(v),
+                    Err(f) => return Ok(Err(f)),
+                }
+            } else {
+                Value::None
+            };
+            Ok(Ok(if verb == "get" {
+                got
+            } else {
+                let next = if fits { pos + width } else { pos };
+                Value::Tuple(Rc::new(vec![got, Value::Int(next)]))
+            }))
+        }
+        "put" => {
+            if !fits {
+                return Ok(Err(Flow::Abstain {
+                    class: "stdlib:panic".into(),
+                    reason: format!(
+                        "{name}: {width}-byte write at {pos} is out of range for length {len} — a panic (C-219), not rendered yet"
+                    ),
+                }));
+            }
+            write_bytes_fn(it, &format!("bytes.set_{ty}"), args)
+        }
+        _ => Err(Flow::Fatal("__not_ext__".into())),
+    }
 }
 
 /// IEEE-754 binary16 → binary64, exact (ALS-D5: subnormals, ±inf, NaN, ±0)
@@ -2214,10 +2254,33 @@ fn dyn_nests_past(v: &Dyn, budget: usize) -> bool {
     }
 }
 
-/// C-031 set_path: total below the nesting bound (C-433) — Field over a non-object AUTOVIVIFIES (the
-/// node is replaced by a fresh single-key object, absent descents seed `{}`),
-/// Index over a non-array or out of range is a LOCAL no-op, a negative index
-/// normalizes (len + i). Mirrors native `set_at_steps` (json.rs oracle).
+/// The slot an index step names in an array of `len` items: a negative
+/// index is out of range (value.Path never counts from the end).
+fn path_slot(i: i64, len: usize) -> Option<usize> {
+    if i < 0 || i as u64 >= len as u64 {
+        None
+    } else {
+        Some(i as usize)
+    }
+}
+
+/// The kind a value's `as_*` err names (almide_rt_value_kind).
+fn dyn_kind(d: &Dyn) -> &'static str {
+    match d {
+        Dyn::Null => "Null",
+        Dyn::B(_) => "Bool",
+        Dyn::I(_) => "Int",
+        Dyn::F(_) => "Float",
+        Dyn::S(_) => "Str",
+        Dyn::A(_) => "Array",
+        Dyn::O(_) => "Object",
+    }
+}
+
+/// value.set_path (stdlib/value.almd `__set_steps`): total below the nesting
+/// bound (C-433) — Field over a non-object AUTOVIVIFIES (the node is replaced
+/// by a fresh single-key object, absent descents seed `{}`), Index over a
+/// non-array, out of range or negative leaves the node as it is.
 fn json_set_at(node: &Dyn, segs: &[PathSeg], v: &Dyn) -> Dyn {
     let Some((seg, rest)) = segs.split_first() else {
         return v.clone();
@@ -2239,20 +2302,20 @@ fn json_set_at(node: &Dyn, segs: &[PathSeg], v: &Dyn) -> Dyn {
             json_set_at(&Dyn::O(Rc::new(Vec::new())), rest, v),
         )])),
         (PathSeg::Index(i), Dyn::A(items)) => {
-            let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
-            if idx < 0 || idx as usize >= items.len() {
+            let Some(idx) = path_slot(*i, items.len()) else {
                 return node.clone();
-            }
+            };
             let mut out = (**items).clone();
-            out[idx as usize] = json_set_at(&out[idx as usize].clone(), rest, v);
+            out[idx] = json_set_at(&out[idx].clone(), rest, v);
             Dyn::A(Rc::new(out))
         }
         (PathSeg::Index(_), _) => node.clone(),
     }
 }
 
-/// C-031 remove_path: infallible; missing keys, non-containers and
-/// out-of-range indexes are no-ops, a negative index normalizes.
+/// value.remove_path below the root (stdlib/value.almd `__remove_steps`):
+/// infallible; missing keys, non-containers and out-of-range or negative
+/// indexes leave the node as it is.
 fn json_remove_at(node: &Dyn, segs: &[PathSeg]) -> Dyn {
     let Some((seg, rest)) = segs.split_first() else {
         return node.clone();
@@ -2273,15 +2336,14 @@ fn json_remove_at(node: &Dyn, segs: &[PathSeg]) -> Dyn {
             Dyn::O(Rc::new(out))
         }
         (PathSeg::Index(i), Dyn::A(items)) => {
-            let idx = if *i < 0 { items.len() as i64 + *i } else { *i };
-            if idx < 0 || idx as usize >= items.len() {
+            let Some(idx) = path_slot(*i, items.len()) else {
                 return node.clone();
-            }
+            };
             let mut out = (**items).clone();
             if rest.is_empty() {
-                out.remove(idx as usize);
+                out.remove(idx);
             } else {
-                out[idx as usize] = json_remove_at(&out[idx as usize].clone(), rest);
+                out[idx] = json_remove_at(&out[idx].clone(), rest);
             }
             Dyn::A(Rc::new(out))
         }

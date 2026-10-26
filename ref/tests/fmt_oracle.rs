@@ -117,7 +117,7 @@ fn f32_display_matches_host_shortest() {
         x ^= x << 5;
         samples.push(x);
     }
-    let mut prog = String::from("fn show(b: Int) -> Unit = {\n  let g = float.to_float32(int.bits_to_float(b))\n  println(\"${g}\")\n}\n\nfn main() -> Unit = {\n");
+    let mut prog = String::from("fn show(b: Int) -> Unit = {\n  let g = float32.from(float.from_bits(b))\n  println(\"${g}\")\n}\n\nfn main() -> Unit = {\n");
     let mut expected = Vec::new();
     for &bits in &samples {
         let g = f32::from_bits(bits);
