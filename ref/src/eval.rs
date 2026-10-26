@@ -3427,6 +3427,9 @@ fn stmt_has_unwrap(s: &Stmt) -> bool {
     }
 }
 
+/// A record shape's decoded fields, in declaration order.
+type DecodedFields = Vec<(Rc<str>, Value)>;
+
 /// C-084 / C-436: splice a path segment into a decode or strict message:
 /// `<leaf>, at <path>`; a parent segment is prepended (`city` becomes
 /// `address.city`), an index segment joins without a dot (`tags[1]`).
@@ -3814,7 +3817,7 @@ impl Interp {
         &mut self,
         fds: &[FieldDecl],
         pairs: &[(Rc<str>, Dyn)],
-    ) -> Result<Result<Vec<(Rc<str>, Value)>, String>, Flow> {
+    ) -> Result<Result<DecodedFields, String>, Flow> {
         let mut fields: Vec<(Rc<str>, Value)> = Vec::with_capacity(fds.len());
         for fd in fds {
             let key = fd.alias.as_deref().unwrap_or(&fd.name);
