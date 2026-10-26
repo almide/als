@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 438 contracts: **requirements-first 133** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-438 contracts
+439 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -473,4 +473,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-436 | `http.decode_json[T](req)` decodes a request body only into an input type: a `Codec` T is E110, and a key outside T is `400 Bad Request: unknown key '<k>'` | 0.69.0 | active | fixture | 1 |
 | C-437 | A process.start child neither waited on nor stopped is stopped when the program exits by main's return, process.exit or an effect error | 0.69.0 | active | fixture | 0 |
 | C-438 | env.secret(name) reads an environment variable as Option[Secret[String]]: env.get's value, rendered Secret(***), compared in constant time | 0.69.0 | active | fixture | 1 |
+| C-439 | env.vars lists the environment keyed and ordered by name with the program's own set and remove applied, and env.remove unsets a name or refuses it as env.set does, with the same bytes on every leg | 0.69.0 | active | fixture | 1 |
 
