@@ -14,8 +14,8 @@ fn blend(verts: Bytes, vert_count: Int, stride: Int, jm: Bytes, data: Bytes, off
     let ny = bytes.read_f32_le(verts, dst + 16)
     let nz = bytes.read_f32_le(verts, dst + 20)
     let jo = offset + i * 4
-    let j0 = bytes.get_or(data, jo, 0)
-    let j1 = bytes.get_or(data, jo + 1, 0)
+    let j0 = bytes.get(data, jo) ?? 0
+    let j1 = bytes.get(data, jo + 1) ?? 0
     let wo = offset + 100 + i * 16
     let w0 = bytes.read_f32_le(data, wo)
     let w1 = bytes.read_f32_le(data, wo + 4)

@@ -19,9 +19,9 @@ test "insertion order is preserved across upserts" {
     m = map.upsert(m, k, 1, (v) => v + 1)
   }
   assert_eq(map.keys(m), ["b", "a", "c"])
-  assert_eq(map.get_or(m, "b", 0), 2)
-  assert_eq(map.get_or(m, "a", 0), 2)
-  assert_eq(map.get_or(m, "c", 0), 1)
+  assert_eq(map.get(m, "b") ?? 0, 2)
+  assert_eq(map.get(m, "a") ?? 0, 2)
+  assert_eq(map.get(m, "c") ?? 0, 1)
 }
 
 test "a reused source stays intact (consume + clone-on-later-use)" {
@@ -32,7 +32,10 @@ test "a reused source stays intact (consume + clone-on-later-use)" {
 }
 
 test "fold aggregation shape" {
-  let counts = ["x", "y", "x"] |> list.fold(map.new(), (acc, k) => map.upsert(acc, k, 1, (n) => n + 1))
-  assert_eq(map.get_or(counts, "x", 0), 2)
-  assert_eq(map.get_or(counts, "y", 0), 1)
+  let counts = ["x", "y", "x"] |> list.fold(
+    map.new(),
+    (acc, k) => map.upsert(acc, k, 1, (n) => n + 1),
+  )
+  assert_eq(map.get(counts, "x") ?? 0, 2)
+  assert_eq(map.get(counts, "y") ?? 0, 1)
 }

@@ -33,7 +33,7 @@ fn zipish(view: View, rx: Float, rh: Float, idx: Int) -> Zip = {
     for i in 0..<total {
       let child = view._children[i]
       let cs = child._style
-      let iy = rx + int.to_float(i) * ih
+      let iy = rx + float.from(i) * ih
       items = items + [
         { x: iy, y: 1.0, w: 2.0, h: 3.0, bg_r: cs.bg.r, bg_g: 0.1, bg_b: 0.2, bg_a: 0.3, fg_r: 0.4, fg_g: 0.5, fg_b: 0.6, fg_a: 0.7, rounded: 0.0, opacity: s.opacity, font_size: 14.0, selectable: s.selectable, content: "", kind: ROW, scrollable: 1 }
       ]

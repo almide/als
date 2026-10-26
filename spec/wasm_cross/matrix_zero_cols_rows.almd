@@ -34,6 +34,6 @@ fn main() -> Unit = {
     [],
     []
   ]))}")
-  println("add3x0: ${shape(matrix.add(matrix.zeros(3, 0), matrix.zeros(3, 0)))}")
+  println("add3x0: ${shape(matrix.zeros(3, 0) + matrix.zeros(3, 0))}")
   println("transpose3x0: ${shape(matrix.transpose(matrix.zeros(3, 0)))}")
 }
