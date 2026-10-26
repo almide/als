@@ -3746,7 +3746,7 @@ impl Interp {
                     return Ok(None);
                 };
                 if let Some((k, _)) = pairs.iter().find(|(k, _)| k != tag) {
-                    return Ok(Some(format!("unknown key '{k}'")));
+                    return Ok(Some(unknown_key(k)));
                 }
                 let case = cases.iter().find(|c| match c {
                     VariantCase::Unit(n) | VariantCase::Tuple(n, _) | VariantCase::Record(n, _) => {
@@ -3788,7 +3788,7 @@ impl Interp {
             .iter()
             .find(|(k, _)| !known.iter().any(|w| **w == **k))
         {
-            return Ok(Some(format!("unknown key '{k}'")));
+            return Ok(Some(unknown_key(k)));
         }
         for fd in decoded {
             let key = wire(fd);
@@ -4556,4 +4556,10 @@ fn mismatch_repr(v: &Value) -> R {
         "a declared `repr` answered a {}, not a String",
         v.type_name()
     )))
+}
+
+/// C-429 / C-418: the refused key is the input's, written by C-418's rule
+/// (#4263), so a key holding ESC reads `\u{1b}`.
+fn unknown_key(k: &str) -> String {
+    format!("unknown key '{}'", crate::stdlib_ext::err_escape(k))
 }
