@@ -927,9 +927,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T6"
-hash = "sha256:c8198f50ae13"
-reviewed = "2026-10-06"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-06 — the stack-exhaustion paragraph checked against C-196's amended statement, the named fixtures, and live probes on native, the embedded wasm host and stock wasmtime 49 with an almide build carrying the guard)"
+hash = "sha256:7d159e531dee"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib wave 5: the rotate-width abort removed with the width argument (R-int-12); prose checked against C-047 as amended, the named fixtures, and int_rotate_nonpositive_width.almd dropped from the fixture list)"
 independent = "no"
 verdict = "accurate"
 
@@ -983,9 +983,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T14"
-hash = "sha256:386e313ad1bb"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:6b88a761f965"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib wave 5: the 64-bit register and int.wrap mask saturation (R-int-12); prose checked against C-048 and C-358 as amended, spec/wasm_cross/int_wrap_rotate_width.almd and int_rotate_negative_count.almd reproduced by als-ref)"
 independent = "no"
 verdict = "accurate"
 
