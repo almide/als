@@ -9,15 +9,11 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 16
-evaluated = 788
+ceiling = 14
+evaluated = 792
 
 [[abstain]]
 class = "parse"
-count = 2
-
-[[abstain]]
-class = "semantics:carrier-shape"
 count = 2
 
 [[abstain]]
