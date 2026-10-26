@@ -1458,13 +1458,10 @@ impl Interp {
                         return self.call_fn(&f, pos, named);
                     }
                     // ALS-D6: `T.decode` / `T.encode` / `T.decode_strict`
-                    // derived from `: Codec`
-                    if (name == "decode" || name == "encode" || name == "decode_strict")
-                        && self
-                            .types
-                            .get(t)
-                            .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
-                    {
+                    // derived from the direction the type declares (C-435)
+                    if codec_direction(name).is_some_and(|dir| {
+                        self.types.get(t).is_some_and(|d| derives_direction(d, dir))
+                    }) {
                         let c = if name == "decode_strict" {
                             Callable::CodecStrict(t.clone())
                         } else {
@@ -2335,11 +2332,14 @@ impl Interp {
             }
             Expr::Call {
                 callee,
-                type_args: _,
+                type_args,
                 args,
                 line,
             } => {
                 self.cur_line = *line;
+                if is_request_decode(callee) {
+                    return self.eval_request_decode(env, type_args, args);
+                }
                 self.eval_call(env, callee, args)
             }
             Expr::Index { obj, idx } => {
@@ -2383,13 +2383,11 @@ impl Interp {
                             name.clone(),
                         ))));
                     }
-                    // ALS-D6: `T.decode` / `T.encode` derived from `: Codec`
-                    if (name == "decode" || name == "encode" || name == "decode_strict")
-                        && self
-                            .types
-                            .get(t)
-                            .is_some_and(|d| d.conventions.iter().any(|c| c == "Codec"))
-                    {
+                    // ALS-D6: `T.decode` / `T.encode` derived from the
+                    // direction the type declares (C-435)
+                    if codec_direction(name).is_some_and(|dir| {
+                        self.types.get(t).is_some_and(|d| derives_direction(d, dir))
+                    }) {
                         return Ok(Value::Fn(Rc::new(if name == "decode_strict" {
                             Callable::CodecStrict(t.clone())
                         } else {
@@ -3431,6 +3429,111 @@ fn stmt_has_unwrap(s: &Stmt) -> bool {
     }
 }
 
+/// C-435: `Codec` is `Encode + Decode`. The direction a derived method
+/// belongs to: `encode` is `Encode`'s, `decode` and `decode_strict` are
+/// `Decode`'s.
+fn codec_direction(method: &str) -> Option<&'static str> {
+    match method {
+        "encode" => Some("Encode"),
+        "decode" | "decode_strict" => Some("Decode"),
+        _ => None,
+    }
+}
+
+/// C-435: a type derives a direction when it declares it or `Codec`.
+fn derives_direction(d: &TypeDecl, dir: &str) -> bool {
+    d.conventions.iter().any(|c| c == "Codec" || c == dir)
+}
+
+/// ALS-R5 / C-436: `http.decode_json[T](req)`, the typed request decode.
+fn is_request_decode(callee: &Expr) -> bool {
+    matches!(callee, Expr::Member { obj, name }
+        if name == "decode_json" && matches!(&**obj, Expr::Ident(m) if m == "http"))
+}
+
+impl Interp {
+    /// C-436: the body is read as JSON and decoded with `T.decode_strict`
+    /// into the input type `T`; a parse or decode err is a `400` response
+    /// whose body is `Bad Request: ` and the reason. The check-time refusal
+    /// of a `T` that is also `Encode` (E110) is the checker's, not the
+    /// evaluator's; a call whose `T` is inferred, not written, abstains.
+    fn eval_request_decode(&mut self, env: &Rc<Env>, type_args: &[TypeExpr], args: &[Arg]) -> R {
+        let t = match type_args {
+            [TypeExpr::Named {
+                module: None,
+                name,
+                args,
+            }] if args.is_empty() => name.clone(),
+            _ => {
+                return self.abstain(
+                    "semantics:codec",
+                    "`http.decode_json` without one written input type",
+                )
+            }
+        };
+        let (pos, named) = self.eval_args(env, args)?;
+        if !named.is_empty() || pos.len() != 1 {
+            return Err(Flow::Fatal("`http.decode_json` takes 1 argument".into()));
+        }
+        let req = self.force(pos.into_iter().next().unwrap())?;
+        let body = match &req {
+            Value::Record { fields, .. } => match fields.iter().find(|(n, _)| &**n == "body") {
+                Some((_, Value::Str(s))) => s.clone(),
+                _ => {
+                    return Err(Flow::Fatal(
+                        "`http.decode_json` on a request without a body".into(),
+                    ))
+                }
+            },
+            other => {
+                return Err(Flow::Fatal(format!(
+                    "`http.decode_json` on a {}",
+                    other.type_name()
+                )))
+            }
+        };
+        let bad = |it: &mut Interp, why: String| -> R {
+            match crate::stdlib_ext2::call_ext2(
+                it,
+                "http.response",
+                vec![Value::Int(400), Value::str(&format!("Bad Request: {why}"))],
+            ) {
+                Some(r) => Ok(Value::Err(Rc::new(r?))),
+                None => Err(Flow::Fatal("http.response is not available".into())),
+            }
+        };
+        match crate::stdlib_ext::json_parse(&body) {
+            Value::Ok(v) => {
+                match self.call_value(&Callable::CodecStrict(t), vec![(*v).clone()])? {
+                    Value::Ok(x) => Ok(Value::Ok(x)),
+                    Value::Err(e) => match &*e {
+                        Value::Str(s) => bad(self, s.to_string()),
+                        other => Err(Flow::Fatal(format!(
+                            "decode err is a {}",
+                            other.type_name()
+                        ))),
+                    },
+                    other => Err(Flow::Fatal(format!(
+                        "decode answered a {}",
+                        other.type_name()
+                    ))),
+                }
+            }
+            Value::Err(e) => match &*e {
+                Value::Str(s) => bad(self, format!("the body is not JSON ({s})")),
+                other => Err(Flow::Fatal(format!(
+                    "json.parse err is a {}",
+                    other.type_name()
+                ))),
+            },
+            other => Err(Flow::Fatal(format!(
+                "json.parse answered a {}",
+                other.type_name()
+            ))),
+        }
+    }
+}
+
 // ── ALS-D6: the derived Codec bridge between record/variant values and the
 // dynamic Value (Dyn) model. Decode walks the DECLARED fields in order and
 // returns the first error; encode walks declaration order and omits `none`.
@@ -3438,7 +3541,9 @@ fn stmt_has_unwrap(s: &Stmt) -> bool {
 impl Interp {
     fn codec_decl(&self, t: &str) -> Result<Rc<TypeDecl>, Flow> {
         match self.types.get(t) {
-            Some(d) if d.conventions.iter().any(|c| c == "Codec") => Ok(d.clone()),
+            Some(d) if derives_direction(d, "Encode") || derives_direction(d, "Decode") => {
+                Ok(d.clone())
+            }
             _ => self.abstain(
                 "semantics:codec",
                 format!("`{t}` used as a Codec without a `: Codec` declaration"),

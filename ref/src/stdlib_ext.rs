@@ -1796,7 +1796,7 @@ fn pretty(d: &Dyn, level: usize) -> String {
 // indices (C-087, C-400, C-401). Written from the chapter, not from either
 // implementation's parser. ──
 
-fn json_parse(text: &str) -> Value {
+pub(crate) fn json_parse(text: &str) -> Value {
     let b = text.as_bytes();
     let r = jp_value(b, 0, 0).and_then(|(v, p)| {
         let q = jp_ws(b, p);
