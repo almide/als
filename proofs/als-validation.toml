@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:2bcacc9441ca"
-reviewed = "2026-10-24"
-by = "O6lvl4 (via the Claude session, 2026-10-24, sec-protocol: query_params as url.parse_query (#4117), the RFC 9112 request head (#4112), nosniff (#4134), the buffered client's completeness and head cap (#4137) and the handler-err disclosure fix (#4150, the request id computed from the request so native, the embedded lane and wasmtime serve agree); checked against C-367 / C-404 / C-405 / C-407 / C-408 / C-409, spec/wasm_cross/http_query_params_decoder on the reference evaluator, native and wasm, and the serve fixtures' driver and rt-core tests named in those contracts)"
+hash = "sha256:d868cdc399e1"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib redesign wave 4 mirror (almide#4234): the process launch-failure prefix moves to process.output / process.start, http.start takes a built request, the HttpMessage readers are method / path / body / header, and the streaming twin request_stream_with_limits is gone; checked against the wave-4 fixtures spec/stdlib/http_call_test.almd, spec/embedded_cross/http_call_handle_errs.almd and spec/embedded_cross/process_spawn_family.almd as almide carries them)"
 independent = "no"
 verdict = "accurate"
 
@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:bb0f28602612"
+hash = "sha256:0a329dc324cb"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, row 22 follow-up: the typed request decode refuses an unknown key at every depth and accepts a Decode variant; checked against C-436 as amended, spec/wasm_cross/http_decode_json_input_type.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib redesign wave 4 mirror (almide#4234): the status pair is http.set_status / http.status, the readers are header / method / path / body, with_headers and new_request take a header list; prose otherwise unchanged and checked against spec/stdlib/http_router_test.almd and spec/stdlib/http_response_test.almd as almide carries them)"
 independent = "no"
 verdict = "accurate"
 
@@ -854,9 +854,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-S2"
-hash = "sha256:3eec0335545a"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:b6a1ed273fcb"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib redesign wave 4 mirror (almide#4234): the substring counter is spelled string.count_matches (string.count now takes a predicate); the empty-pattern rule is unchanged, checked against spec/stdlib/string_test.almd as almide carries it)"
 independent = "no"
 verdict = "accurate"
 
