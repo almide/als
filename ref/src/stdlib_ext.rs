@@ -1481,17 +1481,21 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(Value::List(Rc::new(Vec::new())))
         }
         // C-438: env.secret is env.get with the value born a Secret[String].
+        // It is an effect fn written in Almide, so it answers its Option
+        // inside the Result its callers' `!` reads.
         "env.get" | "env.secret" => {
             arity(name, &args, 1)?;
             let k = want_str(name, &args[0])?.to_string();
-            let wrap = |v: Value| if name == "env.secret" { crate::value::secret_of(v) } else { v };
-            Ok(match it.env_overlay.iter().rev().find(|(n, _)| *n == k) {
+            let secret = name == "env.secret";
+            let wrap = |v: Value| if secret { crate::value::secret_of(v) } else { v };
+            let found = match it.env_overlay.iter().rev().find(|(n, _)| *n == k) {
                 Some((_, v)) => some(wrap(Value::str(v))),
                 None => match std::env::var(&k) {
                     Ok(v) => some(wrap(Value::str(&v))),
                     Err(_) => Value::None,
                 },
-            })
+            };
+            Ok(if secret { ok(found) } else { found })
         }
         "env.set" => {
             arity(name, &args, 2)?;
