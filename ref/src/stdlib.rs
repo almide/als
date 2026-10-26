@@ -164,6 +164,7 @@ const INT_FNS: &[&str] = &[
     "int.bshr",
     "int.wrap_add",
     "int.wrap_mul",
+    "int.wrap",
     "int.rotate_left",
     "int.rotate_right",
     "int.to_u32",
@@ -1774,56 +1775,39 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }))
         }
         "int.wrap_add" | "int.wrap_mul" => {
-            arity(name, &args, 3)?;
-            let (a, b, bits) = (
-                want_int(name, &args[0])?,
-                want_int(name, &args[1])?,
-                want_int(name, &args[2])?,
-            );
+            // ALS-T14: the register is the 64-bit Int itself (R-int-12)
+            arity(name, &args, 2)?;
+            let (a, b) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
+            Ok(Value::Int(if name == "int.wrap_add" {
+                a.wrapping_add(b)
+            } else {
+                a.wrapping_mul(b)
+            }))
+        }
+        "int.wrap" => {
+            arity(name, &args, 2)?;
+            let (x, bits) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
             if bits <= 0 {
-                return it.abstain_pub("semantics:wrap-nonpositive-bits", "wrap_* with bits <= 0 — T14 points at the T6 abort but the message is not named");
+                return it.abstain_pub("semantics:wrap-nonpositive-bits", "int.wrap with bits <= 0 — T14 does not name the abort message");
             }
-            let mask: u64 = if bits >= 64 {
-                u64::MAX
+            // ALS-T14: the mask saturates to u64::MAX for bits >= 64 and keeps x
+            Ok(Value::Int(if bits >= 64 {
+                x
             } else {
-                (1u64 << bits) - 1
-            }; // ALS-T14 saturation
-            let r = if name == "int.wrap_add" {
-                (a as u64).wrapping_add(b as u64)
-            } else {
-                (a as u64).wrapping_mul(b as u64)
-            };
-            Ok(Value::Int((r & mask) as i64))
+                ((x as u64) & ((1u64 << bits) - 1)) as i64
+            }))
         }
         "int.rotate_left" | "int.rotate_right" => {
-            arity(name, &args, 3)?;
-            let (a, n, bits) = (
-                want_int(name, &args[0])?,
-                want_int(name, &args[1])?,
-                want_int(name, &args[2])?,
-            );
-            if bits <= 0 {
-                return Err(Flow::Abort("rotate width must be positive".into()));
-                // ALS-T6
-            }
-            // T14: only the MASK saturates; the shift distances use the width
-            // as written, with hardware shift semantics (amount mod 64) —
-            // int_wrap_rotate_width pins rotate_left(1, 1, 65) = 3
-            let mask: u64 = if bits >= 64 {
-                u64::MAX
+            // ALS-T14: rotate the 64 bits; the count is reduced mod 64 Euclidean-ly
+            // (ALS-T19, C-358), so a negative count rotates the other way
+            arity(name, &args, 2)?;
+            let (a, n) = (want_int(name, &args[0])?, want_int(name, &args[1])?);
+            let s = n.rem_euclid(64) as u32;
+            Ok(Value::Int(if name == "int.rotate_left" {
+                (a as u64).rotate_left(s)
             } else {
-                (1u64 << bits) - 1
-            };
-            let x = (a as u64) & mask;
-            let s = n.rem_euclid(bits) as u32;
-            let r = if s == 0 {
-                x
-            } else if name == "int.rotate_left" {
-                (x.wrapping_shl(s) | x.wrapping_shr((bits as u32).wrapping_sub(s) % 64)) & mask
-            } else {
-                (x.wrapping_shr(s) | x.wrapping_shl((bits as u32).wrapping_sub(s) % 64)) & mask
-            };
-            Ok(Value::Int(r as i64))
+                (a as u64).rotate_right(s)
+            } as i64))
         }
         "int.to_u32" => {
             arity(name, &args, 1)?;
