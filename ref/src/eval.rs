@@ -1358,6 +1358,18 @@ impl Interp {
         STD_MODULES.contains(&name) && env.lookup(name).is_none() && !self.fns.contains_key(name)
     }
 
+    /// ALS-M15: `e` is a direct call of a stdlib fn (`module.fn(..)`).
+    fn is_std_call(&self, env: &Rc<Env>, e: &Expr) -> bool {
+        if let Expr::Call { callee, .. } = e {
+            if let Expr::Member { obj, .. } = &**callee {
+                if let Expr::Ident(m) = &**obj {
+                    return self.is_module_ref(env, m);
+                }
+            }
+        }
+        false
+    }
+
     fn eval_call(&mut self, env: &Rc<Env>, callee: &Expr, args: &[Arg]) -> R {
         // The call's own line: evaluating an argument that calls a user fn
         // moves `cur_line` into that body, and a stdlib abort (the T18
@@ -2441,6 +2453,11 @@ impl Interp {
                         Err(Flow::Propagate(Prop::None))
                     }
                 }
+                // ALS-M15: a stdlib effect fn bound to a runtime template
+                // with a plain declared return answers its bare value, and
+                // `!` on it is a no-op. (One with an Almide body answers the
+                // carrier `ok(v)` from its arm, read by the arm above.)
+                other if self.is_std_call(env, inner) => Ok(other),
                 other => self.abstain(
                     "semantics:carrier-shape",
                     format!(

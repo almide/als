@@ -1579,12 +1579,15 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                     .unwrap_or(sorted.len());
                 sorted.insert(at, (n, v));
             }
-            Ok(Value::Map(Rc::new(
+            // ALS-M15: env.vars is an effect fn with an Almide body and a
+            // plain declared return, so its call is the carrier
+            // Result[Map[String, String], String] its callers' `!` reads
+            Ok(ok(Value::Map(Rc::new(
                 sorted
                     .into_iter()
                     .map(|(n, v)| (Value::str(&n), Value::str(&v)))
                     .collect(),
-            )))
+            ))))
         }
         "env.sleep_ms" => {
             // a wall pause with no observation of its own: the reference
