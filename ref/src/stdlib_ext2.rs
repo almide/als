@@ -1495,7 +1495,12 @@ fn iso_parse(raw: &str) -> Result<i64, String> {
                         secs
                     }
                 }
-                _ => return Err(format!("invalid offset: {raw_off}")),
+                _ => {
+                    return Err(format!(
+                        "invalid offset: {}",
+                        crate::stdlib_ext::err_escape(&raw_off)
+                    ))
+                }
             }
         }
     };
