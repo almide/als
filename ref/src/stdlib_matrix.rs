@@ -204,7 +204,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 return Ok(Value::None);
             }
             Ok(Value::Some(Rc::new(Value::Float(F64(
-                m.data[(r * m.cols + c) as usize],
+                m.data[(r * m.cols + c) as usize]
             )))))
         }
         "matrix.from_lists" => {
@@ -647,8 +647,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                             b[p + 6],
                             b[p + 7],
                         ]),
-                        4 => f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]]))
-                            as f64,
+                        4 => {
+                            f32::from_bits(u32::from_le_bytes([b[p], b[p + 1], b[p + 2], b[p + 3]]))
+                                as f64
+                        }
                         _ => f16_to_f64(u16::from_le_bytes([b[p], b[p + 1]])),
                     }
                 })
