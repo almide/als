@@ -10,7 +10,7 @@
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
 ceiling = 19
-evaluated = 771
+evaluated = 777
 
 [[abstain]]
 class = "parse"
