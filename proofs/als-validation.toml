@@ -269,9 +269,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D6"
-hash = "sha256:b0db97d2ceeb"
+hash = "sha256:5234f38aa95d"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, row 22: the Encode/Decode split; prose checked against the C-435 statement and C-428/C-429 as amended, spec/wasm_cross/codec_direction_split.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, row 22 follow-up: decode_strict as a walk at every depth for records and variants; prose checked against C-429, C-435 and C-436 as amended, spec/wasm_cross/codec_direction_split.almd and http_decode_json_input_type.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
 independent = "no"
 verdict = "accurate"
 
@@ -717,9 +717,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R8"
-hash = "sha256:47f21f753bf4"
+hash = "sha256:bb0f28602612"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, row 22: the typed request decode; checked against C-436 and C-368 as amended, spec/wasm_cross/http_decode_json_input_type.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
+by = "O6lvl4 (via the Claude session, 2026-10-26, row 22 follow-up: the typed request decode refuses an unknown key at every depth and accepts a Decode variant; checked against C-436 as amended, spec/wasm_cross/http_decode_json_input_type.almd byte-identical on native, the embedded wasm host, wasmtime and als-ref)"
 independent = "no"
 verdict = "accurate"
 
