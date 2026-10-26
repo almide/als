@@ -5309,3 +5309,35 @@ evidence  = [
   { path = "spec/serve_cross/http_serve_oom.almd", class = "fixture" },
   { path = "tests/http_serve_cross_test.rs", name = "out_of_memory_in_the_handler_ends_the_run_on_native_and_the_embedded_lane", class = "fixture" },
 ]
+
+[[contract]]
+id        = "C-435"
+spec      = "ALS-D6"
+title     = "`Codec` is `Encode + Decode`: a `: Decode` type derives only `decode` (+ a record's `decode_strict`), a `: Encode` type only `encode`, and an input type skips no field"
+statement = "ALS-D6 (row 22): the built-in protocol `Codec` is the composition of `Encode` (`T.encode`) and `Decode` (`T.decode`), as Swift's `Codable` is `Encodable & Decodable`. A type declaring `: Decode` derives `T.decode` and, for a record, `T.decode_strict` (C-429), and no `T.encode`; a type declaring `: Encode` derives `T.encode` and no `T.decode`; a type declaring `: Codec` derives all three, as before. Each derived half answers byte for byte what the `: Codec` derive's same method answers (field order, `none` omission, `unknown key '<k>'`, `missing field '<f>'`, the externally tagged variant form, nested records). A `: Codec` type conforms to `Encode` and to `Decode`, so it meets a `[T: Decode]` or `[T: Encode]` bound; a `: Decode` type meets only `Decode`. Every field of a `: Decode` record nests a type that derives `Decode` (E023 otherwise). Calling the half a type did not declare (`T.encode` on a `: Decode` type, `T.decode` on a `: Encode` type) is E002 at check time, its hint naming the missing conformance. A `: Decode` type that is not also `Encode` is an INPUT type: every field of it is input, so a field carrying `@skip` or `@skip_decode` there is refused at check time with E053 (`field '<f>' of input type '<T>' is `@skip_decode`, but every field of a `: Decode` type is input`); the two attributes keep their C-428 meaning on a two-way type. Before, `: Decode` and `: Encode` were accepted and derived nothing (`T.decode` was E002). Native = wasm = interp."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/codec_direction_split.almd", class = "fixture" },
+  { path = "spec/lang/codec_direction_test.almd", class = "fixture" },
+  { path = "tests/diagnostics/e002-encode-on-decode-only-type/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e053-skip-on-input-type/broken.almd", class = "fixture" },
+]
+
+[[contract]]
+id        = "C-436"
+spec      = "ALS-R8"
+title     = "`http.decode_json[T](req)` decodes a request body only into an input type: a `Codec` T is E110, and a key outside T is `400 Bad Request: unknown key '<k>'`"
+statement = "ALS-R8 (row 22, mass assignment): `http.decode_json[T: Decode](req: HttpRequest) -> Result[T, HttpResponse]` replaces `decode_json(req, decode)`. It is an input sink (declared `@input_sink` on the function; a user fn may declare it too): its type parameter must be bound to an INPUT type, a record declaring `: Decode` and not `Encode` (C-435), or the call is refused at check time with E110. The refused bindings: a type that is also sent out (`: Codec` or `: Encode` — `match http.decode_json[User](req)` with `type User: Codec` is E110 whose hint shows `type UserInput: Decode = { <User's fields without a default> }` and the handler building `User`); an input type that holds, at any depth, a user record type that is also sent out (stdlib-declared types such as `Url` are leaves and are not judged); a variant; and a type parameter of a fn that is not itself an input sink. The binding is judged after inference, so a `T` pinned only by a later use (`ok(u) => save(u)`) is judged too. At run time the body is parsed as JSON and decoded with `T.decode_strict` (C-429): a key outside T's fields (an over-posted `is_admin`, a typo) answers `err` holding `400 Bad Request: unknown key '<k>'` (the first such key in document order), a missing field `400 Bad Request: missing field '<f>'`, a wrong field type `400 Bad Request: <the C-084 decode text>`, a body that is not JSON `400 Bad Request: the body is not JSON (<json.parse err>)`, each with `Content-Type: text/plain`; otherwise `ok` of the decoded value. An input type carries no `@skip` field (C-435), so every key a skip would drop is an unknown key. A record nested in T decodes with its own lenient `decode` (its unknown keys are ignored, never set). `T.decode` and `T.decode_strict` elsewhere are unchanged. Byte-identical on native, the embedded wasm host and a stock wasm runtime."
+since     = "0.69.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/http_decode_json_input_type.almd", class = "fixture" },
+  { path = "spec/stdlib/http_router_test.almd", class = "fixture" },
+  { path = "spec/lang/codec_direction_test.almd", class = "fixture" },
+  { path = "tests/diagnostics/e110-codec-at-request-sink/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e110-codec-nested-in-input-type/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e110-variant-at-request-sink/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e110-forwarded-input-type-parameter/broken.almd", class = "fixture" },
+  { path = "tests/input_sink_test.rs", name = "admitting_codec_at_the_sink_lets_the_over_post_land", class = "fixture" },
+]
