@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:d868cdc399e1"
+hash = "sha256:6fa91645550e"
 reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib redesign wave 4 mirror (almide#4234): the process launch-failure prefix moves to process.output / process.start, http.start takes a built request, the HttpMessage readers are method / path / body / header, and the streaming twin request_stream_with_limits is gone; checked against the wave-4 fixtures spec/stdlib/http_call_test.almd, spec/embedded_cross/http_call_handle_errs.almd and spec/embedded_cross/process_spawn_family.almd as almide carries them)"
+by = "O6lvl4 (via the Claude session, on the owner's row-20 rulings of 2026-10-26 — prose checked against the C-422, C-424 and C-438 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
@@ -1106,16 +1106,16 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T31"
-hash = "sha256:640316d3bcf4"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:cfb093ea9fca"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, on the owner's row-20 rulings of 2026-10-26 — prose checked against the C-422, C-424 and C-438 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
 
 [[section]]
 id = "ALS-B12"
-hash = "sha256:7fbc054468d0"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:b557ba35a316"
+reviewed = "2026-10-26"
+by = "O6lvl4 (via the Claude session, on the owner's row-20 rulings of 2026-10-26 — prose checked against the C-422, C-424 and C-438 statements and the named fixtures run on native, wasm and the reference evaluator)"
 independent = "no"
 verdict = "accurate"
