@@ -1,7 +1,0 @@
-import fan
-
-effect fn main() -> Unit = {
-  fan {
-    println("a")
-  }
-}
