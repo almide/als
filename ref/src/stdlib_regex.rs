@@ -3,10 +3,11 @@
 //! grammar, fuzzed to byte identity across targets by
 //! spec/wasm_cross/regex_engine.almd and regex_fuzz_batch.almd). The engine
 //! is a backtracking matcher over chars: alternation with empty arms,
-//! greedy `* + ? {n} {n,} {n,m}` (malformed braces stay literal), classes
-//! with ranges and \d \w \s escapes, anchors, capture groups (index 0 is
-//! the whole match), leftmost-first search, and the zero-width advance
-//! rules of find_all / replace / split.
+//! greedy and lazy `* + ? {n} {n,} {n,m}` (malformed braces stay literal),
+//! classes with ranges and \d \w \s escapes, anchors (`(?m)` line anchors),
+//! \b \B word boundaries, capturing and `(?:` groups (index 0 is the whole
+//! match), leftmost-first search, and the zero-width advance rules of
+//! find_all / replace / split.
 
 use std::rc::Rc;
 
@@ -22,6 +23,7 @@ enum RxNode {
     Class(Vec<(char, char)>, bool), // ranges, negated
     AnchorStart,
     AnchorEnd,
+    WordBoundary(bool),              // true = \b, false = \B
     Group(Vec<Vec<RxPiece>>, usize), // alternations, capture index (1-based; 0 = no capture)
 }
 
@@ -30,11 +32,13 @@ struct RxPiece {
     node: RxNode,
     min: usize,
     max: Option<usize>,
+    lazy: bool,
 }
 
 struct RxPat {
     alts: Vec<Vec<RxPiece>>,
     ncap: usize,
+    multiline: bool, // a leading (?m): ^ and $ also match at line breaks
 }
 
 type RxCaps = Vec<Option<(usize, usize)>>;
@@ -45,34 +49,43 @@ fn rx_compile(pat: &str) -> RxPat {
     let chars: Vec<char> = pat.chars().collect();
     let mut pos = 0usize;
     let mut ncap = 0usize;
-    // a leading flag group (C-395 accepts it only there): `i` folds case
-    let mut icase = false;
-    if let Some((len, ic)) = rx_flag_group(&chars) {
+    // a leading flag group (C-395 accepts it only there): `i` folds case,
+    // `m` lets ^ and $ also match at a line break
+    let (mut multiline, mut icase) = (false, false);
+    if let Some((len, m, ic)) = rx_flag_group(&chars) {
         pos = len;
+        multiline = m;
         icase = ic;
     }
     let mut alts = rx_parse_alts(&chars, &mut pos, &mut ncap, false);
     if icase {
         rx_fold_case(&mut alts);
     }
-    RxPat { alts, ncap }
+    RxPat {
+        alts,
+        ncap,
+        multiline,
+    }
 }
 
-/// A leading `(?` [im]+ `)`: (its length in chars, whether it holds `i`).
-fn rx_flag_group(chars: &[char]) -> Option<(usize, bool)> {
+/// A leading `(?` [im]+ `)`: (its length in chars, whether it holds `m`,
+/// whether it holds `i`).
+fn rx_flag_group(chars: &[char]) -> Option<(usize, bool, bool)> {
     if chars.len() < 2 || chars[0] != '(' || chars[1] != '?' {
         return None;
     }
     let mut i = 2;
-    let mut ic = false;
+    let (mut m, mut ic) = (false, false);
     while i < chars.len() && (chars[i] == 'i' || chars[i] == 'm') {
         if chars[i] == 'i' {
             ic = true;
+        } else {
+            m = true;
         }
         i += 1;
     }
     if i > 2 && i < chars.len() && chars[i] == ')' {
-        Some((i + 1, ic))
+        Some((i + 1, m, ic))
     } else {
         None
     }
@@ -142,6 +155,7 @@ fn rx_parse_alts(
 
 fn rx_parse_piece(chars: &[char], pos: &mut usize, ncap: &mut usize) -> RxPiece {
     let node = rx_parse_atom(chars, pos, ncap);
+    let atom_end = *pos;
     let (min, max) = if *pos < chars.len() {
         match chars[*pos] {
             '*' => {
@@ -172,7 +186,17 @@ fn rx_parse_piece(chars: &[char], pos: &mut usize, ncap: &mut usize) -> RxPiece 
     } else {
         (1, Some(1))
     };
-    RxPiece { node, min, max }
+    // a `?` after a quantifier makes it lazy (shortest first)
+    let lazy = *pos > atom_end && *pos < chars.len() && chars[*pos] == '?';
+    if lazy {
+        *pos += 1;
+    }
+    RxPiece {
+        node,
+        min,
+        max,
+        lazy,
+    }
 }
 
 /// Parse a `{n}` / `{n,}` / `{n,m}` quantifier starting at the `{` at `start`.
@@ -221,8 +245,14 @@ fn rx_parse_atom(chars: &[char], pos: &mut usize, ncap: &mut usize) -> RxNode {
         '\\' => rx_parse_escape(chars, pos),
         '[' => rx_parse_class(chars, pos),
         '(' => {
-            *ncap += 1;
-            let ci = *ncap;
+            // `(?:` opens a group that captures nothing
+            let ci = if chars[*pos..].starts_with(&['?', ':']) {
+                *pos += 2;
+                0
+            } else {
+                *ncap += 1;
+                *ncap
+            };
             let alts = rx_parse_alts(chars, pos, ncap, true);
             if *pos < chars.len() && chars[*pos] == ')' {
                 *pos += 1;
@@ -252,6 +282,8 @@ fn rx_parse_escape(chars: &[char], pos: &mut usize) -> RxNode {
             vec![(' ', ' '), ('\t', '\t'), ('\n', '\n'), ('\r', '\r')],
             true,
         ),
+        'b' => RxNode::WordBoundary(true),
+        'B' => RxNode::WordBoundary(false),
         'n' => RxNode::Lit('\n'),
         't' => RxNode::Lit('\t'),
         'r' => RxNode::Lit('\r'),
@@ -265,6 +297,11 @@ fn rx_parse_class(chars: &[char], pos: &mut usize) -> RxNode {
         *pos += 1;
     }
     let mut ranges: Vec<(char, char)> = vec![];
+    // a `]` in the FIRST position is a literal member, not the terminator
+    if *pos < chars.len() && chars[*pos] == ']' {
+        ranges.push((']', ']'));
+        *pos += 1;
+    }
     while *pos < chars.len() && chars[*pos] != ']' {
         if chars[*pos] == '\\' && *pos + 1 < chars.len() {
             *pos += 1;
@@ -338,111 +375,393 @@ fn rx_node_matches(node: &RxNode, c: char) -> bool {
     }
 }
 
-fn rx_match_alts(alts: &[Vec<RxPiece>], s: &[char], p: usize, caps: &mut RxCaps) -> Option<usize> {
-    for alt in alts {
-        let save = caps.clone();
-        if let Some(e) = rx_match_seq(alt, 0, s, p, caps) {
-            return Some(e);
-        }
-        *caps = save;
-    }
-    None
+// The backtracking walk of the oracle (#2307): leftmost alternative first,
+// greedy quantifiers longest-first, lazy quantifiers shortest-first, an empty
+// repetition instance counts but never loops, and a group's capture is
+// recorded when the group ends and restored when the walk backtracks past
+// that point. The state lives in three vectors (untried choices, group-end
+// frames, the capture trail), so the host stack stays flat whatever the
+// input's length. The oracle's Pike VM gives the same answers in linear time;
+// the evaluator walks without a step budget.
+
+/// The continuation that ends the walk: the whole pattern has matched.
+const RX_DONE: usize = usize::MAX;
+
+/// A position in the pattern: piece `si` of the sequence `seq`.
+#[derive(Clone, Copy)]
+struct RxPc<'a> {
+    seq: &'a [RxPiece],
+    si: usize,
 }
 
-fn rx_match_seq(
-    seq: &[RxPiece],
-    si: usize,
-    s: &[char],
-    p: usize,
-    caps: &mut RxCaps,
-) -> Option<usize> {
-    if si >= seq.len() {
-        return Some(p);
+impl<'a> RxPc<'a> {
+    fn piece(self) -> &'a RxPiece {
+        &self.seq[self.si]
     }
-    let piece = &seq[si];
-    match &piece.node {
-        RxNode::AnchorStart => {
-            if p == 0 {
-                rx_match_seq(seq, si + 1, s, p, caps)
-            } else {
-                None
-            }
+
+    fn next(self) -> Self {
+        RxPc {
+            seq: self.seq,
+            si: self.si + 1,
         }
-        RxNode::AnchorEnd => {
-            if p == s.len() {
-                rx_match_seq(seq, si + 1, s, p, caps)
-            } else {
-                None
-            }
-        }
-        _ => rx_match_rep(seq, si, s, p, caps, 0),
     }
 }
 
-fn rx_match_rep(
-    seq: &[RxPiece],
-    si: usize,
-    s: &[char],
-    p: usize,
-    caps: &mut RxCaps,
+/// One step of the walk. `k` is the continuation: a frame index, or DONE.
+#[derive(Clone, Copy)]
+enum RxGoal<'a> {
+    Seq {
+        pc: RxPc<'a>,
+        p: usize,
+        k: usize,
+    },
+    Alts {
+        alts: &'a [Vec<RxPiece>],
+        ai: usize,
+        p: usize,
+        k: usize,
+    },
+    Inst {
+        pc: RxPc<'a>,
+        p: usize,
+        count: usize,
+        k: usize,
+    },
+    Lazy {
+        pc: RxPc<'a>,
+        p: usize,
+        count: usize,
+        k: usize,
+    },
+    Back {
+        pc: RxPc<'a>,
+        start: usize,
+        count: usize,
+        k: usize,
+    },
+    Run {
+        k: usize,
+        p: usize,
+    },
+    Fail,
+}
+
+/// The continuation after instance `count` of the repeated group at `pc`,
+/// which began at `start`.
+#[derive(Clone, Copy)]
+struct RxFrame<'a> {
+    pc: RxPc<'a>,
+    start: usize,
     count: usize,
-) -> Option<usize> {
-    let piece = &seq[si];
-    let at_max = piece.max.is_some_and(|m| count >= m);
-    // Greedy: try to match one more first
-    if !at_max {
-        let save = caps.clone();
-        if let Some(consumed) = rx_match_one(&piece.node, s, p, caps) {
-            if consumed > 0 || count == 0 {
-                // prevent infinite loop on zero-width
-                if let Some(e) = rx_match_rep(seq, si, s, p + consumed, caps, count + 1) {
-                    return Some(e);
-                }
-            }
-        }
-        *caps = save;
-    }
-    // Try rest of sequence if we have enough repetitions
-    if count >= piece.min {
-        return rx_match_seq(seq, si + 1, s, p, caps);
-    }
-    None
+    next: usize,
 }
 
-fn rx_match_one(node: &RxNode, s: &[char], p: usize, caps: &mut RxCaps) -> Option<usize> {
-    match node {
-        RxNode::Lit(_) | RxNode::Dot | RxNode::Class(_, _) => {
-            if p < s.len() && rx_node_matches(node, s[p]) {
-                Some(1)
-            } else {
-                None
-            }
+#[derive(Clone, Copy)]
+struct RxChoice<'a> {
+    goal: RxGoal<'a>,
+    frames: usize,
+    trail: usize,
+}
+
+struct RxVm<'a> {
+    s: &'a [char],
+    multiline: bool,
+    /// full_match: a match must end exactly here
+    end_at: Option<usize>,
+    caps: RxCaps,
+    frames: Vec<RxFrame<'a>>,
+    choices: Vec<RxChoice<'a>>,
+    trail: Vec<(usize, Option<(usize, usize)>)>,
+}
+
+fn rx_is_word(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+fn rx_at_boundary(s: &[char], p: usize) -> bool {
+    let before = p > 0 && rx_is_word(s[p - 1]);
+    let after = p < s.len() && rx_is_word(s[p]);
+    before != after
+}
+
+impl<'a> RxVm<'a> {
+    fn new(rx: &RxPat, s: &'a [char], end_at: Option<usize>) -> Self {
+        RxVm {
+            s,
+            multiline: rx.multiline,
+            end_at,
+            caps: vec![None; rx.ncap],
+            frames: Vec::new(),
+            choices: Vec::new(),
+            trail: Vec::new(),
         }
-        RxNode::Group(alts, ci) => {
-            let start = p;
-            if let Some(end) = rx_match_alts(alts, s, p, caps) {
-                if *ci > 0 {
-                    while caps.len() < *ci {
-                        caps.push(None);
-                    }
-                    caps[*ci - 1] = Some((start, end));
+    }
+
+    fn zero_width(&self, node: &RxNode, p: usize) -> Option<bool> {
+        match node {
+            RxNode::AnchorStart => Some(p == 0 || (self.multiline && self.s[p - 1] == '\n')),
+            RxNode::AnchorEnd => Some(p == self.s.len() || (self.multiline && self.s[p] == '\n')),
+            RxNode::WordBoundary(want) => Some(rx_at_boundary(self.s, p) == *want),
+            _ => None,
+        }
+    }
+
+    /// The end of the first match the walk reaches from `p`, if any; `caps`
+    /// then holds that match's groups.
+    fn exec(&mut self, alts: &'a [Vec<RxPiece>], p: usize) -> Option<usize> {
+        self.frames.clear();
+        self.choices.clear();
+        self.trail.clear();
+        for c in self.caps.iter_mut() {
+            *c = None;
+        }
+        let mut goal = self.alts(alts, 0, p, RX_DONE);
+        loop {
+            goal = match goal {
+                RxGoal::Seq { pc, p, k } => self.seq(pc, p, k),
+                RxGoal::Alts { alts, ai, p, k } => self.alts(alts, ai, p, k),
+                RxGoal::Inst { pc, p, count, k } => self.inst(pc, p, count, k),
+                RxGoal::Lazy { pc, p, count, k } => self.lazy(pc, p, count, k),
+                RxGoal::Run { k: RX_DONE, p } if self.end_at.is_none_or(|e| e == p) => {
+                    return Some(p)
                 }
-                Some(end - p)
-            } else {
-                None
+                RxGoal::Run { k, p } if k != RX_DONE => self.resume(k, p),
+                _ => self.backtrack()?,
             }
         }
-        _ => None,
+    }
+
+    fn push(&mut self, goal: RxGoal<'a>) {
+        self.choices.push(RxChoice {
+            goal,
+            frames: self.frames.len(),
+            trail: self.trail.len(),
+        });
+    }
+
+    /// Resume the newest untried alternative, first undoing every capture
+    /// write and dropping every frame made since it was left.
+    fn backtrack(&mut self) -> Option<RxGoal<'a>> {
+        let top = self.choices.len().checked_sub(1)?;
+        let RxChoice {
+            goal,
+            frames,
+            trail,
+        } = self.choices[top];
+        while self.trail.len() > trail {
+            if let Some((slot, saved)) = self.trail.pop() {
+                self.caps[slot] = saved;
+            }
+        }
+        self.frames.truncate(frames);
+        if let RxGoal::Back {
+            pc,
+            start,
+            count,
+            k,
+        } = goal
+        {
+            // give back one more char next time, down to the minimum
+            if count > pc.piece().min {
+                self.choices[top].goal = RxGoal::Back {
+                    pc,
+                    start,
+                    count: count - 1,
+                    k,
+                };
+            } else {
+                self.choices.pop();
+            }
+            return Some(RxGoal::Seq {
+                pc: pc.next(),
+                p: start + count,
+                k,
+            });
+        }
+        self.choices.pop();
+        Some(goal)
+    }
+
+    fn alts(&mut self, alts: &'a [Vec<RxPiece>], ai: usize, p: usize, k: usize) -> RxGoal<'a> {
+        let Some(seq) = alts.get(ai) else {
+            return RxGoal::Fail;
+        };
+        if ai + 1 < alts.len() {
+            self.push(RxGoal::Alts {
+                alts,
+                ai: ai + 1,
+                p,
+                k,
+            });
+        }
+        RxGoal::Seq {
+            pc: RxPc { seq, si: 0 },
+            p,
+            k,
+        }
+    }
+
+    fn seq(&mut self, mut pc: RxPc<'a>, p: usize, k: usize) -> RxGoal<'a> {
+        while let Some(piece) = pc.seq.get(pc.si) {
+            match self.zero_width(&piece.node, p) {
+                Some(true) => pc.si += 1,
+                Some(false) => return RxGoal::Fail,
+                None if matches!(piece.node, RxNode::Group(..)) => return self.rep(pc, p, 0, k),
+                None if piece.lazy => return self.lazy(pc, p, 0, k),
+                None => return self.greedy(pc, p, k),
+            }
+        }
+        RxGoal::Run { k, p }
+    }
+
+    fn atom_at(&self, pc: RxPc<'a>, p: usize) -> bool {
+        self.s
+            .get(p)
+            .is_some_and(|&c| rx_node_matches(&pc.piece().node, c))
+    }
+
+    /// A greedy single atom takes as many chars as it can, hands over to the
+    /// rest of the sequence, and leaves one choice that gives them back.
+    fn greedy(&mut self, pc: RxPc<'a>, p: usize, k: usize) -> RxGoal<'a> {
+        let piece = pc.piece();
+        let max = piece.max.unwrap_or(usize::MAX);
+        let mut n = 0;
+        while n < max && self.atom_at(pc, p + n) {
+            n += 1;
+        }
+        if n < piece.min {
+            return RxGoal::Fail;
+        }
+        if n > piece.min {
+            self.push(RxGoal::Back {
+                pc,
+                start: p,
+                count: n - 1,
+                k,
+            });
+        }
+        RxGoal::Seq {
+            pc: pc.next(),
+            p: p + n,
+            k,
+        }
+    }
+
+    /// A lazy single atom hands over to the rest as soon as it has its
+    /// minimum, leaving one choice that takes one more char.
+    fn lazy(&mut self, pc: RxPc<'a>, mut p: usize, mut count: usize, k: usize) -> RxGoal<'a> {
+        let piece = pc.piece();
+        let max = piece.max.unwrap_or(usize::MAX);
+        loop {
+            let more = count < max && self.atom_at(pc, p);
+            if count >= piece.min {
+                if more {
+                    self.push(RxGoal::Lazy {
+                        pc,
+                        p: p + 1,
+                        count: count + 1,
+                        k,
+                    });
+                }
+                return RxGoal::Seq {
+                    pc: pc.next(),
+                    p,
+                    k,
+                };
+            }
+            if !more {
+                return RxGoal::Fail;
+            }
+            p += 1;
+            count += 1;
+        }
+    }
+
+    /// The repeated group at `pc` has matched `count` instances ending at
+    /// `p`: greedy tries one more instance before the rest, lazy the rest
+    /// first.
+    fn rep(&mut self, pc: RxPc<'a>, p: usize, count: usize, k: usize) -> RxGoal<'a> {
+        let piece = pc.piece();
+        let more = piece.max.is_none_or(|m| count < m);
+        let stop = RxGoal::Seq {
+            pc: pc.next(),
+            p,
+            k,
+        };
+        match (count >= piece.min, more, piece.lazy) {
+            (false, false, _) => RxGoal::Fail,
+            (true, false, _) => stop,
+            (false, true, _) => self.inst(pc, p, count, k),
+            (true, true, true) => {
+                self.push(RxGoal::Inst { pc, p, count, k });
+                stop
+            }
+            (true, true, false) => {
+                self.push(stop);
+                self.inst(pc, p, count, k)
+            }
+        }
+    }
+
+    /// One instance of the group at `pc`: its alternatives, each continuing
+    /// into a frame that records the capture and loops.
+    fn inst(&mut self, pc: RxPc<'a>, p: usize, count: usize, k: usize) -> RxGoal<'a> {
+        let RxNode::Group(alts, _) = &pc.piece().node else {
+            return RxGoal::Fail;
+        };
+        let frame = self.frames.len();
+        self.frames.push(RxFrame {
+            pc,
+            start: p,
+            count: count + 1,
+            next: k,
+        });
+        self.alts(alts, 0, p, frame)
+    }
+
+    /// A group instance ended at `p`: record its capture, then loop or stop.
+    fn resume(&mut self, k: usize, p: usize) -> RxGoal<'a> {
+        let f = self.frames[k];
+        // the newest frame with no choice above it has no other reader left
+        if k + 1 == self.frames.len() && k >= self.choices.last().map_or(0, |c| c.frames) {
+            self.frames.pop();
+        }
+        let piece = f.pc.piece();
+        if let RxNode::Group(_, ci) = piece.node {
+            if ci > 0 {
+                self.capture(ci - 1, f.start, p);
+            }
+        }
+        if p != f.start {
+            return self.rep(f.pc, p, f.count, f.next);
+        }
+        // an empty instance counts, but never loops
+        if f.count < piece.min {
+            RxGoal::Fail
+        } else {
+            RxGoal::Seq {
+                pc: f.pc.next(),
+                p,
+                k: f.next,
+            }
+        }
+    }
+
+    fn capture(&mut self, slot: usize, start: usize, end: usize) {
+        if !self.choices.is_empty() {
+            self.trail.push((slot, self.caps[slot]));
+        }
+        self.caps[slot] = Some((start, end));
     }
 }
 
 // ---- Search ----
 
-fn rx_find_at(rx: &RxPat, s: &[char], start: usize) -> Option<(usize, usize, RxCaps)> {
+fn rx_find_at<'a>(rx: &'a RxPat, s: &'a [char], start: usize) -> Option<(usize, usize, RxCaps)> {
+    let mut vm = RxVm::new(rx, s, None);
     for i in start..=s.len() {
-        let mut caps: RxCaps = vec![None; rx.ncap];
-        if let Some(end) = rx_match_alts(&rx.alts, s, i, &mut caps) {
-            return Some((i, end, caps));
+        if let Some(end) = vm.exec(&rx.alts, i) {
+            return Some((i, end, vm.caps.clone()));
         }
     }
     None
@@ -459,12 +778,8 @@ pub fn almide_regex_is_match(pat: &str, s: &str) -> bool {
 pub fn almide_regex_full_match(pat: &str, s: &str) -> bool {
     let rx = rx_compile(pat);
     let chars: Vec<char> = s.chars().collect();
-    let mut caps: RxCaps = vec![None; rx.ncap];
-    if let Some(end) = rx_match_alts(&rx.alts, &chars, 0, &mut caps) {
-        end == chars.len()
-    } else {
-        false
-    }
+    let mut vm = RxVm::new(&rx, &chars, Some(chars.len()));
+    vm.exec(&rx.alts, 0).is_some()
 }
 
 pub fn almide_regex_find(pat: &str, s: &str) -> Option<String> {
@@ -532,30 +847,24 @@ pub fn almide_regex_replace_first(pat: &str, s: &str, rep: &str) -> String {
     }
 }
 
+/// A field is the text BETWEEN two matches (#2129): walk the matches as
+/// find_all does (an empty match advances the scan by one char), emit the
+/// text from the previous match's end to this match's start, and always emit
+/// the trailing field, empty or not.
 pub fn almide_regex_split(pat: &str, s: &str) -> Vec<String> {
     let rx = rx_compile(pat);
     let chars: Vec<char> = s.chars().collect();
     let mut results: Vec<String> = vec![];
-    let mut pos = 0;
-    while pos <= chars.len() {
-        if let Some((start, end, _)) = rx_find_at(&rx, &chars, pos) {
-            if end == start && start == pos {
-                // Zero-width match at current position: take one char and move on
-                if pos < chars.len() {
-                    results.push(chars[pos..pos + 1].iter().collect());
-                    pos += 1;
-                } else {
-                    break;
-                }
-                continue;
-            }
-            results.push(chars[pos..start].iter().collect());
-            pos = end;
-        } else {
-            results.push(chars[pos..].iter().collect());
+    let (mut last, mut scan) = (0usize, 0usize);
+    while scan <= chars.len() {
+        let Some((start, end, _)) = rx_find_at(&rx, &chars, scan) else {
             break;
-        }
+        };
+        results.push(chars[last..start].iter().collect());
+        last = end;
+        scan = if end > start { end } else { end + 1 };
     }
+    results.push(chars[last..].iter().collect());
     results
 }
 
@@ -657,7 +966,7 @@ fn rx_count(chars: &[char], from: usize, to: usize) -> u64 {
 /// the reason `pat` is refused, or None
 pub fn rx_check(pat: &str) -> Option<String> {
     let chars: Vec<char> = pat.chars().collect();
-    let mut pos = rx_flag_group(&chars).map_or(0, |(len, _)| len);
+    let mut pos = rx_flag_group(&chars).map_or(0, |(len, _, _)| len);
     let size = match rx_check_alts(&chars, &mut pos, 0) {
         Ok(size) => size,
         Err(reason) => return Some(reason),
