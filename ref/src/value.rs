@@ -450,14 +450,23 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
     })
 }
 
+/// ALS-C9 / C-055: the Float ordering key. Every NaN, whatever its sign bit
+/// or producer, is the ONE canonical +qNaN 0x7FF8000000000000 (R-float-09), so
+/// it orders after +inf; other values keep IEEE-754 totalOrder (-0 < +0).
+fn float_order(x: f64, y: f64) -> std::cmp::Ordering {
+    let canon = |v: f64| if v.is_nan() { f64::from_bits(0x7FF8_0000_0000_0000) } else { v };
+    canon(x).total_cmp(&canon(y))
+}
+
 /// ALS-C9: type-directed total order — Int and String total, Float by
-/// IEEE-754 totalOrder (NaN to the max side, -0 < +0). Other types have no
-/// specified order yet → None (the caller abstains).
+/// IEEE-754 totalOrder over NaN-canonicalised values (every NaN orders as
+/// +qNaN, after +inf; -0 < +0). Other types have no specified order yet →
+/// None (the caller abstains).
 pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
     use std::cmp::Ordering;
     match (a, b) {
         (Value::Int(x), Value::Int(y)) => Some(x.cmp(y)),
-        (Value::Float(x), Value::Float(y)) => Some(x.0.total_cmp(&y.0)),
+        (Value::Float(x), Value::Float(y)) => Some(float_order(x.0, y.0)),
         (Value::Str(x), Value::Str(y)) => Some(crate::eval::char_cmp(x, y)),
         // C-099: false < true
         (Value::Bool(x), Value::Bool(y)) => Some(x.cmp(y)),
