@@ -124,6 +124,7 @@ pub const EXT_FNS: &[&str] = &[
     // (cursor), put_ (in place; a window outside 0..len is a panic)
     "bytes.get_u8",
     "bytes.get_u16_le",
+    "bytes.get_f16_le",
     "bytes.get_u16_be",
     "bytes.get_i16_le",
     "bytes.get_i16_be",
