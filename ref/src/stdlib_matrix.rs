@@ -391,7 +391,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let a = want_mat(name, &args[0])?;
             let b = want_mat(name, &args[1])?;
-            let (m, k, n) = (a.rows, a.cols, b.cols);
+            // #3651: a 0-row operand is empty whatever width it was built
+            // with — its observable width (0) is the one the kernel reads
+            let (m, k, n) = (a.rows, observable_cols(&a), observable_cols(&b));
             if m == 0 || k == 0 || n == 0 {
                 return Ok(mat(m, n, vec![0.0; (m * n) as usize]));
             }
