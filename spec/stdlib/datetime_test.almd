@@ -227,10 +227,27 @@ test "datetime.parse_iso refuses a year outside 0..=9999 (#4118)" {
   assert_eq(parse_err(datetime.to_iso(253402300800)), "year out of range: 10000")
 }
 
-test "datetime.from_parts refuses a part out of range by name" {
-  assert_eq(datetime.from_parts(2024, 2, 30, 0, 0, 0), err("day out of range: 30"))
-  assert_eq(datetime.from_parts(2023, 2, 29, 0, 0, 0), err("day out of range: 29"))
-  assert_eq(datetime.from_parts(2024, 13, 1, 0, 0, 0), err("month out of range: 13"))
-  assert_eq(datetime.from_parts(2024, 1, 1, 24, 0, 0), err("hour out of range: 24"))
-  assert_eq(datetime.from_parts(2024, 2, 29, 0, 0, 0), ok(1709164800))
+fn parts_err(y: Int, mo: Int, d: Int, h: Int, mi: Int, s: Int) -> String = match datetime.from_parts(
+  y,
+  mo,
+  d,
+  h,
+  mi,
+  s,
+) {
+  ok(n) => "ok(${n})",
+  err(e) => e,
+}
+
+test "datetime.from_parts refuses what parse_iso refuses, with the same text (#4149)" {
+  assert_eq(parts_err(2026, 2, 30, 0, 0, 0), "day out of range: 30")
+  assert_eq(parts_err(2026, 2, 30, 0, 0, 0), parse_err("2026-02-30T00:00:00Z"))
+  assert_eq(parts_err(2026, 13, 1, 0, 0, 0), "month out of range: 13")
+  assert_eq(parts_err(2023, 2, 29, 0, 0, 0), "day out of range: 29")
+  assert_eq(parts_err(2024, 2, 29, 0, 0, 0), "ok(1709164800)")
+  assert_eq(parts_err(2026, 1, 1, 24, 0, 0), "hour out of range: 24")
+  assert_eq(parts_err(2026, 1, 1, 0, 60, 0), "minute out of range: 60")
+  assert_eq(parts_err(2026, 1, 1, 0, 0, 60), "second out of range: 60")
+  assert_eq(parts_err(10000, 1, 1, 0, 0, 0), "year out of range: 10000")
+  assert_eq(parts_err(2026, 13, 45, 99, 99, 99), "month out of range: 13")
 }

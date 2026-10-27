@@ -11,10 +11,10 @@ import env
 
 effect fn main() -> Result[Unit, String] = {
   println("args=" + list.join(env.args(), ","))
-  println("pos=" + list.join(args.positional(["out"]), ","))
-  println("flag_q=${args.has_flag("quiet")}")
-  println("flag_v=${args.has_flag("verbose")}")
-  println("opt=" + (args.option("out") ?? "NONE"))
-  println("opt_missing=" + (args.option("nope") ?? "NONE"))
+  println("pos=" + list.join(args.positional(["out"])!, ","))
+  println("flag_q=${args.has_flag("quiet")!}")
+  println("flag_v=${args.has_flag("verbose")!}")
+  println("opt=" + (args.option("out")! ?? "NONE"))
+  println("opt_missing=" + (args.option("nope")! ?? "NONE"))
   ok(())
 }

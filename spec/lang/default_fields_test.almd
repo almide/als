@@ -1,4 +1,7 @@
-type Shape = | Circle { radius: Float } | Rect { width: Float, height: Float, color: String = "", filled: Bool = false } | Group { label: String, items: List[Shape] = [] }
+type Shape =
+  | Circle { radius: Float }
+  | Rect { width: Float, height: Float, color: String = "", filled: Bool = false }
+  | Group { label: String, items: List[Shape] = [] }
 
 fn describe(s: Shape) -> String = match s {
   Circle { radius } => "circle r=" + float.to_string(radius),
@@ -34,10 +37,13 @@ test "default fields - empty list default" {
 }
 
 test "default fields - list with items" {
-  let g = Group { label: "shapes", items: [
-    Circle { radius: 1.0 },
-    Circle { radius: 2.0 }
-  ] }
+  let g = Group {
+    label: "shapes",
+    items: [
+      Circle { radius: 1.0 },
+      Circle { radius: 2.0 }
+    ],
+  }
   assert_eq(describe(g), "shapes (2 items)")
 }
 

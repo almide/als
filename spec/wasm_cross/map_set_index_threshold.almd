@@ -6,9 +6,16 @@
 // answers across growth doublings and relocations, an alias bound before a
 // write, functional copies, order-insensitive equality, set algebra — must
 // print the same bytes on native, the structural leg and the incumbent.
-fn checksum(m: Map[Int, Int]) -> Int = map.fold(m, 0, (acc, (k, v)) => (acc * 31 + k * 7 + v) % 1000000007)
+fn checksum(m: Map[Int, Int]) -> Int = map.fold(
+  m,
+  0,
+  (acc, (k, v)) => (acc * 31 + k * 7 + v) % 1000000007,
+)
 
-fn render_keys(m: Map[Int, Int]) -> String = list.join(list.map(map.keys(m), (k) => int.to_string(k)), ",")
+fn render_keys(m: Map[Int, Int]) -> String = list.join(
+  list.map(map.keys(m), (k) => int.to_string(k)),
+  ",",
+)
 
 fn main() -> Unit = {
   // A. Int keys through five capacity doublings, overwrites interleaved;
@@ -110,13 +117,19 @@ fn main() -> Unit = {
   let gs = set.symmetric_difference(g1, g2)
   println("G.g1=" + int.to_string(set.len(g1)) + " hits=" + int.to_string(ghits) + " u=" + int.to_string(set.len(gu)) + " i=" + int.to_string(set.len(gi)) + " d=" + int.to_string(set.len(gd)) + " s=" + int.to_string(set.len(gs)) + " sub=" + (if set.len(set.intersection(gi, g1)) == set.len(gi) then "y" else "n") + " disj=" + (if set.len(set.intersection(gd, g2)) == 0 then "y" else "n"))
   let g1r = set.from_list(list.reverse(set.to_list(g1)))
-  println("G.eq=" + (if g1 == g1r then "y" else "n") + " first5=" + list.join(list.map(list.take(set.to_list(gu), 5), (x) => int.to_string(x)), ","))
+  println("G.eq=" + (if g1 == g1r then "y" else "n") + " first5=" + list.join(
+    list.map(list.take(set.to_list(gu), 5), (x) => int.to_string(x)),
+    ",",
+  ))
   // H. a String set built by functional insert (a fresh block per step)
   var h: Set[String] = set.new()
   for i in 0..<40 {
     h = set.insert(h, "s" + int.to_string(i % 25))
   }
-  println("H.len=" + int.to_string(set.len(h)) + " s24=" + (if set.contains(h, "s24") then "y" else "n") + " s25=" + (if set.contains(h, "s25") then "y" else "n") + " first3=" + list.join(list.take(set.to_list(h), 3), ","))
+  println("H.len=" + int.to_string(set.len(h)) + " s24=" + (if set.contains(h, "s24") then "y" else "n") + " s25=" + (if set.contains(
+    h,
+    "s25",
+  ) then "y" else "n") + " first3=" + list.join(list.take(set.to_list(h), 3), ","))
   // I. upsert / update / merge on a large receiver
   var u: Map[Int, Int] = map.from_list(list.map(list.range(0, 100), (i) => (i, i)))
   u = map.upsert(u, 250, 1, (v) => v + 1)

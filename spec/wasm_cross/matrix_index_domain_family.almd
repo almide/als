@@ -8,8 +8,8 @@
 //                     redesign R-matrix-08 it aborted with `Error: matrix
 //                     index out of bounds`, pinned by the retired
 //                     spec/wasm_fail/matrix_index_oob_aborts.almd.)
-//   matrix.row_dot  — a REDUCTION over a row. Its empty-sum identity IS 0.0, so
-//   matrix.dot_row    an out-of-range (or negative) row answers 0.0 — a bare
+//   matrix.dot_row  — a REDUCTION over a row. Its empty-sum identity IS 0.0, so
+//                     an out-of-range (or negative) row answers 0.0 — a bare
 //                     Float, no Option. Pinned here so the accessor's change
 //                     never leaks into the reductions.
 //
@@ -48,10 +48,10 @@ fn main() -> Unit = {
   // The fallback form a caller writes.
   println("fallback=${float.to_string(matrix.get(m, 5, 5) ?? -1.0)}")
   // The reductions keep answering their identity out of range — no abort.
-  println("row_dot_oob=${float.to_string(matrix.row_dot(m, 1000000, [1.0, 1.0, 1.0, 1.0]))}")
-  println("row_dot_neg=${float.to_string(matrix.row_dot(m, 0 - 1, [1.0, 1.0, 1.0, 1.0]))}")
+  println("row_dot_oob=${float.to_string(matrix.dot_row(m, 1000000, [1.0, 1.0, 1.0, 1.0]))}")
+  println("row_dot_neg=${float.to_string(matrix.dot_row(m, 0 - 1, [1.0, 1.0, 1.0, 1.0]))}")
   println("dot_row_oob=${float.to_string(matrix.dot_row(m, 99, [1.0, 1.0, 1.0, 1.0]))}")
   println("dot_row_neg=${float.to_string(matrix.dot_row(m, 0 - 7, [1.0, 1.0, 1.0, 1.0]))}")
   // In-range reduction, so the 0.0s above are a domain answer and not a stuck value.
-  println("row_dot_live=${float.to_string(matrix.row_dot(m, 1, [1.0, 1.0, 1.0, 1.0]))}")
+  println("row_dot_live=${float.to_string(matrix.dot_row(m, 1, [1.0, 1.0, 1.0, 1.0]))}")
 }

@@ -206,7 +206,11 @@ type Package: Weighted = { grams: Int }
 
 fn Package.weight(p: Package) -> Int = p.grams
 
-fn total_weight(packages: List[Package]) -> Int = list.fold(packages, 0, (acc, p) => acc + Package.weight(p))
+fn total_weight(packages: List[Package]) -> Int = list.fold(
+  packages,
+  0,
+  (acc, p) => acc + Package.weight(p),
+)
 
 test "protocol method used in higher-order function" {
   let pkgs = [

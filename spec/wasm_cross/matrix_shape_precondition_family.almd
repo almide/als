@@ -44,6 +44,17 @@ fn main() -> Unit = {
   println("concat_empty_first=${show(matrix.concat_cols([e, b]))}")
   // An r×0 operand keeps its rows and contracts over nothing.
   println("mul_rx0=${show(matrix.zeros(2, 0) * e)}")
+  // #3651: an empty operand is empty whatever width it was built with — a
+  // 0-row matrix reports 0 columns, so no hidden width may reach the
+  // inner-dimension check.
+  let e_wide = e * matrix.from_lists([
+    [5.0]
+  ])
+  println("mul_empty_wide=${show(e_wide)}")
+  println("mul_empty_wide_r=${show(matrix.from_lists([
+    [1.0]
+  ]) * e_wide)}")
+  println("mul_zeros_0x3_r=${show(a * matrix.zeros(0, 3))}")
   // from_lists accepts uniform rows, including 0-wide ones.
   println("from_uniform=${show(matrix.from_lists([
     [1.0, 2.0],
