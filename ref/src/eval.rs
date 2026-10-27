@@ -598,6 +598,21 @@ impl Interp {
         z ^ (z >> 31)
     }
 
+    /// How many arguments a callback value declares, when it says: a lambda's
+    /// parameter slots (a tuple-destructuring slot counts once), a named fn's
+    /// or method's declared parameters. None for the other callables.
+    pub fn cb_arity(&self, c: &Callable) -> Option<usize> {
+        match c {
+            Callable::Closure(cl) => Some(cl.params.len()),
+            Callable::Named(n) => self.fns.get(n).map(|f| f.sig.params.len()),
+            Callable::Method(t, n) => self
+                .methods
+                .get(&(t.clone(), n.clone()))
+                .map(|f| f.sig.params.len()),
+            _ => None,
+        }
+    }
+
     pub fn cb_fallible(&self, c: &Callable) -> bool {
         match c {
             Callable::Closure(cl) => cl.fallible && !self.in_test,
