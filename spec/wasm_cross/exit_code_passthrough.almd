@@ -1,5 +1,6 @@
 // @contract: C-350
 // @xt-allow: a WASI preview-1 build cannot deliver 126..=255 and walls the band with a defined line (C-350, #2780)
+// @ref-allow: the wasm leg is the same preview-1 wall — the reference exits 130 as native does (C-350, #2780)
 // A wrapper exits with its child's status, and 130 (killed by SIGINT) is one
 // of the codes a child hands back.
 //
