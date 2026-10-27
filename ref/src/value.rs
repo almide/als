@@ -112,10 +112,11 @@ pub enum Value {
     /// a binary32 float (C-182) — narrows at birth, formats via the f32
     /// Dragon4 twin
     Float32(f32),
-    /// the RawPtr bridge (C-062): an opaque handle onto a Bytes buffer —
-    /// None is the null pointer an EMPTY buffer hands out; the pointer VALUE
-    /// is never printed, only the bytes moved through it
-    Ptr(Option<Rc<std::cell::RefCell<Vec<u8>>>>),
+    /// a Region (ADR-0031, C-062 / C-376): a bounds-checked view of a byte
+    /// buffer and whether it is writable — `ffi.region` holds a read-only
+    /// copy of a Bytes value, `ffi.alloc` fresh memory every copy of the
+    /// Region shares; the base address is never observable
+    Region(Rc<std::cell::RefCell<Vec<u8>>>, bool),
 }
 
 /// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
@@ -291,7 +292,7 @@ impl Value {
                 _ => "UInt64",
             },
             Value::Float32(_) => "Float32",
-            Value::Ptr(_) => "RawPtr",
+            Value::Region(..) => "Region",
         }
     }
     /// number of elements a range would materialize
@@ -713,7 +714,7 @@ pub fn render(v: &Value) -> Option<String> {
         | Value::Bytes(_)
         | Value::Matrix(_)
         | Value::Time { .. }
-        | Value::Ptr(_) => return None,
+        | Value::Region(..) => return None,
     })
 }
 
