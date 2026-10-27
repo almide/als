@@ -12,6 +12,7 @@ use std::rc::Rc;
 use crate::ast::*;
 use crate::parser::parse_program;
 use crate::stdlib;
+use crate::stdlib_ext::dyn_kind;
 use crate::value::*;
 
 #[derive(Debug)]
@@ -1385,6 +1386,27 @@ impl Interp {
         false
     }
 
+    /// A call to a stdlib effect fn declared with an Option return whose
+    /// evaluator answers it bare (env.secret answers its `ok(...)` carrier).
+    fn std_option_effect_call(&self, env: &Rc<Env>, e: &Expr) -> bool {
+        if !self.is_std_call(env, e) {
+            return false;
+        }
+        let Expr::Call { callee, .. } = e else {
+            return false;
+        };
+        let Expr::Member { obj, name, .. } = &**callee else {
+            return false;
+        };
+        let Expr::Ident(m) = &**obj else {
+            return false;
+        };
+        matches!(
+            (m.as_str(), name.as_str()),
+            ("args", "option") | ("env", "get") | ("io", "read_line") | ("random", "choice")
+        )
+    }
+
     fn eval_call(&mut self, env: &Rc<Env>, callee: &Expr, args: &[Arg]) -> R {
         // The call's own line: evaluating an argument that calls a user fn
         // moves `cur_line` into that body, and a stdlib abort (the T18
@@ -2449,6 +2471,10 @@ impl Interp {
                     other.type_name()
                 ))),
             },
+            // ALS-M15: an effect fn whose declared return is an Option
+            // (`args.option`, `env.get`, …) answers it bare; `!` lifts only
+            // the effect slot, so the Option passes through untouched
+            Expr::Unwrap(inner) if self.std_option_effect_call(env, inner) => self.eval(env, inner),
             Expr::Unwrap(inner) => match self.eval(env, inner)? {
                 Value::Ok(v) | Value::Some(v) => Ok((*v).clone()),
                 Value::Err(e) => {
@@ -3838,7 +3864,7 @@ impl Interp {
         match &decl.body {
             TypeBody::Record(fds) => {
                 let Dyn::O(pairs) = d else {
-                    return Ok(Err("expected Object".into()));
+                    return Ok(Err(format!("expected Object, received {}", dyn_kind(d))));
                 };
                 let fds = fds.clone();
                 Ok(self
@@ -3891,8 +3917,11 @@ impl Interp {
                 .iter()
                 .find(|(k, _)| &**k == key)
                 .map(|(_, v)| v.clone());
+            // #1675: a present key's error gains the key as a path frame; a
+            // missing field names itself in-message, its container framing it
             match self.codec_decode_field(fd, key, found.as_ref())? {
                 Ok(v) => fields.push((Rc::from(fd.name.as_str()), v)),
+                Err(e) if found.is_some() => return Ok(Err(strict_err_at(&e, key))),
                 Err(e) => return Ok(Err(e)),
             }
         }
@@ -4021,6 +4050,11 @@ impl Interp {
                 }),
             };
         }
+        // a defaulted field reads an explicit null as absent
+        let found = match found {
+            Some(Dyn::Null) if fd.default.is_some() => None,
+            other => other,
+        };
         match found {
             Some(v) => self.codec_decode_ty(&fd.ty, v),
             None => match &fd.default {
@@ -4043,21 +4077,21 @@ impl Interp {
             } => match (name.as_str(), args.as_slice()) {
                 ("Int", []) => Ok(match d {
                     Dyn::I(n) => Ok(Value::Int(*n)),
-                    _ => Err("expected Int".into()),
+                    other => Err(format!("expected Int, received {}", dyn_kind(other))),
                 }),
                 // C-085: an integer-formed JSON number widens into a Float field
                 ("Float", []) => Ok(match d {
                     Dyn::F(f) => Ok(Value::Float(F64(*f))),
                     Dyn::I(n) => Ok(Value::Float(F64(*n as f64))),
-                    _ => Err("expected Float".into()),
+                    other => Err(format!("expected Float, received {}", dyn_kind(other))),
                 }),
                 ("String", []) => Ok(match d {
                     Dyn::S(s) => Ok(Value::Str(s.clone())),
-                    _ => Err("expected Str".into()),
+                    other => Err(format!("expected Str, received {}", dyn_kind(other))),
                 }),
                 ("Bool", []) => Ok(match d {
                     Dyn::B(b) => Ok(Value::Bool(*b)),
-                    _ => Err("expected Bool".into()),
+                    other => Err(format!("expected Bool, received {}", dyn_kind(other))),
                 }),
                 ("Value", []) => Ok(Ok(Value::Dyn(d.clone()))),
                 // C-427: a Secret field decodes from its value's wire form
@@ -4069,15 +4103,15 @@ impl Interp {
                 }
                 ("List", [elem]) => {
                     let Dyn::A(items) = d else {
-                        return Ok(Err("expected Array".into()));
+                        return Ok(Err(format!("expected Array, received {}", dyn_kind(d))));
                     };
                     let elem = elem.clone();
                     let items = items.clone();
                     let mut out = Vec::with_capacity(items.len());
-                    for it in items.iter() {
+                    for (i, it) in items.iter().enumerate() {
                         match self.codec_decode_ty(&elem, it)? {
                             Ok(v) => out.push(v),
-                            Err(e) => return Ok(Err(e)),
+                            Err(e) => return Ok(Err(strict_err_at(&e, &format!("[{i}]")))),
                         }
                     }
                     Ok(Ok(Value::List(Rc::new(out))))
