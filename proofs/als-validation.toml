@@ -277,9 +277,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-D7"
-hash = "sha256:cc889f7b7203"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:c5d5eba4b9e7"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, ADR-0031 Region bridge: the RawPtr sentence replaced by the Region one, checked against the amended C-062 / C-376 statements and spec/wasm_cross/bytes_rawptr.almd as almide carries it)"
 independent = "no"
 verdict = "accurate"
 
