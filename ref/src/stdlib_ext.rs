@@ -76,18 +76,18 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.to_string_lossy",
     "bytes.contains",
     "bytes.index_of",
-    "ffi.address",
+    "ffi.region",
+    "ffi.alloc",
+    "ffi.len",
+    "ffi.is_writable",
     "ffi.read",
     "ffi.write",
+    "ffi.to_bytes",
     "deque.from_list",
     "deque.len",
     "deque.to_list",
     "bytes.to_string",
     "bytes.append_i16_le",
-    "bytes.as_ptr",
-    "bytes.as_mut_ptr",
-    "bytes.from_raw_ptr",
-    "bytes.copy_to_ptr",
     "bytes.fill",
     "bytes.copy_from",
     // the width decoders/encoders stdlib/bytes.almd's typed IO sits on
@@ -379,6 +379,17 @@ fn want_bytes(name: &str, v: &Value) -> Result<Rc<std::cell::RefCell<Vec<u8>>>, 
     match v {
         Value::Bytes(b) => Ok(b.clone()),
         other => mismatch(name, "Bytes", other),
+    }
+}
+
+/// a Region's shared buffer
+type RegionBuf = Rc<std::cell::RefCell<Vec<u8>>>;
+
+/// a Region's buffer and its writable flag (ADR-0031, C-062)
+fn want_region(name: &str, v: &Value) -> Result<(RegionBuf, bool), Flow> {
+    match v {
+        Value::Region(b, w) => Ok((b.clone(), *w)),
+        other => mismatch(name, "Region", other),
     }
 }
 
@@ -913,55 +924,6 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             b.borrow_mut().extend_from_slice(&(n as i16).to_le_bytes());
             Ok(Value::Unit)
         }
-        // ── C-062: the RawPtr / linear-memory bridge — an empty buffer hands
-        // out NULL and every bridge op through null moves nothing ──
-        "bytes.as_ptr" | "bytes.as_mut_ptr" => {
-            arity(name, &args, 1)?;
-            let b = want_bytes(name, &args[0])?;
-            let empty = b.borrow().is_empty();
-            Ok(Value::Ptr(if empty { None } else { Some(b) }))
-        }
-        "bytes.from_raw_ptr" => {
-            arity(name, &args, 2)?;
-            let n = want_int(name, &args[1])?.max(0) as usize;
-            Ok(match &args[0] {
-                Value::Ptr(Some(src)) => {
-                    let s = src.borrow();
-                    let take = n.min(s.len());
-                    Value::Bytes(Rc::new(std::cell::RefCell::new(s[..take].to_vec())))
-                }
-                Value::Ptr(None) => Value::Bytes(Rc::new(std::cell::RefCell::new(Vec::new()))),
-                other => {
-                    return Err(Flow::Fatal(format!(
-                        "{name}: expected RawPtr, got {}",
-                        other.type_name()
-                    )))
-                }
-            })
-        }
-        "bytes.copy_to_ptr" => {
-            arity(name, &args, 3)?;
-            let src = want_bytes(name, &args[0])?;
-            // C-034: the cap is UNSIGNED — a negative one saturates to all
-            let cap = want_int(name, &args[2])?;
-            let cap = if cap < 0 { usize::MAX } else { cap as usize };
-            Ok(match &args[1] {
-                Value::Ptr(Some(dst)) => {
-                    let s = src.borrow();
-                    let mut d = dst.borrow_mut();
-                    let n = cap.min(s.len()).min(d.len());
-                    d[..n].copy_from_slice(&s[..n]);
-                    Value::Int(n as i64)
-                }
-                Value::Ptr(None) => Value::Int(0),
-                other => {
-                    return Err(Flow::Fatal(format!(
-                        "{name}: expected RawPtr, got {}",
-                        other.type_name()
-                    )))
-                }
-            })
-        }
         "bytes.to_list" => {
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
@@ -1145,60 +1107,87 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 }
             })
         }
-        // ── ffi (stdlib/ffi.almd, R-L0-45): the address of a Bytes block
-        // (null for an empty one); read/write move bytes through it and are
-        // effect fns. The block an address names is the one it was taken
-        // from — rebinding the variable later does not move it (C-062) ──
-        "ffi.address" => {
+        // ── ffi (stdlib/ffi.almd, ADR-0031, C-062 / C-376): a Region is a
+        // buffer, its length and a writable flag. `ffi.region(b)` is a
+        // read-only view that keeps b's bytes as they were when it was made
+        // (rebinding or growing the var later leaves it alone); `ffi.alloc(n)`
+        // is fresh zeroed writable memory shared by every copy of the Region.
+        // Every read / write is checked against the length on the full i64
+        // values before it touches the buffer; outside it is an err. The
+        // base address is never observable. ──
+        "ffi.region" => {
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
-            let empty = b.borrow().is_empty();
-            Ok(Value::Ptr(if empty { None } else { Some(b) }))
+            let copy = b.borrow().clone();
+            Ok(Value::Region(Rc::new(std::cell::RefCell::new(copy)), false))
+        }
+        "ffi.alloc" => {
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            if n < 0 {
+                return Ok(Ok(err_str(&format!("ffi.alloc: negative length {n}"))));
+            }
+            // C-197: an unsatisfiable allocation is the DEFINED abort
+            let n = n as usize;
+            let mut v: Vec<u8> = Vec::new();
+            if v.try_reserve_exact(n).is_err() {
+                return Ok(Err(Flow::Abort("out of memory".into())));
+            }
+            v.resize(n, 0);
+            Ok(ok(Value::Region(Rc::new(std::cell::RefCell::new(v)), true)))
+        }
+        "ffi.len" => {
+            arity(name, &args, 1)?;
+            let (b, _) = want_region(name, &args[0])?;
+            let len = b.borrow().len() as i64;
+            Ok(Value::Int(len))
+        }
+        "ffi.is_writable" => {
+            arity(name, &args, 1)?;
+            let (_, w) = want_region(name, &args[0])?;
+            Ok(Value::Bool(w))
         }
         "ffi.read" => {
-            arity(name, &args, 2)?;
-            let n = want_int(name, &args[1])?;
-            Ok(ok(match &args[0] {
-                Value::Ptr(Some(src)) if n > 0 => {
-                    let s = src.borrow();
-                    if n as u64 > s.len() as u64 {
-                        // past the block is memory the ALS does not describe
-                        return Ok(it.abstain_pub(
-                            "semantics:ffi-read-past-block",
-                            format!("{name}({n}) reads past a {}-byte block", s.len()),
-                        ));
-                    }
-                    bytes_val(s[..n as usize].to_vec())
-                }
-                Value::Ptr(_) => bytes_val(Vec::new()),
-                other => return mismatch(name, "RawPtr", other),
-            }))
+            arity(name, &args, 3)?;
+            let (b, _) = want_region(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let n = want_int(name, &args[2])?;
+            let s = b.borrow();
+            let len = s.len() as i64;
+            Ok(if n < 0 {
+                err_str(&format!("ffi.read: negative count {n}"))
+            } else if off < 0 || off > len - n {
+                err_str(&format!(
+                    "ffi.read: {n} bytes at offset {off} are outside a region of {len} bytes"
+                ))
+            } else {
+                ok(bytes_val(s[off as usize..(off + n) as usize].to_vec()))
+            })
         }
         "ffi.write" => {
             arity(name, &args, 3)?;
-            let src = want_bytes(name, &args[1])?.borrow().clone();
-            let cap = want_int(name, &args[2])?;
-            Ok(ok(match &args[0] {
-                Value::Ptr(Some(dst)) => {
-                    // the count is min(len(b), cap as unsigned)
-                    let n = if cap < 0 {
-                        src.len()
-                    } else {
-                        src.len().min(cap as usize)
-                    };
-                    let mut d = dst.borrow_mut();
-                    if n > d.len() {
-                        return Ok(it.abstain_pub(
-                            "semantics:ffi-write-past-block",
-                            format!("{name} writes {n} bytes into a {}-byte block", d.len()),
-                        ));
-                    }
-                    d[..n].copy_from_slice(&src[..n]);
-                    Value::Int(n as i64)
-                }
-                Value::Ptr(None) => Value::Int(0),
-                other => return mismatch(name, "RawPtr", other),
-            }))
+            let (b, writable) = want_region(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let src = want_bytes(name, &args[2])?.borrow().clone();
+            let m = src.len() as i64;
+            let mut d = b.borrow_mut();
+            let len = d.len() as i64;
+            Ok(if !writable {
+                err_str("ffi.write: the region is read-only (ffi.region views a Bytes value)")
+            } else if off < 0 || off > len - m {
+                err_str(&format!(
+                    "ffi.write: {m} bytes at offset {off} are outside a region of {len} bytes"
+                ))
+            } else {
+                d[off as usize..(off + m) as usize].copy_from_slice(&src);
+                ok(Value::Unit)
+            })
+        }
+        "ffi.to_bytes" => {
+            arity(name, &args, 1)?;
+            let (b, _) = want_region(name, &args[0])?;
+            let copy = b.borrow().clone();
+            Ok(ok(bytes_val(copy)))
         }
         // ── deque (stdlib/deque.almd): the record { front, back }, the front
         // stored reversed ──

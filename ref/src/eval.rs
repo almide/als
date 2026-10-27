@@ -1219,7 +1219,7 @@ impl Interp {
                 _ => "uint64",
             },
             Value::Float32(_) => "float32",
-            Value::Ptr(_) => return None,
+            Value::Region(..) => return None,
             Value::Unit
             | Value::Record { .. }
             | Value::Variant { .. }
