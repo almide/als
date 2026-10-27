@@ -902,7 +902,7 @@ test "fan.* heads" {
     b()
   }
   let r = fan.bounded(compute.ms(100)) { work(21) } ?? -1  // deterministic budget
-  assert_eq(first, ok(2))
+  assert_eq(first, 2)
   assert_eq(ra, err("a failed"))
   assert_eq(rb, ok(2))
   assert_eq(r, 42)
