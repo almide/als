@@ -213,9 +213,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C9"
-hash = "sha256:64db97e58dac"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:a56ff94c4dfa"
+reviewed = "2026-10-27"
+by = "O6lvl4 (via the Claude session, 2026-10-27, R-float-09 one-NaN ordering (almide#4258): the Float order clause amended from sign-dependent NaN placement to the single +qNaN after +inf, checked against the amended C-055 statement, the extended list_float_total_order fixture's NaN rows and the reference evaluator's float_order)"
 independent = "no"
 verdict = "accurate"
 
