@@ -124,6 +124,7 @@ pub const EXT_FNS: &[&str] = &[
     // (cursor), put_ (in place; a window outside 0..len is a panic)
     "bytes.get_u8",
     "bytes.get_u16_le",
+    "bytes.get_f16_le",
     "bytes.get_u16_be",
     "bytes.get_i16_le",
     "bytes.get_i16_be",
@@ -1825,7 +1826,7 @@ fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flo
     };
     let width: i64 = match ty {
         "u8" => 1,
-        "u16_le" | "u16_be" | "i16_le" | "i16_be" => 2,
+        "u16_le" | "u16_be" | "i16_le" | "i16_be" | "f16_le" => 2,
         "u32_le" | "u32_be" | "i32_le" | "i32_be" | "f32_le" | "f32_be" => 4,
         "i64_le" | "i64_be" | "f64_le" | "f64_be" => 8,
         _ => return Err(Flow::Fatal("__not_ext__".into())),
