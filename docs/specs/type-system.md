@@ -534,6 +534,10 @@ After all declarations are registered, the checker validates:
 ### Using Protocols as Generic Bounds
 
 ```almide
+protocol Showable {
+  fn show(a: Self) -> String
+}
+
 fn display[T: Showable](item: T) -> String = item.show()
 ```
 
