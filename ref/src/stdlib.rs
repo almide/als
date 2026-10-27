@@ -177,6 +177,7 @@ const FLOAT_FNS: &[&str] = &[
     "float.clamp",
     "float.sign",
     "float.is_nan",
+    "float.nan",
     "float.is_infinite",
     "float.to_bits",
     "float.bits_to_float",
@@ -1842,6 +1843,11 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "float.is_nan" => {
             arity(name, &args, 1)?;
             Ok(Value::Bool(want_float(name, &args[0])?.is_nan()))
+        }
+        "float.nan" => {
+            arity(name, &args, 0)?;
+            // C-055 / C-210: the ONE NaN, +qNaN 0x7FF8000000000000
+            Ok(Value::Float(F64(f64::from_bits(0x7FF8_0000_0000_0000))))
         }
         "float.is_infinite" => {
             arity(name, &args, 1)?;
