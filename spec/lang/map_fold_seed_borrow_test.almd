@@ -7,8 +7,12 @@
 // occurrence clones. Sibling of #809; the borrow-vs-move authority inside one
 // call is rustc's borrow live-range, not the flat last-use count.
 fn pick(base: Map[String, Int], grow: Bool) -> Int = {
-  let seeded = map.fold(base, (if grow then ["k": 1]
-  else base), (acc, (k, v)) => map.set(acc, k, v + 1))
+  let seeded = map.fold(
+    base,
+    (if grow then ["k": 1]
+    else base),
+    (acc, (k, v)) => map.set(acc, k, v + 1),
+  )
   map.len(seeded)
 }
 

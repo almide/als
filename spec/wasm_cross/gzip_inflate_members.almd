@@ -362,7 +362,15 @@ fn dynamic(pos: Int, buf: Int, cnt: Int, inp: Bytes, mut out: Bytes) -> (Int, In
   }
   let lencode = construct(cl, 19)
   let (status, p5, b5, c5, lengths) = read_lengths(p, b, c, inp, lencode, nlen + ndis)
-  let (s2, p6, b6, c6) = codes(p5, b5, c5, inp, out, construct(lengths, nlen), construct(list.slice(lengths, nlen, nlen + ndis), ndis))
+  let (s2, p6, b6, c6) = codes(
+    p5,
+    b5,
+    c5,
+    inp,
+    out,
+    construct(lengths, nlen),
+    construct(list.slice(lengths, nlen, nlen + ndis), ndis),
+  )
   (if status != 0 then status else s2, p6, b6, c6)
 }
 
@@ -1638,7 +1646,7 @@ let gz_bytes = [
 
 fn main() -> Unit = {
   let inp = bytes.from_list(gz_bytes)
-  var out = bytes.new(0)
+  var out = bytes.zeros(0)
   let code = gunzip(inp, out)
   println("${code},${bytes.len(out)}")
   println(bytes.to_string_lossy(out))

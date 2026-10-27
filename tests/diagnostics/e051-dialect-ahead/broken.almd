@@ -1,3 +1,3 @@
-@dialect(9)
+@dialect(16)
 
 fn main() -> Unit = println("hi")

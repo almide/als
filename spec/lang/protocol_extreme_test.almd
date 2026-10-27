@@ -112,7 +112,10 @@ protocol Mergeable {
 
 type Counter: Mergeable = { total: Int, count: Int }
 
-fn Counter.merge(a: Counter, b: Counter) -> Counter = Counter { total: a.total + b.total, count: a.count + b.count }
+fn Counter.merge(a: Counter, b: Counter) -> Counter = Counter {
+  total: a.total + b.total,
+  count: a.count + b.count,
+}
 
 fn Counter.empty() -> Counter = Counter { total: 0, count: 0 }
 
@@ -134,8 +137,9 @@ protocol Validator {
 
 type Form: Validator = { name: String, email: String }
 
-fn Form.validate(f: Form) -> Result[Form, String] = if string.is_empty(f.name) then err("name required")
-else if not string.contains(f.email, "@") then err("invalid email") else ok(f)
+fn Form.validate(f: Form) -> Result[Form, String] =
+  if string.is_empty(f.name) then err("name required")
+  else if not string.contains(f.email, "@") then err("invalid email") else ok(f)
 
 test "validation protocol with early return" {
   let good = Form { name: "Alice", email: "a@b.com" }

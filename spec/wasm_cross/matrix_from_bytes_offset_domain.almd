@@ -9,15 +9,15 @@
 // passed, and the read returned a subnormal out of the wrong bytes (fuzz
 // seed 541740772278:10760, #1909) — the buffer-side test is what keeps a
 // huge offset `none`.
-fn show(o: Option[Matrix]) -> String = match o {
+fn show(o: Matrix?) -> String = match o {
   some(m) => "some ${matrix.to_lists(m)}",
   none => "none",
 }
 
 fn main() -> Unit = {
-  var f = bytes.new(8)
-  bytes.set_f32_le(f, 0, 1.5)
-  bytes.set_f32_le(f, 4, -2.0)
+  var f = bytes.zeros(8)
+  bytes.put_f32_le(f, 0, 1.5)
+  bytes.put_f32_le(f, 4, -2.0)
   println("in bounds: ${show(matrix.from_bytes_f32_le(f, 0, 1, 2))}")
   println("tail fits: ${show(matrix.from_bytes_f32_le(f, 4, 1, 1))}")
   println("tail short: ${show(matrix.from_bytes_f32_le(f, 4, 1, 2))}")
@@ -26,8 +26,8 @@ fn main() -> Unit = {
   println("negative offset: ${show(matrix.from_bytes_f32_le(f, -1, 1, 2))}")
   println("half huge: ${show(matrix.from_bytes_f16_le(f, 9223372036854775806, 1, 2))}")
   println("half negative: ${show(matrix.from_bytes_f16_le(f, -2, 1, 1))}")
-  var g = bytes.new(16)
-  bytes.set_f64_le(g, 8, -0.75)
+  var g = bytes.zeros(16)
+  bytes.put_f64_le(g, 8, -0.75)
   println("f64 fits: ${show(matrix.from_bytes_f64_le(g, 8, 1, 1))}")
   println("f64 short: ${show(matrix.from_bytes_f64_le(g, 9, 1, 1))}")
   println("f64 huge: ${show(matrix.from_bytes_f64_le(g, 9223372036854775800, 1, 1))}")

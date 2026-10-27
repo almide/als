@@ -89,9 +89,18 @@ test "regex.captures returns some for match" {
 // Index 0 is the WHOLE match, 1.. are the groups (#1432) — the shape every
 // mainstream regex API uses, and what docs/stdlib/regex.md always showed.
 test "regex.captures contents per lexical group" {
-  assert_eq(regex.captures(regex.new("(\\d+)-(\\d+)"), "12-34"), some([some("12-34"), some("12"), some("34")]))
-  assert_eq(regex.captures(regex.new("(a)(b)(c)"), "abc"), some([some("abc"), some("a"), some("b"), some("c")]))
-  assert_eq(regex.captures(regex.new("(\\w+)@(\\w+)"), "user@host"), some([some("user@host"), some("user"), some("host")]))
+  assert_eq(
+    regex.captures(regex.new("(\\d+)-(\\d+)"), "12-34"),
+    some([some("12-34"), some("12"), some("34")]),
+  )
+  assert_eq(
+    regex.captures(regex.new("(a)(b)(c)"), "abc"),
+    some([some("abc"), some("a"), some("b"), some("c")]),
+  )
+  assert_eq(
+    regex.captures(regex.new("(\\w+)@(\\w+)"), "user@host"),
+    some([some("user@host"), some("user"), some("host")]),
+  )
 }
 
 test "regex.captures optional-miss is none" {
@@ -187,7 +196,10 @@ test "regex brace quantifiers" {
   assert_eq(regex.is_full_match(regex.new("\\d{2,4}"), "123"), true)
   assert_eq(regex.is_full_match(regex.new("\\d{2,4}"), "12345"), false)
   assert_eq(regex.find(regex.new("a{2,3}"), "caaaab"), some("aaa"))
-  assert_eq(regex.captures(regex.new("(\\d{4})-(\\d{2})-(\\d{2})"), "on 2026-03-09."), some([some("2026-03-09"), some("2026"), some("03"), some("09")]))
+  assert_eq(
+    regex.captures(regex.new("(\\d{4})-(\\d{2})-(\\d{2})"), "on 2026-03-09."),
+    some([some("2026-03-09"), some("2026"), some("03"), some("09")]),
+  )
   assert_eq(regex.replace(regex.new("o{2}"), "foo book", "0"), "f0 b0k")
   assert_eq(regex.is_full_match(regex.new("(ab){2}"), "abab"), true)
   assert_eq(regex.is_full_match(regex.new("(ab){2}"), "ab"), false)
@@ -203,8 +215,14 @@ test "regex malformed braces are refused" {
 
 // ── backtracking, boundaries, flags, lazy (#1927) ──
 test "regex group backtracking" {
-  assert_eq(regex.is_match(regex.new("^---- (.+) (stdout|stderr) ----$"), "---- tests::a stdout ----"), true)
-  assert_eq(regex.captures(regex.new("^---- (.+) (stdout|stderr) ----$"), "---- tests::a stdout ----"), some([some("---- tests::a stdout ----"), some("tests::a"), some("stdout")]))
+  assert_eq(
+    regex.is_match(regex.new("^---- (.+) (stdout|stderr) ----$"), "---- tests::a stdout ----"),
+    true,
+  )
+  assert_eq(
+    regex.captures(regex.new("^---- (.+) (stdout|stderr) ----$"), "---- tests::a stdout ----"),
+    some([some("---- tests::a stdout ----"), some("tests::a"), some("stdout")]),
+  )
   assert_eq(regex.is_match(regex.new("(^| )go\\s+test( |$)"), " go test ./... "), true)
   assert_eq(regex.is_full_match(regex.new("(a|ab)(c|bcd)"), "abcd"), true)
   assert_eq(regex.find(regex.new("(a|ab)c"), "abc"), some("abc"))
@@ -233,6 +251,9 @@ test "regex lazy quantifiers" {
   assert_eq(regex.find(regex.new("a.*b"), "aXbYb"), some("aXbYb"))
   assert_eq(regex.find(regex.new("a+?"), "aaa"), some("a"))
   assert_eq(regex.find(regex.new("a??b"), "ab"), some("ab"))
-  assert_eq(regex.is_full_match(regex.new("^---- (.+?) stdout ----$"), "---- tests::a stdout ----"), true)
+  assert_eq(
+    regex.is_full_match(regex.new("^---- (.+?) stdout ----$"), "---- tests::a stdout ----"),
+    true,
+  )
   assert_eq(regex.replace(regex.new("(?:ab)+?"), "ababab", "<>"), "<><><>")
 }

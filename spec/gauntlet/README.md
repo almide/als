@@ -99,10 +99,10 @@ mode of a router should be a wall, never a misread.
 |---|---|
 | `s1_protocol_fallible_return` | fixed (`-> T!` / `-> T!E` were parse errors in a protocol method) |
 | `s2_multiline_tuple` | fixed (a tuple literal could not span lines; list/record/map could) |
-| `s3_module_qualified_protocol` | **open, unfiled** — `ports.Store` is a parse error in a bound and in a conformance list; the bare name resolves globally, while *types* must be qualified. The rule is exactly inverted between the two |
-| `s4_bare_mut_self` | **open, unfiled** — `mut self` is a parse error; `mut self: Self` is required |
+| `s3_module_qualified_protocol` | **closed (#1589 stage 1)** — `ports.Store` parses in a bound and in a conformance list, and the qualifier must name the declaring module, as for a type. The bare cross-module name still resolves but is a deprecation warning whose machine fix is the qualified spelling |
+| `s4_bare_mut_self` | **closed (#1589 stage 1)** — `mut self` is the shorthand for `mut self: Self` wherever a receiver is written |
 | `s5_match_self` | **closed (#1590)** — `self` was on the parser's rejected-ident table and the used-as-identifier lookahead had no `{` case; `self` now parses as the ordinary identifier it is, and the cell checks green |
-| `s6_generic_protocol` | **diagnosed honestly (#1590), expressiveness open (#1589)** — the adoption now refuses at the declaration with the root cause (generic-protocol adoption cannot bind `T`) instead of demanding an unimplementable `-> Option[T]`; the Repository abstraction itself still needs #1589 |
+| `s6_generic_protocol` | **closed (#1589 stage 1)** — `type UserRepo: Repository[User]` and `[R: Repository[User]]` are accepted with exact argument substitution; the call runs the one declared implementation (C-365, `spec/integration/generic_protocol_ports/`) |
 | `s7_protocol_as_type` | **diagnosed honestly (#1590), expressiveness open (#1589)** — E029 now says "'Policy' is a protocol, not a type" and the derived `E002`s are suppressed; the `List[Policy]` shape still emits one element-mismatch `E001` first (noted on #1590), and existential dispatch remains #1589 |
 
 **Invariant for greenfield**: these are design decisions, not bugs — decide them
@@ -170,9 +170,11 @@ both layered packages, which are blocked on `x13` (functional port) and on
 `#1576` (mut port — the `mut`-param err-path semantics need a ratified answer:
 what does the caller's argument hold when the callee returns `err` after
 mutating?). `#1576` was ratified and closed on the structural leg (0.61.2):
-the err propagates before any write-back, so the caller's slot keeps its
+the err propagated before any write-back, so the caller's slot kept its
 pre-call binding, and `pkg/mut_port` runs byte-identically to native in the
-greenfield gate below.
+greenfield gate below. #1871 ruled the other way on 2026-09-30 ((B), write
+visible, #2917): the err arm carries the buffer too, so a write made before the
+err reaches the caller as on native — `cells/x18` pins it.
 
 ## 5. What to do with this here
 
