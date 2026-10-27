@@ -8,7 +8,7 @@
 // call is rustc's borrow live-range, not the flat last-use count.
 fn pick(base: Map[String, Int], grow: Bool) -> Int = {
   let seeded = map.fold(base, (if grow then ["k": 1]
-  else base), (acc, k, v) => map.set(acc, k, v + 1))
+  else base), (acc, (k, v)) => map.set(acc, k, v + 1))
   map.len(seeded)
 }
 
@@ -25,10 +25,10 @@ test "nested fold with subject-consuming seed builds and runs" {
       acc,
       (if map.get(["k0": false], "x") ?? true then ["k0": true]
       else acc),
-      (a, k, v) => map.set(a, k, v),
+      (a, (k, v)) => map.set(a, k, v),
     ),
     "z",
-    (a, k, v) => a + "!",
+    (a, (k, v)) => a + "!",
   )
   assert_eq(r, "z!")
 }
