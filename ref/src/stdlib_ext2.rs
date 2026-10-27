@@ -93,7 +93,11 @@ pub const EXT2_FNS: &[&str] = &[
     "fs.walk",
     "bytes.pad_left",
     "bytes.pad_right",
+    "bytes.pad_start",
+    "bytes.pad_end",
     "bytes.chunks",
+    "bytes.chunk",
+    "bytes.__chunks",
     "bytes.copy_within",
     "bytes.write_u16_le",
     "bytes.write_u16_be",
@@ -953,7 +957,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ bytes leftovers (RefCell reference semantics) ═══════════════
-        "bytes.pad_left" | "bytes.pad_right" => {
+        // epoch 15 spells them pad_start / pad_end
+        "bytes.pad_left" | "bytes.pad_right" | "bytes.pad_start" | "bytes.pad_end" => {
             arity(name, &args, 3)?;
             let b = want_bytes(name, &args[0])?;
             let b = b.borrow();
@@ -967,7 +972,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             let pad = n as usize - b.len();
             let mut v = Vec::with_capacity(n as usize);
-            if name == "bytes.pad_left" {
+            if name == "bytes.pad_left" || name == "bytes.pad_start" {
                 v.extend(std::iter::repeat_n(fill, pad));
                 v.extend_from_slice(&b);
             } else {
@@ -976,7 +981,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             }
             Ok(bytes_val(v))
         }
-        "bytes.chunks" => {
+        // `bytes.chunk` (stdlib/bytes.almd) panics on n <= 0 before reaching
+        // the `__chunks` kernel; the abort text is the same
+        "bytes.chunks" | "bytes.chunk" | "bytes.__chunks" => {
             arity(name, &args, 2)?;
             let b = want_bytes(name, &args[0])?;
             let b = b.borrow();

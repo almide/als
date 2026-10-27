@@ -167,6 +167,41 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.put_f32_be",
     "bytes.put_f64_le",
     "bytes.put_f64_be",
+    // the f16 typed IO and the counted runs (get_<t>_array, R-bytes-01)
+    "bytes.get_u16_le_array",
+    "bytes.__read_u16_le_array",
+    "bytes.get_u16_be_array",
+    "bytes.__read_u16_be_array",
+    "bytes.get_i16_le_array",
+    "bytes.__read_i16_le_array",
+    "bytes.get_i16_be_array",
+    "bytes.__read_i16_be_array",
+    "bytes.get_u32_le_array",
+    "bytes.__read_u32_le_array",
+    "bytes.get_u32_be_array",
+    "bytes.__read_u32_be_array",
+    "bytes.get_i32_le_array",
+    "bytes.__read_i32_le_array",
+    "bytes.get_i32_be_array",
+    "bytes.__read_i32_be_array",
+    "bytes.get_i64_le_array",
+    "bytes.__read_i64_le_array",
+    "bytes.get_i64_be_array",
+    "bytes.__read_i64_be_array",
+    "bytes.get_f32_le_array",
+    "bytes.__read_f32_le_array",
+    "bytes.get_f32_be_array",
+    "bytes.__read_f32_be_array",
+    "bytes.get_f64_le_array",
+    "bytes.__read_f64_le_array",
+    "bytes.get_f64_be_array",
+    "bytes.__read_f64_be_array",
+    "bytes.get_f16_le",
+    "bytes.get_f16_be",
+    "bytes.next_f16_le",
+    "bytes.next_f16_be",
+    "bytes.get_f16_le_array",
+    "bytes.__read_f16_le_array",
     "bytes.read_u16_le",
     "bytes.read_u32_le",
     "bytes.read_i32_le",
@@ -461,11 +496,35 @@ pub fn err_escape(s: &str) -> String {
 
 /// dispatch; None = not an ext function (caller abstains)
 pub fn call_ext(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Result<Value, Flow>> {
-    // ALS-R5 / C-418: a failed `fs.read_text` / `fs.copy` names the call and
-    // its path operands, quoted, their control and bidi characters escaped.
+    // ALS-R5 / C-418: a failed fs path call names the call and its path
+    // operands, quoted, their control and bidi characters escaped — every
+    // whole-file reader and writer, the directory calls, copy and rename.
     let operands: Option<Vec<String>> = match name {
-        "fs.read_text" | "fs.copy" => args
+        "fs.read_text"
+        | "fs.read_bytes"
+        | "fs.read_lines"
+        | "fs.read_text_if_exists"
+        | "fs.read_bytes_if_exists"
+        | "fs.read_lines_if_exists"
+        | "fs.write"
+        | "fs.write_text"
+        | "fs.write_bytes"
+        | "fs.append"
+        | "fs.append_text"
+        | "fs.append_bytes"
+        | "fs.mkdir_p"
+        | "fs.list_dir"
+        | "fs.remove"
+        | "fs.remove_all"
+        | "fs.stat"
+        | "fs.copy"
+        | "fs.rename" => args
             .iter()
+            .take(if name == "fs.copy" || name == "fs.rename" {
+                2
+            } else {
+                1
+            })
             .map(|a| match a {
                 Value::Str(s) => Some(err_operand(s)),
                 _ => None,
@@ -473,18 +532,40 @@ pub fn call_ext(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Result<
             .collect(),
         _ => None,
     };
-    match dispatch(it, name, args) {
-        Ok(Ok(Value::Err(e))) if operands.is_some() => {
+    let Some(ops) = operands else {
+        return match dispatch(it, name, args) {
+            Ok(r) => Some(r),
+            Err(Flow::Fatal(m)) if &*m == "__not_ext__" => None,
+            Err(f) => Some(Err(f)),
+        };
+    };
+    // the fs calls stdlib_ext2 owns (the `_if_exists` twins, stat) are
+    // reached from here so they carry the same prefix
+    let r = match dispatch(it, name, args.clone()) {
+        Ok(r) => r,
+        Err(Flow::Fatal(m)) if &*m == "__not_ext__" => {
+            crate::stdlib_ext2::call_ext2(it, name, args)?
+        }
+        Err(f) => Err(f),
+    };
+    match r {
+        Ok(Value::Err(e)) => {
             let reason = match &*e {
                 Value::Str(m) => m.to_string(),
                 _ => return Some(Ok(Value::Err(e))),
             };
-            let ops = operands.unwrap_or_default().join(", ");
-            Some(Ok(err_str(&format!("{name}({ops}): {reason}"))))
+            // the earlier spellings answer under the call they now are
+            let call = match name {
+                "fs.write" => "fs.write_text",
+                "fs.append" => "fs.append_text",
+                other => other,
+            };
+            Some(Ok(err_str(&format!(
+                "{call}({}): {reason}",
+                ops.join(", ")
+            ))))
         }
-        Ok(r) => Some(r),
-        Err(Flow::Fatal(m)) if &*m == "__not_ext__" => None,
-        Err(f) => Some(Err(f)),
+        other => Some(other),
     }
 }
 
@@ -586,14 +667,14 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             Ok(match want_dyn(name, &args[0])? {
                 Dyn::S(s) => ok(Value::Str(s.clone())),
-                _ => err_str("expected Str"),
+                other => err_str(&format!("expected Str, received {}", dyn_kind(other))),
             })
         }
         "value.as_int" => {
             arity(name, &args, 1)?;
             Ok(match want_dyn(name, &args[0])? {
                 Dyn::I(n) => ok(Value::Int(*n)),
-                _ => err_str("expected Int"),
+                other => err_str(&format!("expected Int, received {}", dyn_kind(other))),
             })
         }
         "value.as_float" => {
@@ -601,14 +682,14 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(match want_dyn(name, &args[0])? {
                 Dyn::F(f) => ok(Value::Float(F64(*f))),
                 Dyn::I(n) => ok(Value::Float(F64(*n as f64))), // D6: integer-formed numbers widen
-                _ => err_str("expected Float"),
+                other => err_str(&format!("expected Float, received {}", dyn_kind(other))),
             })
         }
         "value.as_bool" => {
             arity(name, &args, 1)?;
             Ok(match want_dyn(name, &args[0])? {
                 Dyn::B(b) => ok(Value::Bool(*b)),
-                _ => err_str("expected Bool"),
+                other => err_str(&format!("expected Bool, received {}", dyn_kind(other))),
             })
         }
         "value.as_array" => {
@@ -617,7 +698,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Dyn::A(items) => ok(Value::List(Rc::new(
                     items.iter().map(|d| Value::Dyn(d.clone())).collect(),
                 ))),
-                _ => err_str("expected Array"),
+                other => err_str(&format!("expected Array, received {}", dyn_kind(other))),
             })
         }
         "value.pick" | "value.omit" => {
@@ -1624,7 +1705,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "process.exit" => {
             arity(name, &args, 1)?;
-            return Err(Flow::Exit(want_int(name, &args[0])? as i32));
+            // C-350: a POSIX exit status is 0..=255; outside it the program
+            // aborts naming the band instead of passing a wrapped code on
+            let code = want_int(name, &args[0])?;
+            if !(0..=255).contains(&code) {
+                return Err(Flow::Abort("exit code must be in 0..=255".into()));
+            }
+            return Err(Flow::Exit(code as i32));
         }
 
         // ═══ late arrivals ═════════════════════════════════════════════
@@ -1834,9 +1921,36 @@ fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flo
         Some((v, t)) => (v, t),
         None => return Err(Flow::Fatal("__not_ext__".into())),
     };
+    // `get_<t>_array(b, pos, count)`: every value of the run when all of
+    // it fits (count >= 0, pos in 0..=len, count <= (len - pos) / w), none
+    // otherwise — stdlib/bytes.almd's `array_fits`
+    if let Some(base) = ty.strip_suffix("_array") {
+        if verb != "get" {
+            return Err(Flow::Fatal("__not_ext__".into()));
+        }
+        let w: i64 = match base {
+            "u16_le" | "u16_be" | "i16_le" | "i16_be" | "f16_le" => 2,
+            "u32_le" | "u32_be" | "i32_le" | "i32_be" | "f32_le" | "f32_be" => 4,
+            "u64_le" | "u64_be" | "i64_le" | "i64_be" | "f64_le" | "f64_be" => 8,
+            _ => return Err(Flow::Fatal("__not_ext__".into())),
+        };
+        arity(name, args, 3)?;
+        let len = want_bytes(name, &args[0])?.borrow().len() as i64;
+        let (pos, count) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
+        let fits = count >= 0 && pos >= 0 && pos <= len && count <= (len - pos) / w;
+        if !fits {
+            return Ok(Ok(Value::None));
+        }
+        return Ok(
+            match read_bytes_fn(it, &format!("bytes.read_{base}_array"), args)? {
+                Ok(v) => Ok(some(v)),
+                Err(f) => Err(f),
+            },
+        );
+    }
     let width: i64 = match ty {
         "u8" => 1,
-        "u16_le" | "u16_be" | "i16_le" | "i16_be" => 2,
+        "u16_le" | "u16_be" | "i16_le" | "i16_be" | "f16_le" | "f16_be" => 2,
         "u32_le" | "u32_be" | "i32_le" | "i32_be" | "f32_le" | "f32_be" => 4,
         "i64_le" | "i64_be" | "f64_le" | "f64_be" => 8,
         _ => return Err(Flow::Fatal("__not_ext__".into())),
@@ -2339,7 +2453,7 @@ fn path_slot(i: i64, len: usize) -> Option<usize> {
 }
 
 /// The kind a value's `as_*` err names (almide_rt_value_kind).
-fn dyn_kind(d: &Dyn) -> &'static str {
+pub(crate) fn dyn_kind(d: &Dyn) -> &'static str {
     match d {
         Dyn::Null => "Null",
         Dyn::B(_) => "Bool",

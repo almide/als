@@ -1356,6 +1356,10 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 2)?;
             let s = want_str(name, &args[0])?;
             let n = want_int(name, &args[1])?;
+            // an EMPTY base is empty at any count and returns at once (#2690)
+            if s.is_empty() {
+                return Ok(Value::str(""));
+            }
             // C-034: results past the shared 2^31-byte ceiling take the T6 abort
             if n > 0 && (s.len() as i128) * (n as i128) > (1i128 << 31) {
                 return Err(Flow::Abort("repeat result too large".into()));
