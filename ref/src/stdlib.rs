@@ -383,6 +383,21 @@ fn call_cb(
     }
 }
 
+/// R-map-09: a map entry callback receives the entry as ONE `(K, V)` tuple
+/// (after `lead`, the fold accumulator). A callback declaring one slot more
+/// than `lead` takes the tuple — a `(k, v)` destructuring slot, a single
+/// name, or a named fn of `e: (K, V)`; one declaring a slot for the key and
+/// another for the value (`spread`) has them read as the tuple's elements.
+fn entry_args(spread: bool, mut lead: Vec<Value>, k: &Value, v: &Value) -> Vec<Value> {
+    if spread {
+        lead.push(k.clone());
+        lead.push(v.clone());
+    } else {
+        lead.push(Value::Tuple(Rc::new(vec![k.clone(), v.clone()])));
+    }
+    lead
+}
+
 /// wrap a HOF result per the callback's fallibility (first-err form)
 fn hof_out(fallible: bool, bail: Option<Value>, v: Value) -> Value {
     match (fallible, bail) {
@@ -2197,6 +2212,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let fal = it.cb_fallible(&c);
             let mut bail = None;
             let mut out: Vec<(Value, Value)> = Vec::new();
+            let spread = it.cb_arity(&c) == Some(2);
             let mut acc_bool = name == "map.all";
             let mut count = 0i64;
             let mut found: Option<Value> = None;
@@ -2204,7 +2220,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 let cb_args = if name == "map.map" {
                     vec![v.clone()]
                 } else {
-                    vec![k.clone(), v.clone()]
+                    entry_args(spread, vec![], k, v)
                 };
                 let r = match call_cb(it, &c, fal, cb_args)? {
                     Cb::Val(r) => r,
@@ -2261,10 +2277,11 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let m = want_map(name, &args[0])?.clone();
             let c = want_fn(name, &args[2])?.clone();
             let fal = it.cb_fallible(&c);
+            let spread = it.cb_arity(&c) == Some(3);
             let mut acc = args[1].clone();
             let mut bail = None;
             for (k, v) in m.iter() {
-                match call_cb(it, &c, fal, vec![acc.clone(), k.clone(), v.clone()])? {
+                match call_cb(it, &c, fal, entry_args(spread, vec![acc.clone()], k, v))? {
                     Cb::Val(nv) => acc = nv,
                     Cb::Bail(e) => {
                         bail = Some(e);
