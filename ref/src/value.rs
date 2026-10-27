@@ -454,7 +454,13 @@ pub fn values_eq(a: &Value, b: &Value) -> Option<bool> {
 /// or producer, is the ONE canonical +qNaN 0x7FF8000000000000 (R-float-09), so
 /// it orders after +inf; other values keep IEEE-754 totalOrder (-0 < +0).
 fn float_order(x: f64, y: f64) -> std::cmp::Ordering {
-    let canon = |v: f64| if v.is_nan() { f64::from_bits(0x7FF8_0000_0000_0000) } else { v };
+    let canon = |v: f64| {
+        if v.is_nan() {
+            f64::from_bits(0x7FF8_0000_0000_0000)
+        } else {
+            v
+        }
+    };
     canon(x).total_cmp(&canon(y))
 }
 
