@@ -1982,8 +1982,14 @@ fn html_content_type_refusal(name: &str, key: &str, val: &str) -> Result<(), Flo
     }
     let names_html = entries.iter().any(|e| {
         let media: Vec<char> = e.iter().copied().take_while(|c| *c != ';').collect();
-        let start = media.iter().position(|c| !crate::stdlib::is_als_whitespace(*c)).unwrap_or(media.len());
-        let end = media.iter().rposition(|c| !crate::stdlib::is_als_whitespace(*c)).map_or(start, |i| i + 1);
+        let start = media
+            .iter()
+            .position(|c| !crate::stdlib::is_als_whitespace(*c))
+            .unwrap_or(media.len());
+        let end = media
+            .iter()
+            .rposition(|c| !crate::stdlib::is_als_whitespace(*c))
+            .map_or(start, |i| i + 1);
         let t: String = media[start..end.max(start)].iter().collect();
         eq_ignore_ascii(&t, "text/html") || eq_ignore_ascii(&t, "application/xhtml+xml")
     });
