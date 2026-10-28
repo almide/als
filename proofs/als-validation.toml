@@ -1119,3 +1119,11 @@ reviewed = "2026-10-27"
 by = "O6lvl4 (via the Claude session, 2026-10-27, row 20 replayed onto main: md5/sha1 removed in epoch 15, E002 with the ledger hint, C-424 as restated, tests/diagnostics/e002-epoch15-md5-removed; the merged prose read against main\'s neighbouring text)"
 independent = "no"
 verdict = "accurate"
+
+[[section]]
+id = "ALS-I4"
+hash = "sha256:4c6070d55da5"
+reviewed = "2026-10-28"
+by = "O6lvl4 (via the Claude session, 2026-10-28, owner-approved after GCE green on sec-rows-22-27-d: compile_budget_test covers the budget table, E111 doubling chains, E113 bool matrix, the nesting budget, critical refusing --budget and linear type sharing; e112-* fixtures; controls for rows 22/27 exit 101)"
+independent = "no"
+verdict = "accurate"
