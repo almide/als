@@ -35,13 +35,15 @@ fn mismatch<T>(name: &str, want: &str, got: &Value) -> Result<T, Flow> {
 /// An operand as the T18 block shows it: rendered, then written by C-418's
 /// rule (C-153, #4262).
 fn shown(v: &Value) -> Result<String, Flow> {
-    render(v).map(|r| err_escape(&r)).ok_or_else(|| Flow::Abstain {
-        class: format!("render:{}", v.type_name()),
-        reason: format!(
-            "rendering a {} is not implemented by the reference evaluator yet",
-            v.type_name()
-        ),
-    })
+    render(v)
+        .map(|r| err_escape(&r))
+        .ok_or_else(|| Flow::Abstain {
+            class: format!("render:{}", v.type_name()),
+            reason: format!(
+                "rendering a {} is not implemented by the reference evaluator yet",
+                v.type_name()
+            ),
+        })
 }
 
 fn want_int(name: &str, v: &Value) -> Result<i64, Flow> {
