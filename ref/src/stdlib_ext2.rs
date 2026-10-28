@@ -1961,9 +1961,25 @@ fn hex_lower(bytes: &[u8]) -> String {
     out
 }
 
+/// A `type/subtype` a browser renders with script (C-275): `text/html`, a
+/// subtype `xml` of any type, or a subtype longer than `+xml` ending with the
+/// `+xml` structured suffix (RFC 6839), compared in any ASCII case.
+fn renders_with_script(t: &[char]) -> bool {
+    let Some(slash) = t.iter().position(|c| *c == '/') else {
+        return false;
+    };
+    let ty: String = t[..slash].iter().collect();
+    let sub: String = t[slash + 1..].iter().collect();
+    let n = t.len() - slash - 1;
+    let tail: String = t[t.len() - n.min(4)..].iter().collect();
+    (eq_ignore_ascii(&ty, "text") && eq_ignore_ascii(&sub, "html"))
+        || eq_ignore_ascii(&sub, "xml")
+        || (n > 4 && eq_ignore_ascii(&tail, "+xml"))
+}
+
 /// ALS-R8, security row 11e (C-275): a response serves HTML only from
 /// SafeHtml, so a `set_header` / `with_headers` field named Content-Type (any
-/// case) whose value names `text/html` or `application/xhtml+xml` in any
+/// case) whose value names a type `renders_with_script` accepts in any
 /// comma-separated entry (the part before `;`, ALS-whitespace trimmed, any
 /// case) aborts with a `panic` (C-219), which this evaluator does not render
 /// yet: it abstains as `stdlib:panic` rather than answer a response.
@@ -1990,13 +2006,12 @@ fn html_content_type_refusal(name: &str, key: &str, val: &str) -> Result<(), Flo
             .iter()
             .rposition(|c| !crate::stdlib::is_als_whitespace(*c))
             .map_or(start, |i| i + 1);
-        let t: String = media[start..end.max(start)].iter().collect();
-        eq_ignore_ascii(&t, "text/html") || eq_ignore_ascii(&t, "application/xhtml+xml")
+        renders_with_script(&media[start..end.max(start)])
     });
     if names_html {
         return Err(Flow::Abstain {
             class: "stdlib:panic".into(),
-            reason: format!("{name}: an HTML Content-Type is served only from SafeHtml — a panic (C-219), not rendered yet"),
+            reason: format!("{name}: an HTML or XML Content-Type is served only from SafeHtml — a panic (C-219), not rendered yet"),
         });
     }
     Ok(())
