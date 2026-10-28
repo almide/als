@@ -1142,6 +1142,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let status = want_int(name, &args[0])?;
             let body = want_str(name, &args[1])?.clone();
             let hs = header_pairs(name, &args[2])?;
+            for (k, v) in hs.iter() {
+                html_content_type_refusal(name, k, v)?;
+            }
             Ok(http_resp(status, &body, hs))
         }
         "http.get_header" | "http.header" => {
@@ -1160,6 +1163,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let key = want_str(name, &args[1])?.to_string();
             let val = want_str(name, &args[2])?.to_string();
             let (status, body, mut hs) = http_parts(name, &args[0])?;
+            html_content_type_refusal(name, &key, &val)?;
             match hs.iter_mut().find(|(k, _)| eq_ignore_ascii(k, &key)) {
                 Some(slot) => slot.1 = val,
                 None => hs.push((key, val)),
@@ -1955,6 +1959,41 @@ fn hex_lower(bytes: &[u8]) -> String {
         out.push(char::from_digit((b & 15) as u32, 16).unwrap_or('?'));
     }
     out
+}
+
+/// ALS-R8, security row 11e (C-275): a response serves HTML only from
+/// SafeHtml, so a `set_header` / `with_headers` field named Content-Type (any
+/// case) whose value names `text/html` or `application/xhtml+xml` in any
+/// comma-separated entry (the part before `;`, ALS-whitespace trimmed, any
+/// case) aborts with a `panic` (C-219), which this evaluator does not render
+/// yet: it abstains as `stdlib:panic` rather than answer a response.
+fn html_content_type_refusal(name: &str, key: &str, val: &str) -> Result<(), Flow> {
+    if !eq_ignore_ascii(key, "content-type") {
+        return Ok(());
+    }
+    let cs: Vec<char> = val.chars().collect();
+    let mut entries: Vec<Vec<char>> = vec![Vec::new()];
+    for c in cs {
+        if c == ',' {
+            entries.push(Vec::new());
+        } else if let Some(last) = entries.last_mut() {
+            last.push(c);
+        }
+    }
+    let names_html = entries.iter().any(|e| {
+        let media: Vec<char> = e.iter().copied().take_while(|c| *c != ';').collect();
+        let start = media.iter().position(|c| !crate::stdlib::is_als_whitespace(*c)).unwrap_or(media.len());
+        let end = media.iter().rposition(|c| !crate::stdlib::is_als_whitespace(*c)).map_or(start, |i| i + 1);
+        let t: String = media[start..end.max(start)].iter().collect();
+        eq_ignore_ascii(&t, "text/html") || eq_ignore_ascii(&t, "application/xhtml+xml")
+    });
+    if names_html {
+        return Err(Flow::Abstain {
+            class: "stdlib:panic".into(),
+            reason: format!("{name}: an HTML Content-Type is served only from SafeHtml — a panic (C-219), not rendered yet"),
+        });
+    }
+    Ok(())
 }
 
 fn eq_ignore_ascii(a: &str, b: &str) -> bool {
