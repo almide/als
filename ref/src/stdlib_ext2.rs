@@ -74,6 +74,10 @@ pub const EXT2_FNS: &[&str] = &[
     "args.positional",
     "random.int",
     "random.bytes",
+    "uuid.v7",
+    "uuid.to_bytes",
+    "uuid.to_string",
+    "uuid.compare",
     "io.write",
     "io.write_bytes",
     "io.read_n_bytes",
@@ -798,6 +802,54 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 b.extend_from_slice(&r[..take]);
             }
             Ok(bytes_val(b))
+        }
+
+        // ═══ uuid (C-450) ═══════════════════════════════════════════════
+        // A Uuid is its 16 bytes. The ref's clock is FIXED (sanctioned
+        // nondeterminism, as its splitmix64 is), so every stamp past the
+        // first comes from the counter: the same-millisecond case the
+        // strictly-increasing rule exists for. The random tail is drawn from
+        // the splitmix64; ALS asserts the version, the variant, the text
+        // shape and the order, never the time or the random bits.
+        "uuid.v7" => {
+            arity(name, &args, 0)?;
+            let t = it.next_uuid_v7_stamp(UUID_REF_CLOCK_MS);
+            let (ms, seq) = (t >> 12, t & 4095);
+            let mut b: Vec<u8> = (0..6).map(|i| ((ms >> (40 - 8 * i)) & 255) as u8).collect();
+            b.push((seq >> 8) as u8);
+            b.push((seq & 255) as u8);
+            b.extend_from_slice(&it.next_rand().to_le_bytes());
+            b[6] = (b[6] & 15) | 0x70;
+            b[8] = (b[8] & 63) | 0x80;
+            Ok(ok(bytes_val(b)))
+        }
+        "uuid.to_bytes" => {
+            arity(name, &args, 1)?;
+            let b = want_bytes(name, &args[0])?.borrow().clone();
+            Ok(bytes_val(b))
+        }
+        "uuid.to_string" => {
+            arity(name, &args, 1)?;
+            let h = hex_lower(&want_bytes(name, &args[0])?.borrow());
+            let mut out = String::with_capacity(36);
+            for (i, c) in h.chars().enumerate() {
+                if matches!(i, 8 | 12 | 16 | 20) {
+                    out.push('-');
+                }
+                out.push(c);
+            }
+            Ok(Value::str(&out))
+        }
+        "uuid.compare" => {
+            arity(name, &args, 2)?;
+            let a = want_bytes(name, &args[0])?.borrow().clone();
+            let b = want_bytes(name, &args[1])?.borrow().clone();
+            let ord = a
+                .iter()
+                .zip(b.iter())
+                .find(|(x, y)| x != y)
+                .map_or(0, |(x, y)| if x < y { -1 } else { 1 });
+            Ok(Value::Int(ord))
         }
 
         // ═══ io ══════════════════════════════════════════════════════════
@@ -1993,6 +2045,9 @@ fn push_int(v: &mut Vec<u8>, raw: u64, width: usize, be: bool) {
         v.push((raw >> shift) as u8);
     }
 }
+
+/// C-450: the ref's fixed uuid.v7 clock, 2023-11-14T22:13:20Z.
+const UUID_REF_CLOCK_MS: i64 = 1_700_000_000_000;
 
 fn hex_lower(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len() * 2);
