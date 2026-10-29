@@ -152,7 +152,7 @@ pub struct Interp {
     /// fixed-seed splitmix64 for the entropy floor (value nondeterminism is
     /// sanctioned; the ALS asserts only range properties)
     rand_state: u64,
-    /// C-450: the last uuid.v7 stamp handed out (`ms * 4096 + counter`),
+    /// C-441: the last uuid.v7 stamp handed out (`ms * 4096 + counter`),
     /// one cell for the whole run, as native's process-wide one.
     uuid_v7_last: i64,
     pub stderr: String,
@@ -595,7 +595,7 @@ impl Interp {
 
     /// ADR-0006: is a value in callback position fallible? Closures carry the
     /// syntactic bit; named fns and methods read their declared channel.
-    /// C-450: the next uuid.v7 stamp for the millisecond `ms` (RFC 9562
+    /// C-441: the next uuid.v7 stamp for the millisecond `ms` (RFC 9562
     /// §6.2 method 1). The clock is clamped to the 48 bits a v7 carries and
     /// shifted past the 12-bit counter; a stamp above the last one is taken
     /// as it is, one at or below it takes the last one plus 1, which carries

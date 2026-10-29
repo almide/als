@@ -804,7 +804,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(bytes_val(b))
         }
 
-        // ═══ uuid (C-450) ═══════════════════════════════════════════════
+        // ═══ uuid (C-441) ═══════════════════════════════════════════════
         // A Uuid is its 16 bytes. The ref's clock is FIXED (sanctioned
         // nondeterminism, as its splitmix64 is), so every stamp past the
         // first comes from the counter: the same-millisecond case the
@@ -2046,7 +2046,7 @@ fn push_int(v: &mut Vec<u8>, raw: u64, width: usize, be: bool) {
     }
 }
 
-/// C-450: the ref's fixed uuid.v7 clock, 2023-11-14T22:13:20Z.
+/// C-441: the ref's fixed uuid.v7 clock, 2023-11-14T22:13:20Z.
 const UUID_REF_CLOCK_MS: i64 = 1_700_000_000_000;
 
 fn hex_lower(bytes: &[u8]) -> String {
