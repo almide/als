@@ -3278,8 +3278,8 @@ entry_commit = "e129b9cf"
 class = "requirements-first"
 
 [[contract]]
-id = "C-450"
+id = "C-441"
 since = "0.69.0"
-entry = "2026-10-30T01:04:09+09:00"
-entry_commit = "9252fdb3"
+entry = "2026-10-30T01:49:17+09:00"
+entry_commit = "d9716f66"
 class = "requirements-first"
