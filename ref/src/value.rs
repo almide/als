@@ -735,7 +735,6 @@ pub fn render(v: &Value) -> Option<String> {
         }
         Value::Fn(_)
         | Value::Range(..)
-        | Value::Bytes(_)
         | Value::Matrix(_)
         | Value::Time { .. }
         | Value::Region(..) => return None,
