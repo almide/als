@@ -75,7 +75,7 @@
 | [ALS-E13](./expressions.md#als-e13-条件式exprkindif) | 条件式(`ExprKind::If`) | C-242 |
 | [ALS-E14](./expressions.md#als-e14-ブロック式exprkindblock) | ブロック式(`ExprKind::Block`) | C-243 |
 | [ALS-E15](./expressions.md#als-e15-while-文exprkindwhile) | while 文(`ExprKind::While`) | C-244 |
-| [ALS-E16](./expressions.md#als-e16-文字列補間exprkindinterpolatedstring) | 文字列補間(`ExprKind::InterpolatedString`) | C-245, C-425 |
+| [ALS-E16](./expressions.md#als-e16-文字列補間exprkindinterpolatedstring) | 文字列補間(`ExprKind::InterpolatedString`) | C-245, C-425, C-444 |
 | [ALS-E17](./expressions.md#als-e17-識別子exprkindident) | 識別子(`ExprKind::Ident`) | C-246, C-387 |
 | [ALS-E18](./expressions.md#als-e18-match-式exprkindmatch) | match 式(`ExprKind::Match`) | C-247, C-281, C-323, C-332, C-333, C-352 |
 | [ALS-E19](./expressions.md#als-e19-for-in-文exprkindforin) | for-in 文(`ExprKind::ForIn`) | C-248, C-279 |
