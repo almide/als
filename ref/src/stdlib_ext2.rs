@@ -121,6 +121,7 @@ pub const EXT2_FNS: &[&str] = &[
     "http.set_status",
     "http.body",
     "http.set_body_bytes",
+    "http.headers",
     "list.length",
     "list.with_capacity",
     "list.window",
@@ -1211,6 +1212,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 None => hs.push(("Content-Type".into(), ct)),
             }
             Ok(http_resp(status, &body, hs))
+        }
+        // Every header as (name, value), in order (ALS-R8).
+        "http.headers" => {
+            arity(name, &args, 1)?;
+            let hs = http_headers(name, &args[0])?;
+            Ok(Value::List(Rc::new(
+                hs.into_iter()
+                    .map(|(k, v)| Value::Tuple(Rc::new(vec![Value::str(&k), Value::str(&v)])))
+                    .collect(),
+            )))
         }
         "http.body" => {
             arity(name, &args, 1)?;
