@@ -152,6 +152,9 @@ pub struct Interp {
     /// fixed-seed splitmix64 for the entropy floor (value nondeterminism is
     /// sanctioned; the ALS asserts only range properties)
     rand_state: u64,
+    /// C-450: the last uuid.v7 stamp handed out (`ms * 4096 + counter`),
+    /// one cell for the whole run, as native's process-wide one.
+    uuid_v7_last: i64,
     pub stderr: String,
     fuel: u64,
     in_test: bool,
@@ -301,6 +304,7 @@ impl Interp {
             stdout: Vec::new(),
             env_overlay: Vec::new(),
             rand_state: 0x243F6A8885A308D3,
+            uuid_v7_last: i64::MIN,
             stderr: String::new(),
             fuel: 200_000_000,
             in_test: false,
@@ -591,6 +595,22 @@ impl Interp {
 
     /// ADR-0006: is a value in callback position fallible? Closures carry the
     /// syntactic bit; named fns and methods read their declared channel.
+    /// C-450: the next uuid.v7 stamp for the millisecond `ms` (RFC 9562
+    /// §6.2 method 1). The clock is clamped to the 48 bits a v7 carries and
+    /// shifted past the 12-bit counter; a stamp above the last one is taken
+    /// as it is, one at or below it takes the last one plus 1, which carries
+    /// into the next millisecond past counter 4095.
+    pub fn next_uuid_v7_stamp(&mut self, ms: i64) -> i64 {
+        let fresh = ms.clamp(0, (1i64 << 48) - 1) * 4096;
+        let next = if fresh > self.uuid_v7_last {
+            fresh
+        } else {
+            self.uuid_v7_last.saturating_add(1)
+        };
+        self.uuid_v7_last = next;
+        next
+    }
+
     pub fn next_rand(&mut self) -> u64 {
         self.rand_state = self.rand_state.wrapping_add(0x9E3779B97F4A7C15);
         let mut z = self.rand_state;
