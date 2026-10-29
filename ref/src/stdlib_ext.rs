@@ -1123,7 +1123,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             let copy = b.borrow().clone();
             let n = copy.len();
-            Ok(Value::Region(Rc::new(std::cell::RefCell::new(copy)), false, 0, n))
+            Ok(Value::Region(
+                Rc::new(std::cell::RefCell::new(copy)),
+                false,
+                0,
+                n,
+            ))
         }
         "ffi.alloc" => {
             arity(name, &args, 1)?;
@@ -1138,7 +1143,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 return Ok(Err(Flow::Abort("out of memory".into())));
             }
             v.resize(n, 0);
-            Ok(ok(Value::Region(Rc::new(std::cell::RefCell::new(v)), true, 0, n)))
+            Ok(ok(Value::Region(
+                Rc::new(std::cell::RefCell::new(v)),
+                true,
+                0,
+                n,
+            )))
         }
         "ffi.len" => {
             arity(name, &args, 1)?;
