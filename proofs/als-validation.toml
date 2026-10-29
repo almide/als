@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:81d14451ecde"
-reviewed = "2026-10-27"
-by = "O6lvl4 (via the Claude session, 2026-10-27, row 20 replayed onto main: env.secret answers env.get's value as Secret[String], C-438, spec/wasm_cross/env_secret.almd; the merged prose read against main\'s neighbouring text)"
+hash = "sha256:4b4adcc4162c"
+reviewed = "2026-10-30"
+by = "O6lvl4 (via the Claude session, 2026-10-30, almide#4308: the embedded-host subprocess paragraph extended to the process.start child and its poll / wait / stop / read_new_stdout / read_new_stderr / child_pid, read against C-374's amended statement and spec/embedded_cross/process_start_family.almd, which the embedded host and native print byte for byte on almide develop + #4308; the rest of the section unchanged)"
 independent = "no"
 verdict = "accurate"
 
