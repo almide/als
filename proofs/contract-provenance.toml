@@ -3283,3 +3283,17 @@ since = "0.69.0"
 entry = "2026-10-30T01:49:17+09:00"
 entry_commit = "d9716f66"
 class = "requirements-first"
+
+[[contract]]
+id = "C-442"
+since = "0.69.0"
+entry = "2026-10-30T02:07:41+09:00"
+entry_commit = "71b3da1b"
+class = "requirements-first"
+
+[[contract]]
+id = "C-443"
+since = "0.69.0"
+entry = "2026-10-30T02:07:41+09:00"
+entry_commit = "71b3da1b"
+class = "requirements-first"

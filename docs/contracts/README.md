@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 441 contracts: **requirements-first 136** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 443 contracts: **requirements-first 138** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-441 contracts
+443 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -476,4 +476,6 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-439 | env.vars lists the environment keyed and ordered by name with the program's own set and remove applied, and env.remove unsets a name or refuses it as env.set does, with the same bytes on every leg | 0.69.0 | active | fixture | 1 |
 | C-440 | every compile-cost budget in the table holds: a counted limit the source cannot raise, ending in its defined diagnostic | 0.69.0 | active | fixture | 0 |
 | C-441 | uuid.v7 carries version 7 and the RFC 9562 variant, spells as 8-4-4-4-12 lowercase hex, and each one is strictly greater than the last on every leg, in one millisecond too | 0.69.0 | active | fixture | 1 |
+| C-442 | net udp and lookup_host: binding, datagram boundaries, the max-bytes rule, the sender's address and loopback name lookup agree on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
+| C-443 | net udp and lookup_host: every failure reads as errno-free classified text from net's one table, identical on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
 
