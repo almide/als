@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 440 contracts: **requirements-first 135** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 442 contracts: **requirements-first 137** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-440 contracts
+442 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -475,4 +475,6 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-438 | env.secret(name) reads an environment variable as Option[Secret[String]]: env.get's value, rendered Secret(***), compared in constant time | 0.69.0 | active | fixture | 1 |
 | C-439 | env.vars lists the environment keyed and ordered by name with the program's own set and remove applied, and env.remove unsets a name or refuses it as env.set does, with the same bytes on every leg | 0.69.0 | active | fixture | 1 |
 | C-440 | every compile-cost budget in the table holds: a counted limit the source cannot raise, ending in its defined diagnostic | 0.69.0 | active | fixture | 0 |
+| C-442 | net udp and lookup_host: binding, datagram boundaries, the max-bytes rule, the sender's address and loopback name lookup agree on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
+| C-443 | net udp and lookup_host: every failure reads as errno-free classified text from net's one table, identical on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
 
