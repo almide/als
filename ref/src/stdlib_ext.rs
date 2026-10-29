@@ -83,6 +83,7 @@ pub const EXT_FNS: &[&str] = &[
     "ffi.read",
     "ffi.write",
     "ffi.to_bytes",
+    "ffi.slice",
     "deque.from_list",
     "deque.len",
     "deque.to_list",
@@ -386,10 +387,11 @@ fn want_bytes(name: &str, v: &Value) -> Result<Rc<std::cell::RefCell<Vec<u8>>>, 
 /// a Region's shared buffer
 type RegionBuf = Rc<std::cell::RefCell<Vec<u8>>>;
 
-/// a Region's buffer and its writable flag (ADR-0031, C-062)
-fn want_region(name: &str, v: &Value) -> Result<(RegionBuf, bool), Flow> {
+/// a Region's buffer, its writable flag, and the view's offset and length
+/// in the buffer (ADR-0031, C-062)
+fn want_region(name: &str, v: &Value) -> Result<(RegionBuf, bool, usize, usize), Flow> {
     match v {
-        Value::Region(b, w) => Ok((b.clone(), *w)),
+        Value::Region(b, w, o, l) => Ok((b.clone(), *w, *o, *l)),
         other => mismatch(name, "Region", other),
     }
 }
@@ -1120,7 +1122,8 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 1)?;
             let b = want_bytes(name, &args[0])?;
             let copy = b.borrow().clone();
-            Ok(Value::Region(Rc::new(std::cell::RefCell::new(copy)), false))
+            let n = copy.len();
+            Ok(Value::Region(Rc::new(std::cell::RefCell::new(copy)), false, 0, n))
         }
         "ffi.alloc" => {
             arity(name, &args, 1)?;
@@ -1135,26 +1138,26 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 return Ok(Err(Flow::Abort("out of memory".into())));
             }
             v.resize(n, 0);
-            Ok(ok(Value::Region(Rc::new(std::cell::RefCell::new(v)), true)))
+            Ok(ok(Value::Region(Rc::new(std::cell::RefCell::new(v)), true, 0, n)))
         }
         "ffi.len" => {
             arity(name, &args, 1)?;
-            let (b, _) = want_region(name, &args[0])?;
-            let len = b.borrow().len() as i64;
-            Ok(Value::Int(len))
+            let (_, _, _, len) = want_region(name, &args[0])?;
+            Ok(Value::Int(len as i64))
         }
         "ffi.is_writable" => {
             arity(name, &args, 1)?;
-            let (_, w) = want_region(name, &args[0])?;
+            let (_, w, _, _) = want_region(name, &args[0])?;
             Ok(Value::Bool(w))
         }
         "ffi.read" => {
             arity(name, &args, 3)?;
-            let (b, _) = want_region(name, &args[0])?;
+            let (b, _, base, len) = want_region(name, &args[0])?;
             let off = want_int(name, &args[1])?;
             let n = want_int(name, &args[2])?;
             let s = b.borrow();
-            let len = s.len() as i64;
+            let s = &s[base..base + len];
+            let len = len as i64;
             Ok(if n < 0 {
                 err_str(&format!("ffi.read: negative count {n}"))
             } else if off < 0 || off > len - n {
@@ -1167,12 +1170,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "ffi.write" => {
             arity(name, &args, 3)?;
-            let (b, writable) = want_region(name, &args[0])?;
+            let (b, writable, base, len) = want_region(name, &args[0])?;
             let off = want_int(name, &args[1])?;
             let src = want_bytes(name, &args[2])?.borrow().clone();
             let m = src.len() as i64;
             let mut d = b.borrow_mut();
-            let len = d.len() as i64;
+            let d = &mut d[base..base + len];
+            let len = len as i64;
             Ok(if !writable {
                 err_str("ffi.write: the region is read-only (ffi.region views a Bytes value)")
             } else if off < 0 || off > len - m {
@@ -1186,9 +1190,28 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
         "ffi.to_bytes" => {
             arity(name, &args, 1)?;
-            let (b, _) = want_region(name, &args[0])?;
-            let copy = b.borrow().clone();
+            let (b, _, base, len) = want_region(name, &args[0])?;
+            let copy = b.borrow()[base..base + len].to_vec();
             Ok(ok(bytes_val(copy)))
+        }
+        // `ffi.slice(r, off, n)`: a read-only window of r's buffer inside r's
+        // bounds, sharing the buffer (a later write to a writable parent is
+        // read through it); out of range or a negative count is an err
+        "ffi.slice" => {
+            arity(name, &args, 3)?;
+            let (b, _, base, len) = want_region(name, &args[0])?;
+            let off = want_int(name, &args[1])?;
+            let n = want_int(name, &args[2])?;
+            let l = len as i64;
+            Ok(if n < 0 {
+                err_str(&format!("ffi.slice: negative count {n}"))
+            } else if off < 0 || off > l - n {
+                err_str(&format!(
+                    "ffi.slice: {n} bytes at offset {off} are outside a region of {l} bytes"
+                ))
+            } else {
+                ok(Value::Region(b, false, base + off as usize, n as usize))
+            })
         }
         // ── deque (stdlib/deque.almd): the record { front, back }, the front
         // stored reversed ──

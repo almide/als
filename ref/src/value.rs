@@ -113,10 +113,12 @@ pub enum Value {
     /// Dragon4 twin
     Float32(f32),
     /// a Region (ADR-0031, C-062 / C-376): a bounds-checked view of a byte
-    /// buffer and whether it is writable — `ffi.region` holds a read-only
-    /// copy of a Bytes value, `ffi.alloc` fresh memory every copy of the
-    /// Region shares; the base address is never observable
-    Region(Rc<std::cell::RefCell<Vec<u8>>>, bool),
+    /// buffer, whether it is writable, and the view's offset and length in
+    /// the buffer — `ffi.region` holds a read-only copy of a Bytes value,
+    /// `ffi.alloc` fresh memory every copy of the Region shares, `ffi.slice`
+    /// a read-only window of a parent's buffer; the base address is never
+    /// observable
+    Region(Rc<std::cell::RefCell<Vec<u8>>>, bool, usize, usize),
 }
 
 /// the matrix payload: dimensions are the NORMALIZED ones (negatives clamped
