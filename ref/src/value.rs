@@ -581,6 +581,13 @@ pub fn render(v: &Value) -> Option<String> {
             out.push(')');
             out
         }
+        // C-444: a Bytes renders as the list of its byte values, unsigned
+        // (`[97, 98]`); at the top of an interpolation the checker refuses
+        // it (E089), so this is reached nested or as an assert operand.
+        Value::Bytes(b) => {
+            let parts: Vec<String> = b.borrow().iter().map(|x| x.to_string()).collect();
+            format!("[{}]", parts.join(", "))
+        }
         Value::Some(x) => format!("some({})", render_literal(x)?),
         Value::None => "none".to_string(),
         Value::Ok(x) => format!("ok({})", render_literal(x)?),
