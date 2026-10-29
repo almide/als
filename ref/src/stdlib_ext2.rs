@@ -120,6 +120,7 @@ pub const EXT2_FNS: &[&str] = &[
     "http.status",
     "http.set_status",
     "http.body",
+    "http.set_body_bytes",
     "list.length",
     "list.with_capacity",
     "list.window",
@@ -1073,20 +1074,24 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         }
 
         // ═══ http offline builders (http_response_headers) ═══════════════
-        "http.response" | "http.json" => {
+        "http.json" => {
             arity(name, &args, 2)?;
             let status = want_int(name, &args[0])?;
             let body = want_str(name, &args[1])?.clone();
-            let ct = if name == "http.json" {
-                "application/json"
-            } else {
-                "text/plain"
-            };
             Ok(http_resp(
                 status,
                 &body,
-                vec![("Content-Type".into(), ct.into())],
+                vec![("Content-Type".into(), "application/json".into())],
             ))
+        }
+        // ALS-R8, ADR-0032 (C-275): a response's Content-Type is its body's
+        // type — a String is text/plain; charset=utf-8, Bytes
+        // application/octet-stream (decoded as lossy UTF-8 into the body).
+        "http.response" => {
+            arity(name, &args, 2)?;
+            let status = want_int(name, &args[0])?;
+            let (body, ct) = http_body(name, &args[1])?;
+            Ok(http_resp(status, &body, vec![("Content-Type".into(), ct)]))
         }
         // ALS-R5: a request built in code; query_params reads the target
         // after its FIRST `?` by url.parse_query's rules.
@@ -1135,17 +1140,29 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "http.redirect" => {
             arity(name, &args, 1)?;
             let loc = want_str(name, &args[0])?.to_string();
-            Ok(http_resp(302, "", vec![("Location".into(), loc)]))
+            Ok(http_resp(
+                302,
+                "",
+                vec![
+                    ("Location".into(), loc),
+                    ("Content-Type".into(), STRING_BODY_TYPE.into()),
+                ],
+            ))
         }
         "http.with_headers" => {
             arity(name, &args, 3)?;
             let status = want_int(name, &args[0])?;
-            let body = want_str(name, &args[1])?.clone();
+            let (body, ct) = http_body(name, &args[1])?;
             let hs = header_pairs(name, &args[2])?;
-            for (k, v) in hs.iter() {
-                html_content_type_refusal(name, k, v)?;
+            let mut out: Vec<(String, String)> = vec![("Content-Type".into(), ct)];
+            for (k, v) in hs.into_iter() {
+                owned_header_refusal(name, &k)?;
+                match out.iter_mut().find(|(n, _)| eq_ignore_ascii(n, &k)) {
+                    Some(slot) => slot.1 = v,
+                    None => out.push((k, v)),
+                }
             }
-            Ok(http_resp(status, &body, hs))
+            Ok(http_resp(status, &body, out))
         }
         "http.get_header" | "http.header" => {
             arity(name, &args, 2)?;
@@ -1163,7 +1180,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let key = want_str(name, &args[1])?.to_string();
             let val = want_str(name, &args[2])?.to_string();
             let (status, body, mut hs) = http_parts(name, &args[0])?;
-            html_content_type_refusal(name, &key, &val)?;
+            owned_header_refusal(name, &key)?;
             match hs.iter_mut().find(|(k, _)| eq_ignore_ascii(k, &key)) {
                 Some(slot) => slot.1 = val,
                 None => hs.push((key, val)),
@@ -1180,6 +1197,20 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             arity(name, &args, 2)?;
             let (_, body, hs) = http_parts(name, &args[0])?;
             Ok(http_resp(want_int(name, &args[1])?, &body, hs))
+        }
+        // ADR-0032: the body and its type are replaced together.
+        "http.set_body_bytes" => {
+            arity(name, &args, 2)?;
+            let (status, _, mut hs) = http_parts(name, &args[0])?;
+            let (body, ct) = http_body(name, &args[1])?;
+            match hs
+                .iter_mut()
+                .find(|(n, _)| eq_ignore_ascii(n, "Content-Type"))
+            {
+                Some(slot) => slot.1 = ct,
+                None => hs.push(("Content-Type".into(), ct)),
+            }
+            Ok(http_resp(status, &body, hs))
         }
         "http.body" => {
             arity(name, &args, 1)?;
@@ -1961,57 +1992,33 @@ fn hex_lower(bytes: &[u8]) -> String {
     out
 }
 
-/// A `type/subtype` a browser renders with script (C-275): `text/html`, a
-/// subtype `xml` of any type, or a subtype longer than `+xml` ending with the
-/// `+xml` structured suffix (RFC 6839), compared in any ASCII case.
-fn renders_with_script(t: &[char]) -> bool {
-    let Some(slash) = t.iter().position(|c| *c == '/') else {
-        return false;
-    };
-    let ty: String = t[..slash].iter().collect();
-    let sub: String = t[slash + 1..].iter().collect();
-    let n = t.len() - slash - 1;
-    let tail: String = t[t.len() - n.min(4)..].iter().collect();
-    (eq_ignore_ascii(&ty, "text") && eq_ignore_ascii(&sub, "html"))
-        || eq_ignore_ascii(&sub, "xml")
-        || (n > 4 && eq_ignore_ascii(&tail, "+xml"))
+/// The Content-Type a String body is served with (ADR-0032).
+const STRING_BODY_TYPE: &str = "text/plain; charset=utf-8";
+
+/// A response body and its Content-Type, by the body's type (ADR-0032): a
+/// String or Bytes; another body type is not read yet and abstains.
+fn http_body(name: &str, v: &Value) -> Result<(String, String), Flow> {
+    match v {
+        Value::Str(s) => Ok((s.to_string(), STRING_BODY_TYPE.into())),
+        Value::Bytes(b) => Ok((
+            String::from_utf8_lossy(&b.borrow()).into_owned(),
+            "application/octet-stream".into(),
+        )),
+        other => Err(Flow::Abstain {
+            class: format!("stdlib:{name}"),
+            reason: format!("{name}: a {} body is not read yet", other.type_name()),
+        }),
+    }
 }
 
-/// ALS-R8, security row 11e (C-275): a response serves HTML only from
-/// SafeHtml, so a `set_header` / `with_headers` field named Content-Type (any
-/// case) whose value names a type `renders_with_script` accepts in any
-/// comma-separated entry (the part before `;`, ALS-whitespace trimmed, any
-/// case) aborts with a `panic` (C-219), which this evaluator does not render
-/// yet: it abstains as `stdlib:panic` rather than answer a response.
-fn html_content_type_refusal(name: &str, key: &str, val: &str) -> Result<(), Flow> {
-    if !eq_ignore_ascii(key, "content-type") {
-        return Ok(());
-    }
-    let cs: Vec<char> = val.chars().collect();
-    let mut entries: Vec<Vec<char>> = vec![Vec::new()];
-    for c in cs {
-        if c == ',' {
-            entries.push(Vec::new());
-        } else if let Some(last) = entries.last_mut() {
-            last.push(c);
-        }
-    }
-    let names_html = entries.iter().any(|e| {
-        let media: Vec<char> = e.iter().copied().take_while(|c| *c != ';').collect();
-        let start = media
-            .iter()
-            .position(|c| !crate::stdlib::is_als_whitespace(*c))
-            .unwrap_or(media.len());
-        let end = media
-            .iter()
-            .rposition(|c| !crate::stdlib::is_als_whitespace(*c))
-            .map_or(start, |i| i + 1);
-        renders_with_script(&media[start..end.max(start)])
-    });
-    if names_html {
+/// ALS-R8, ADR-0032 (C-275): a response's Content-Type is written from its
+/// body's type, so writing it by name aborts with a `panic` (C-219), which
+/// this evaluator does not render yet: it abstains as `stdlib:panic`.
+fn owned_header_refusal(name: &str, key: &str) -> Result<(), Flow> {
+    if eq_ignore_ascii(key, "content-type") {
         return Err(Flow::Abstain {
             class: "stdlib:panic".into(),
-            reason: format!("{name}: an HTML or XML Content-Type is served only from SafeHtml — a panic (C-219), not rendered yet"),
+            reason: format!("{name}: `{key}` is written from the body's type — a panic (C-219), not rendered yet"),
         });
     }
     Ok(())
