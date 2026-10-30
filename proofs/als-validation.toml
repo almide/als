@@ -693,9 +693,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:4b4adcc4162c"
+hash = "sha256:87ac955f41b1"
 reviewed = "2026-10-30"
-by = "O6lvl4 (via the Claude session, 2026-10-30, almide#4308: the embedded-host subprocess paragraph extended to the process.start child and its poll / wait / stop / read_new_stdout / read_new_stderr / child_pid, read against C-374's amended statement and spec/embedded_cross/process_start_family.almd, which the embedded host and native print byte for byte on almide develop + #4308; the rest of the section unchanged)"
+by = "O6lvl4 (via the Claude session, 2026-10-30, almide#4347 / #4348: a paragraph added after the embedded-host subprocess paragraph, stating that the embedded host and a host of the almide:process/spawn import stop a run's unwaited process.start children when the run ends, as C-437 states for native; read against C-445's statement and spec/embedded_cross/process_start_run_end_stops_children.almd; the rest of the section unchanged)"
 independent = "no"
 verdict = "accurate"
 

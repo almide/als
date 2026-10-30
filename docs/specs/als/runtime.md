@@ -119,6 +119,15 @@ stderr、各逐次読み取りが返す文字列、終了コード（シグナ�
 テスト: `spec/embedded_cross/process_spawn_family.almd`、
 `spec/embedded_cross/process_start_family.almd`
 
+埋め込みホストでも、main が戻る・`process.exit` を呼ぶ・effect エラーが main を
+終える、のどれで実行が終わっても、待ちも止めもしていない `process.start` の子は
+native と同じく `process.stop(child, 500)` と同じ方法で止めてから終了ステータスを
+報告する（C-437 の規則）。単体の成果物が持つ `almide:process/spawn` の
+インポートを提供するホストも、実行が始めた子をその実行のものとして持ち、実行が
+終わるときに同じ方法で止める。待った子と止めた子はそのままにし、終了コード・
+stdout・stderr は native と同じである。
+テスト: `spec/embedded_cross/process_start_run_end_stops_children.almd`
+
 `http.start(http.new_request(method, url, body, headers), limits)` は、
 要求を始めてすぐに呼び出しハンドル（`HttpCall`）を返す。上限は呼び出しごとに `limits = { total_ms,
 idle_ms }`（ミリ秒、0 は上限なし）で渡す。`total_ms` は `start` から測る壁時計で、
