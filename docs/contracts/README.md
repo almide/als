@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 444 contracts: **requirements-first 139** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-444 contracts
+445 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -479,4 +479,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-442 | net udp and lookup_host: binding, datagram boundaries, the max-bytes rule, the sender's address and loopback name lookup agree on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
 | C-443 | net udp and lookup_host: every failure reads as errno-free classified text from net's one table, identical on native and the embedded wasm lane | 0.69.0 | active | fixture | 0 |
 | C-444 | A Bytes value nested in a rendered value prints as the list of its byte values, identically on every target | 0.69.0 | active | fixture | 1 |
+| C-445 | The embedded wasm host stops a process.start child neither waited on nor stopped when the run ends by main's return, process.exit or an effect error, as native does | 0.69.0 | active | fixture | 0 |
 
