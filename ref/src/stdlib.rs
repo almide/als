@@ -325,7 +325,7 @@ fn want_set<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<Vec<Value>>, Flow> {
     }
 }
 
-fn want_fn<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<Callable>, Flow> {
+pub(crate) fn want_fn<'a>(name: &str, v: &'a Value) -> Result<&'a Rc<Callable>, Flow> {
     match v {
         Value::Fn(c) => Ok(c),
         other => mismatch(name, "a function", other),
@@ -361,12 +361,12 @@ fn clamp_idx(i: i64, len: usize) -> usize {
 }
 
 /// ADR-0006: a fallible callback puts the whole call in first-err form.
-enum Cb {
+pub(crate) enum Cb {
     Val(Value),
     Bail(Value),
 }
 
-fn call_cb(
+pub(crate) fn call_cb(
     it: &mut Interp,
     c: &Rc<Callable>,
     fallible: bool,
@@ -400,7 +400,7 @@ fn entry_args(spread: bool, mut lead: Vec<Value>, k: &Value, v: &Value) -> Vec<V
 }
 
 /// wrap a HOF result per the callback's fallibility (first-err form)
-fn hof_out(fallible: bool, bail: Option<Value>, v: Value) -> Value {
+pub(crate) fn hof_out(fallible: bool, bail: Option<Value>, v: Value) -> Value {
     match (fallible, bail) {
         (true, Some(e)) => Value::Err(Rc::new(e)),
         (true, None) => Value::Ok(Rc::new(v)),
@@ -615,23 +615,28 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 3)?;
             let xs = want_list(name, &args[0])?;
             let i = want_int(name, &args[1])?;
+            // ADR-0006: a fallible `update` callback puts the call in
+            // first-err form even when the index skips the callback
+            let fal = match (name, &args[2]) {
+                ("list.update", Value::Fn(c)) => it.cb_fallible(c),
+                _ => false,
+            };
             if i < 0 || i as usize >= xs.len() {
                 // OOB functional writes are NO-OPS (list_heapelem_rc update_oob,
                 // list_remove_at_oob)
-                return Ok(Value::List(xs.clone()));
+                return Ok(hof_out(fal, None, Value::List(xs.clone())));
             }
             let mut v = (**xs).clone();
             if name == "list.set" {
                 v[i as usize] = args[2].clone();
             } else {
                 let c = want_fn(name, &args[2])?.clone();
-                let fal = it.cb_fallible(&c);
                 match call_cb(it, &c, fal, vec![v[i as usize].clone()])? {
                     Cb::Val(nv) => v[i as usize] = nv,
                     Cb::Bail(e) => return Ok(Value::Err(Rc::new(e))),
                 }
             }
-            Ok(Value::List(Rc::new(v)))
+            Ok(hof_out(fal, None, Value::List(Rc::new(v))))
         }
         "list.swap" => {
             arity(name, &args, 3)?;
@@ -1895,12 +1900,14 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         "option.unwrap_or_else" => {
             arity(name, &args, 2)?;
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
             match &args[0] {
-                Value::Some(v) => Ok((**v).clone()),
-                Value::None => {
-                    let c = want_fn(name, &args[1])?.clone();
-                    it.call_value(&c, vec![])
-                }
+                Value::Some(v) => Ok(hof_out(fal, None, (**v).clone())),
+                Value::None => match call_cb(it, &c, fal, vec![])? {
+                    Cb::Val(r) => Ok(hof_out(fal, None, r)),
+                    Cb::Bail(e) => Ok(Value::Err(Rc::new(e))),
+                },
                 other => mismatch(name, "Option", other),
             }
         }
@@ -1967,12 +1974,14 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         }
         "option.or_else" => {
             arity(name, &args, 2)?;
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
             match &args[0] {
-                Value::Some(_) => Ok(args[0].clone()),
-                Value::None => {
-                    let c = want_fn(name, &args[1])?.clone();
-                    it.call_value(&c, vec![])
-                }
+                Value::Some(_) => Ok(hof_out(fal, None, args[0].clone())),
+                Value::None => match call_cb(it, &c, fal, vec![])? {
+                    Cb::Val(r) => Ok(hof_out(fal, None, r)),
+                    Cb::Bail(e) => Ok(Value::Err(Rc::new(e))),
+                },
                 other => mismatch(name, "Option", other),
             }
         }

@@ -1043,6 +1043,7 @@ impl Interp {
                             } else if let Some(d) = &fd.default {
                                 let g = self.globals.clone();
                                 if let Ok(dv) = self.eval(&g, d) {
+                                    let dv = self.retag(dv, Some(&fd.ty));
                                     ordered.push((Rc::from(fd.name.as_str()), dv));
                                 } else {
                                     return v;
@@ -1656,6 +1657,7 @@ impl Interp {
                                             Some(d) => {
                                                 let d = d.clone();
                                                 let dv = self.eval(env, &d)?;
+                                                let dv = self.retag(dv, Some(&fd.ty));
                                                 ordered.push((Rc::from(fd.name.as_str()), dv));
                                             }
                                             None => {
@@ -1876,10 +1878,14 @@ impl Interp {
                         let mut ordered: Vec<(Rc<str>, Value)> = Vec::with_capacity(fdecls.len());
                         for fd in &fdecls {
                             match out.iter().find(|(k, _)| &**k == fd.name.as_str()) {
-                                Some((k, v)) => ordered.push((k.clone(), v.clone())),
+                                Some((k, v)) => {
+                                    let v = self.retag(v.clone(), Some(&fd.ty));
+                                    ordered.push((k.clone(), v));
+                                }
                                 None => match &fd.default {
                                     Some(d) => {
                                         let v = self.eval(env, d)?;
+                                        let v = self.retag(v, Some(&fd.ty));
                                         ordered.push((Rc::from(fd.name.as_str()), v));
                                     }
                                     None => {
@@ -1912,6 +1918,7 @@ impl Interp {
                                         None => match &fd.default {
                                             Some(d) => {
                                                 let v = self.eval(env, d)?;
+                                                let v = self.retag(v, Some(&fd.ty));
                                                 ordered.push((Rc::from(fd.name.as_str()), v));
                                             }
                                             None => {
@@ -2619,6 +2626,25 @@ impl Interp {
                         self.eval_call(&inner, callee, &full)
                     }
                     Expr::PipeMatch { arms } => self.eval_match(env, v, arms),
+                    // `x |> f(a)!` / `x |> f(a)?`: the postfix binds to the
+                    // stage, so the pipe feeds the call and the `!` / `?`
+                    // reads the stage's result — `(x |> f(a))!`
+                    Expr::Unwrap(stage) | Expr::ToOption(stage)
+                        if matches!(&**stage, Expr::Call { .. }) =>
+                    {
+                        let piped = Expr::Pipe {
+                            lhs: Box::new(Expr::Ident("__pipe_stage_lhs".into())),
+                            rhs: stage.clone(),
+                        };
+                        let whole = if matches!(&**rhs, Expr::Unwrap(_)) {
+                            Expr::Unwrap(Box::new(piped))
+                        } else {
+                            Expr::ToOption(Box::new(piped))
+                        };
+                        let inner = Env::new(Some(env.clone()));
+                        inner.define("__pipe_stage_lhs", v);
+                        self.eval(&inner, &whole)
+                    }
                     other => {
                         // a callable: `x |> f`, `x |> mod.f`, `x |> (f >> g)`
                         let inner = Env::new(Some(env.clone()));
@@ -3321,10 +3347,18 @@ impl Interp {
     fn assign_place(&mut self, env: &Rc<Env>, place: &Expr, v: Value) -> Result<(), Flow> {
         match place {
             Expr::TypeName { module: None, name } if env.lookup(name).is_some() => {
+                let v = match env.lookup(name) {
+                    Some(cur) => narrow_like(&cur, v),
+                    None => v,
+                };
                 env.assign(name, v);
                 Ok(())
             }
             Expr::Ident(name) => {
+                let v = match env.lookup(name) {
+                    Some(cur) => narrow_like(&cur, v),
+                    None => v,
+                };
                 if env.assign(name, v) {
                     Ok(())
                 } else {
@@ -3340,7 +3374,7 @@ impl Interp {
                             return Err(Flow::Abort("index out of bounds".into()));
                         }
                         let mut nv = (*xs).clone();
-                        nv[i as usize] = v;
+                        nv[i as usize] = narrow_like(&nv[i as usize], v);
                         Value::List(Rc::new(nv))
                     }
                     (Value::Map(kvs), k) => {
@@ -3349,7 +3383,7 @@ impl Interp {
                             .iter_mut()
                             .find(|(k2, _)| values_eq(k2, &k) == Some(true))
                         {
-                            Some(slot) => slot.1 = v,
+                            Some(slot) => slot.1 = narrow_like(&slot.1, v),
                             None => nv.push((k, v)),
                         }
                         Value::Map(Rc::new(nv))
@@ -3373,7 +3407,7 @@ impl Interp {
                     Value::Record { type_name, fields } => {
                         let mut nf = (*fields).clone();
                         match nf.iter_mut().find(|(n, _)| &**n == name.as_str()) {
-                            Some(slot) => slot.1 = v,
+                            Some(slot) => slot.1 = narrow_like(&slot.1, v),
                             None => {
                                 return Err(Flow::Fatal(format!("no field `{name}` to assign")))
                             }
@@ -4362,6 +4396,22 @@ fn sized_of(name: &str) -> Option<(u8, bool)> {
         "UInt64" => (64, false),
         _ => return None,
     })
+}
+
+/// C-179 (#3185): an ASSIGNMENT is a value position of the slot's declared
+/// type. The evaluator reads that type off the value the slot holds: an Int
+/// written into a sized slot takes the slot's width, a Float into a Float32
+/// slot narrows to Float32.
+fn narrow_like(cur: &Value, v: Value) -> Value {
+    match (cur, v) {
+        (Value::Sized { bits, signed, .. }, Value::Int(n)) => Value::Sized {
+            bits: *bits,
+            signed: *signed,
+            v: n,
+        },
+        (Value::Float32(_), Value::Float(F64(f))) => Value::Float32(f as f32),
+        (_, v) => v,
+    }
 }
 
 /// C-180: re-wrap an i64 lane value at the declared width — signed widths
