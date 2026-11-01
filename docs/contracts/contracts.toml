@@ -200,6 +200,8 @@ evidence  = [
   { path = "spec/integration/modules/cross_module_repr_derive_test.almd", class = "fixture" },
   { path = "tests/module_type_repr_test.rs", name = "every_compiled_leg_prints_the_declared_name", class = "fixture" },
   { path = "tests/module_type_repr_test.rs", name = "interp_prints_the_declared_name", class = "fixture" },
+  { path = "spec/wasm_cross/record_field_rust_keyword.almd", class = "fixture" },
+  { path = "spec/wasm_cross/newtype_string_form.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-010"
@@ -520,6 +522,7 @@ evidence  = [
   { path = "spec/wasm_cross/list_pop_map_insert_on_record_field.almd", class = "fixture" },
   { path = "spec/wasm_cross/nested_field_path_mut.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_alias_cow.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_alias_in_place_mutators.almd", class = "fixture" },
   { path = "spec/wasm_cross/inplace_clear_family.almd", class = "fixture" },
   { path = "spec/wasm_cross/bytes_set_on_record_field.almd", class = "fixture" },
   { path = "spec/wasm_cross/inplace_clear_alias.almd", class = "fixture" },
@@ -685,10 +688,12 @@ evidence  = [
   { path = "spec/churn/construct_from_temp_churn.almd", class = "by-construction" },
   { path = "spec/churn/record_churn.almd", class = "by-construction" },
   { path = "spec/churn/tco_loop_churn.almd", class = "by-construction" },
+  { path = "spec/wasm_cross/leak_free_reader_temporaries.almd", class = "fixture" },
   { path = "spec/wasm_cross/leak_free_propagating_literal_operand.almd", class = "fixture" },
   { path = "spec/wasm_cross/leak_free_result_option_carriers.almd", class = "fixture" },
   { path = "spec/wasm_cross/leak_free_spread_produced_base.almd", class = "fixture" },
   { path = "spec/wasm_cross/leak_free_map_walk_exit.almd", class = "fixture" },
+  { path = "spec/wasm_cross/leak_free_list_rest_exit.almd", class = "fixture" },
   { path = "tests/leak_free_exits_test.rs", class = "fixture", name = "every_walled_exit_shape_agrees_with_native_frees_every_block_and_certifies" },
 ]
 
@@ -847,6 +852,8 @@ evidence  = [
   { path = "spec/wasm_cross/list_total_order.almd", class = "fixture" },
   { path = "spec/wasm_cross/list_unique_by_nonscalar_key.almd", class = "fixture" },
   { path = "spec/wasm_cross/sort_by_compound_key.almd", class = "fixture" },
+  { path = "spec/wasm_cross/ord_record_variant.almd", class = "fixture" },
+  { path = "spec/wasm_cross/ord_recursive.almd", class = "fixture" },
 ]
 
 # ── LIST/STRING Int-COUNT & INDEX TRUNCATION (Cluster-B) ─────────────
@@ -1024,6 +1031,10 @@ evidence  = [
   { path = "spec/wasm_cross/index_bounds_i64.almd", class = "fixture" },
   { path = "spec/wasm_cross/index_bounds_write_only_var.almd", class = "fixture" },
   { path = "spec/wasm_cross/index_bounds_loop_invariant.almd", class = "fixture" },
+  { path = "spec/wasm_cross/bytes_index_bounds_write_past_end.almd", class = "fixture" },
+  { path = "spec/wasm_cross/bytes_index_bounds_write_negative.almd", class = "fixture" },
+  { path = "spec/wasm_cross/bytes_index_bounds_read_past_end.almd", class = "fixture" },
+  { path = "spec/wasm_cross/bytes_index_bounds_read_negative.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-068"
@@ -1616,6 +1627,7 @@ since     = "0.27.6"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/option_match_heap_payload.almd", class = "fixture" },
+  { path = "spec/wasm_cross/list_head_read_borrows.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-115"
@@ -1817,6 +1829,7 @@ evidence  = [
   { path = "spec/wasm_cross/bytes_param_writeback.almd", class = "fixture" },
   { path = "spec/wasm_cross/bytes_clear_mut_param.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_alias_cow.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_alias_in_place_mutators.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_effect_never_err.almd", class = "fixture" },
   { path = "spec/wasm_cross/effect_mut_generic_port.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_effect_can_err.almd", class = "fixture" },
@@ -2830,6 +2843,7 @@ evidence  = [
   { path = "spec/wasm_cross/endian_auto_import.almd", class = "fixture" },
   { path = "spec/wasm_cross/bytes_copy_within_offset_domain.almd", class = "fixture" },
   { path = "crates/almide-interp/src/inplace.rs", name = "bytes_write_op", class = "by-construction" },
+  { path = "spec/wasm_cross/bytes_index_write_truncates.almd", class = "fixture" },
   { path = "spec/wasm_cross/endian_explicit_import.almd", class = "fixture" },
 ]
 [[contract]]
@@ -2943,6 +2957,7 @@ evidence  = [
   { path = "spec/wasm_cross/effect_slot_carrier.almd", class = "fixture" },
   { path = "spec/wasm_cross/effect_fn_value.almd", class = "fixture" },
   { path = "spec/lang/fallible_user_hof_test.almd", class = "fixture" },
+  { path = "spec/wasm_cross/effect_fn_value_slot_family.almd", class = "fixture" },
   { path = "spec/wasm_cross/effect_slot_never_err_bang.almd", class = "fixture" },
 ]
 [[contract]]
@@ -3008,6 +3023,7 @@ evidence  = [
   { path = "spec/wasm_cross/mut_scalar_param_reassign.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_tail_recursion.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_list_param_read_by_range_ops.almd", class = "fixture" },
+  { path = "spec/wasm_cross/licm_mut_param_named_call.almd", class = "fixture" },
   { path = "spec/integration/licm_module_mut_call/src/main.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_fn_value_alternatives.almd", class = "fixture" },
 ]
@@ -3440,6 +3456,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/guard_statement.almd", class = "fixture" },
+  { path = "spec/wasm_cross/generic_pattern_binds_instanced.almd", class = "fixture" },
   { path = "spec/wasm_cross/guard_value_exit_in_loop.almd", class = "fixture" },
 ]
 [[contract]]
@@ -3674,6 +3691,8 @@ evidence  = [
   { path = "spec/wasm_cross/fallible_hof_option_effect_callback.almd", class = "fixture" },
   { path = "spec/wasm_cross/fallible_hof_release_matrix.almd", class = "fixture" },
   { path = "spec/wasm_cross/list_find_map_short_circuit.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fallible_hof_matrix_list.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fallible_hof_matrix_containers.almd", class = "fixture" },
   { path = "spec/wasm_cross/fallible_hof_recursive_callee.almd", class = "fixture" },
   { path = "spec/integration/module_fallible_lambda_callee/src/main.almd", class = "fixture" },
 ]
@@ -3966,9 +3985,11 @@ evidence  = [
   { path = "spec/wasm_cross/codec_option_numeric.almd", class = "fixture" },
   { path = "spec/wasm_cross/codec_string_escapes.almd", class = "fixture" },
   { path = "spec/wasm_cross/codec_variant_roundtrip.almd", class = "fixture" },
+  { path = "spec/wasm_cross/codec_variant_tuple_arity.almd", class = "fixture" },
   { path = "spec/wasm_cross/codec_whitespace_tolerance.almd", class = "fixture" },
   { path = "spec/wasm_cross/codec_list_default.almd", class = "fixture" },
   { path = "spec/wasm_cross/codec_triple_list.almd", class = "fixture" },
+  { path = "spec/wasm_cross/record_field_rust_keyword.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-299"
@@ -4376,6 +4397,7 @@ since     = "0.62.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/list_rest_pattern.almd", class = "fixture" },
+  { path = "spec/wasm_cross/generic_pattern_binds_instanced.almd", class = "fixture" },
   { path = "spec/lang/list_rest_pattern_test.almd", class = "fixture" },
   { path = "tests/diagnostics/list-rest-not-last/broken.almd", class = "fixture" },
   { path = "tests/list_pattern_tuple_test.rs", class = "fixture", name = "a_guarded_tuple_arm_with_a_list_pattern_honours_its_guard" },
