@@ -498,6 +498,8 @@ evidence  = [
   { path = "spec/wasm_cross/regex_engine.almd", class = "fixture" },
   { path = "spec/wasm_cross/regex_fuzz_batch.almd", class = "fixture" },
   { path = "spec/wasm_cross/regex_repetition_depth.almd", class = "fixture" },
+  { path = "spec/wasm_cross/regex_linear_time.almd", class = "fixture" },
+  { path = "spec/wasm_cross/regex_counted_repetition.almd", class = "fixture" },
   { path = "tests/regex_fuzz_test.rs", name = "regex_differential_fuzz", class = "fuzz", n = 220 },
   { path = "tests/regex_pike_differential_test.rs", name = "nested_groups_agree_native_and_wasm", class = "fuzz", n = 300 },
 ]
@@ -3164,6 +3166,8 @@ evidence  = [
   { path = "spec/wasm_cross/range_bind_walled_no_materialize.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_materialize_oom.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_exclusive_end_at_min.almd", class = "fixture" },
+  { path = "spec/wasm_cross/range_inclusive_end_at_max.almd", class = "fixture" },
+  { path = "spec/wasm_cross/range_head_fold_huge.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_head_fold_edges.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_inclusive_runtime_max.almd", class = "fixture" },
 ]
