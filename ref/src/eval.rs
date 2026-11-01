@@ -286,8 +286,14 @@ pub fn run_source(src: &str) -> Outcome {
     }
 }
 
+/// stdlib modules' variant type declarations, verbatim
+const STDLIB_TYPES: &[(&str, &str)] = &[(
+    "net",
+    "type IpAddr = | V4(Int, Int, Int, Int) | V6(List[Int])",
+)];
+
 fn run_source_inner(src: &str) -> Outcome {
-    let prog = match parse_program(src) {
+    let mut prog = match parse_program(src) {
         Ok(p) => p,
         Err(e) => {
             return Outcome::Abstain {
@@ -296,6 +302,26 @@ fn run_source_inner(src: &str) -> Outcome {
             };
         }
     };
+    // the variant types an imported stdlib module declares, with their
+    // bare constructors (stdlib/net.almd `IpAddr`), unless the program
+    // declares a type of that name itself
+    for (module, decl) in STDLIB_TYPES {
+        let imported = prog
+            .imports
+            .iter()
+            .any(|i| i.path.first().is_some_and(|m| m == module));
+        if !imported {
+            continue;
+        }
+        if let Ok(p) = parse_program(decl) {
+            for d in p.decls {
+                let shadowed = matches!(&d, Decl::Type(t) if prog.decls.iter().any(|x| matches!(x, Decl::Type(u) if u.name == t.name)));
+                if !shadowed {
+                    prog.decls.insert(0, d);
+                }
+            }
+        }
+    }
     let mut it = Interp::new(&prog);
     match it.init_globals(&prog) {
         Ok(()) => {}
@@ -1917,7 +1943,10 @@ impl Interp {
                 // C-322: a builtin constructor used as a FUNCTION VALUE
                 // (`xs |> list.map(some)`) — the evaluator models ctors only
                 // at call sites; an unmodelled form abstains, never faults.
-                if matches!(name.as_str(), "some" | "ok" | "err" | "none") {
+                if matches!(name.as_str(), "some" | "ok" | "err") {
+                    return Ok(Value::Fn(Rc::new(Callable::Std(format!("__ctor.{name}")))));
+                }
+                if name == "none" {
                     return self.abstain(
                         "semantics:ctor-fn-value",
                         format!("builtin constructor `{name}` used as a value"),
@@ -2972,6 +3001,13 @@ impl Interp {
                 env.define(n, v.clone());
                 true
             }
+            Pattern::As(n, inner) => {
+                if !self.matches(inner, v, env)? {
+                    return Ok(false);
+                }
+                env.define(n, v.clone());
+                true
+            }
             Pattern::Int(n) => matches!(v, Value::Int(m) if m == n),
             Pattern::Float(f) => matches!(v, Value::Float(g) if g.0 == f.0),
             Pattern::Str(s) => matches!(v, Value::Str(t) if &**t == s.as_str()),
@@ -3676,8 +3712,24 @@ impl Interp {
                 };
                 self.assign_place(env, obj, updated)
             }
-            Expr::TupleIndex { .. } => {
-                self.abstain("semantics:tuple-assign", "tuple element assignment")
+            // a tuple element as a place (a `mut` argument's write-back into
+            // `t.0`, `p.1.xs`): the tuple with that element replaced is
+            // written back through the tuple's own place
+            Expr::TupleIndex { obj, k } => {
+                let updated = match self.eval(env, obj)? {
+                    Value::Tuple(xs) if *k < xs.len() => {
+                        let mut nv = (*xs).clone();
+                        nv[*k] = narrow_like(&nv[*k], v);
+                        Value::Tuple(Rc::new(nv))
+                    }
+                    other => {
+                        return self.abstain(
+                            "semantics:tuple-assign",
+                            format!("element {k} assignment on a {}", other.type_name()),
+                        )
+                    }
+                };
+                self.assign_place(env, obj, updated)
             }
             other => Err(Flow::Fatal(format!("invalid assignment target: {other:?}"))),
         }

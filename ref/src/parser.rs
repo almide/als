@@ -2243,7 +2243,20 @@ impl P {
     }
 
     // ── patterns ─────────────────────────────────────────────────────────
+    /// a pattern, or `name @ pattern` (C-333): the whole value bound at the
+    /// position while the inner pattern destructures it
     fn pattern(&mut self) -> PResult<Pattern> {
+        let p = self.pattern_atom()?;
+        if let Pattern::Bind(name) = &p {
+            if self.eat_sym("@") {
+                let inner = self.pattern()?;
+                return Ok(Pattern::As(name.clone(), Box::new(inner)));
+            }
+        }
+        Ok(p)
+    }
+
+    fn pattern_atom(&mut self) -> PResult<Pattern> {
         match self.peek().clone() {
             Tok::Ident(s) => match s.as_str() {
                 "_" => {

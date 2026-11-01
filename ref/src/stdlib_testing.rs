@@ -23,6 +23,7 @@ pub const TESTING_FNS: &[&str] = &[
     "testing.assert_ok",
     "testing.assert_err",
     "testing.assert_aborts",
+    "testing.assert_snapshot",
 ];
 
 fn mismatch<T>(name: &str, want: &str, got: &Value) -> Result<T, Flow> {
@@ -109,6 +110,21 @@ fn arity(name: &str, args: &[Value], n: usize) -> Result<(), Flow> {
 fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow> {
     let line = it.cur_line;
     match name {
+        // C-339: a mismatch aborts with the T18-shaped block; `found` is the
+        // last field and runs to the end, its blank lines included
+        "testing.assert_snapshot" => {
+            if args.len() != 2 {
+                return Err(Flow::Fatal(format!("{name}: expected 2 arguments")));
+            }
+            let (actual, expected) = (want_str(name, &args[0])?, want_str(name, &args[1])?);
+            if actual == expected {
+                return Ok(Value::Unit);
+            }
+            Err(Flow::Abort(format!(
+                "snapshot mismatch\n  at: line {}\n  expected: {expected}\n  found: {actual}",
+                it.cur_line
+            )))
+        }
         "testing.assert_gt" | "testing.assert_lt" => {
             arity(name, &args, 2)?;
             let a = want_int(name, &args[0])?;

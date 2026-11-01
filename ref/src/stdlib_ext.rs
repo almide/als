@@ -62,6 +62,14 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.len",
     "bytes.is_empty",
     "bytes.is_valid_utf8",
+    "bytes.starts_with",
+    "bytes.ends_with",
+    "bytes.insert",
+    "bytes.remove_at",
+    "bytes.reverse",
+    "bytes.skip",
+    "bytes.split",
+    "bytes.xor",
     "bytes.get",
     "bytes.slice",
     "bytes.repeat",
@@ -543,7 +551,7 @@ fn fold_byte_range(
 /// C-418: `"s"` with every character of C-418's set (`ERR_ESCAPED`) written
 /// `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every other character, quote and
 /// backslash included, kept as is.
-fn err_operand(s: &str) -> String {
+pub(crate) fn err_operand(s: &str) -> String {
     format!("\"{}\"", err_escape(s))
 }
 
@@ -1011,6 +1019,87 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             let e = b.borrow().is_empty();
             Ok(Value::Bool(e))
+        }
+        // stdlib/bytes.almd's search / edit rows, as the native intrinsics
+        // answer them (runtime/rs/src/bytes.rs)
+        "bytes.starts_with" | "bytes.ends_with" => {
+            arity(name, &args, 2)?;
+            let (b, x) = (want_bytes(name, &args[0])?, want_bytes(name, &args[1])?);
+            let (b, x) = (b.borrow(), x.borrow());
+            Ok(Value::Bool(if name == "bytes.starts_with" {
+                b.starts_with(&x)
+            } else {
+                b.ends_with(&x)
+            }))
+        }
+        // a copy with x's low byte at i, i clamped to 0..len
+        "bytes.insert" => {
+            arity(name, &args, 3)?;
+            let mut out = want_bytes(name, &args[0])?.borrow().clone();
+            let (i, x) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
+            let p = (i.max(0) as usize).min(out.len());
+            out.insert(p, x as u8);
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
+        }
+        // a copy without the byte at i; as it is when i is outside 0..len
+        "bytes.remove_at" => {
+            arity(name, &args, 2)?;
+            let mut out = want_bytes(name, &args[0])?.borrow().clone();
+            let i = want_int(name, &args[1])?;
+            if i >= 0 && (i as usize) < out.len() {
+                out.remove(i as usize);
+            }
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
+        }
+        "bytes.reverse" => {
+            arity(name, &args, 1)?;
+            let mut out = want_bytes(name, &args[0])?.borrow().clone();
+            out.reverse();
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
+        }
+        // pos + n, capped at len
+        "bytes.skip" => {
+            arity(name, &args, 3)?;
+            let len = want_bytes(name, &args[0])?.borrow().len() as i64;
+            let np = want_int(name, &args[1])?.wrapping_add(want_int(name, &args[2])?);
+            Ok(Value::Int(np.min(len)))
+        }
+        // the pieces between non-overlapping sep matches, left to right;
+        // [b] for an empty sep
+        "bytes.split" => {
+            arity(name, &args, 2)?;
+            let b = want_bytes(name, &args[0])?.borrow().clone();
+            let sep = want_bytes(name, &args[1])?.borrow().clone();
+            let piece = |v: &[u8]| Value::Bytes(Rc::new(std::cell::RefCell::new(v.to_vec())));
+            let mut out = Vec::new();
+            if sep.is_empty() {
+                out.push(piece(&b));
+            } else {
+                let (mut start, mut i) = (0usize, 0usize);
+                while i + sep.len() <= b.len() {
+                    if b[i..i + sep.len()] == sep[..] {
+                        out.push(piece(&b[start..i]));
+                        i += sep.len();
+                        start = i;
+                    } else {
+                        i += 1;
+                    }
+                }
+                out.push(piece(&b[start..]));
+            }
+            Ok(Value::List(Rc::new(out)))
+        }
+        // bytewise XOR, as long as the shorter input
+        "bytes.xor" => {
+            arity(name, &args, 2)?;
+            let (a, b) = (want_bytes(name, &args[0])?, want_bytes(name, &args[1])?);
+            let out: Vec<u8> = a
+                .borrow()
+                .iter()
+                .zip(b.borrow().iter())
+                .map(|(x, y)| x ^ y)
+                .collect();
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
         }
         // the validator `bytes.to_string` reads its verdict from; true when empty
         "bytes.is_valid_utf8" => {

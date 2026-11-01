@@ -394,6 +394,8 @@ pub enum Pattern {
     },
     Tuple(Vec<Pattern>),
     List(Vec<Pattern>),
+    /// `name @ pattern` (C-333)
+    As(String, Box<Pattern>),
     /// a list pattern with a rest: `[h, ..]` / `[h, ..t]` — the head
     /// patterns match the first elements, the rest (bound when named) is
     /// the list of the elements after them
