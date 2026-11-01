@@ -1,0 +1,22 @@
+// @contract: C-213
+// The endian-suffixed writers and readers behind an EXPLICIT `import bytes`
+// (#2747): the import made the structural leg lower the module's `= _`
+// declarations as bodies and refuse them, where the auto-imported spelling
+// (endian_auto_import.almd) linked the self-host bodies. Both spellings now
+// link the same bodies; the buffer is byte-identical on every leg.
+import bytes
+
+effect fn main() -> Unit = {
+  var b: Bytes = bytes.zeros(0)
+  bytes.append_u16_le(b, 0xABCD)
+  bytes.append_u32_be(b, 0xDEADBEEF)
+  bytes.append_i32_le(b, -2)
+  bytes.append_f32_be(b, 2.5)
+  bytes.put_u16_be(b, 0, 0x0102)
+  println("${bytes.to_list(b)}")
+  let u = bytes.get_u16_le(b, 0) ?? 0
+  let w = bytes.get_u32_be(b, 2) ?? 0
+  let n = bytes.get_i32_le(b, 6) ?? 0
+  let f = bytes.get_f32_be(b, 10) ?? 0.0
+  println("${u} ${w} ${n} ${f}")
+}
