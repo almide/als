@@ -9,16 +9,16 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 11
-evaluated = 983
+ceiling = 9
+evaluated = 1004
 
 [[abstain]]
 class = "parse"
-count = 2
+count = 1
 
 [[abstain]]
 class = "semantics:ctor-call"
-count = 2
+count = 1
 
 [[abstain]]
 class = "semantics:ctor-fn-value"
