@@ -369,6 +369,17 @@ impl Interp {
                             };
                             it.ctors.insert(name, (t.name.clone(), shape));
                         }
+                        crate::value::register_cases(
+                            &t.name,
+                            cases
+                                .iter()
+                                .map(|c| match c {
+                                    VariantCase::Unit(n)
+                                    | VariantCase::Tuple(n, _)
+                                    | VariantCase::Record(n, _) => n.clone(),
+                                })
+                                .collect(),
+                        );
                     }
                     it.types.insert(t.name.clone(), Rc::new(t.clone()));
                 }
@@ -1005,6 +1016,29 @@ impl Interp {
     /// an anonymous literal bound at a slot annotated with a named record type
     /// becomes that record (declaration order, defaults filled).
     fn retag(&mut self, v: Value, ty: Option<&TypeExpr>) -> Value {
+        // a type alias (`type Handler = effect (String) -> String`, a
+        // newtype `mod type Byte = Int8`) narrows as the type it names
+        if let Some(TypeExpr::Named {
+            module: None,
+            name,
+            args,
+        }) = ty
+        {
+            if args.is_empty() {
+                let target = match self.types.get(name) {
+                    Some(d) => match &d.body {
+                        TypeBody::Alias(t) => Some(t.clone()),
+                        _ => None,
+                    },
+                    None => None,
+                };
+                if let Some(t) = target {
+                    if !matches!(&t, TypeExpr::Named { name: n2, .. } if n2 == name) {
+                        return self.retag(v, Some(&t));
+                    }
+                }
+            }
+        }
         // ALS-M15: a callable in an `effect (A) -> B` position takes the
         // carrier shape `(A) -> Result[B, String]` — one form for pure and
         // fallible spellings alike
@@ -1577,6 +1611,19 @@ impl Interp {
                 {
                     if let Some(f) = self.methods.get(&(t.clone(), name.clone())).cloned() {
                         let (pos, named) = self.eval_args(env, args)?;
+                        if f.sig.params.iter().any(|p| p.mutable) {
+                            // `T.m(x)` with `mut self` (or a later `mut`
+                            // parameter) writes back through the argument's
+                            // place, as `x.m()` does
+                            let mut finals = Vec::new();
+                            let r = self.call_fn_muts(&f, pos, named, Some(&mut finals));
+                            for (i, v) in finals {
+                                if let Some(Arg::Pos(pe)) = args.get(i) {
+                                    let _ = self.assign_place(env, pe, v);
+                                }
+                            }
+                            return r;
+                        }
                         return self.call_fn(&f, pos, named);
                     }
                     // ALS-D6: `T.decode` / `T.encode` / `T.decode_strict`
@@ -1687,10 +1734,31 @@ impl Interp {
                         pos.insert(0, recv);
                         stdlib::call(self, &format!("{m}.{name}"), pos)
                     }
-                    None => self.abstain(
-                        "semantics:ufcs-receiver",
-                        format!("UFCS call `.{name}()` on a {}", recv.type_name()),
-                    ),
+                    // UFCS to a free fn: `s.bump()` is `bump(s)`, a `mut`
+                    // parameter written back through the receiver's place
+                    None => match self.fns.get(name.as_str()).cloned() {
+                        Some(f) => {
+                            let (mut pos, named) = self.eval_args(env, args)?;
+                            pos.insert(0, recv);
+                            if f.sig.params.iter().any(|p| p.mutable) {
+                                let mut finals = Vec::new();
+                                let r = self.call_fn_muts(&f, pos, named, Some(&mut finals));
+                                for (i, v) in finals {
+                                    if i == 0 {
+                                        let _ = self.assign_place(env, obj, v);
+                                    } else if let Some(Arg::Pos(pe)) = args.get(i - 1) {
+                                        let _ = self.assign_place(env, pe, v);
+                                    }
+                                }
+                                return r;
+                            }
+                            self.call_fn(&f, pos, named)
+                        }
+                        None => self.abstain(
+                            "semantics:ufcs-receiver",
+                            format!("UFCS call `.{name}()` on a {}", recv.type_name()),
+                        ),
+                    },
                 }
             }
             Expr::TypeName { module, name } => {
@@ -1746,7 +1814,27 @@ impl Interp {
                         "constructor `{name}` called with the wrong shape"
                     ))),
                     None => {
-                        self.abstain("semantics:ctor-call", format!("call of type name `{name}`"))
+                        // a newtype (`mod type Id = Int`, `local type Name =
+                        // String`) is constructed by a call of its name and
+                        // is the wrapped value itself: it renders, compares
+                        // and nests exactly as that value does
+                        let alias = match self.types.get(name) {
+                            Some(d) => match &d.body {
+                                TypeBody::Alias(ty) => Some(ty.clone()),
+                                _ => None,
+                            },
+                            None => None,
+                        };
+                        match alias {
+                            Some(ty) if pos.len() == 1 => {
+                                let v = pos.into_iter().next().expect("one argument");
+                                Ok(self.retag(v, Some(&ty)))
+                            }
+                            _ => self.abstain(
+                                "semantics:ctor-call",
+                                format!("call of type name `{name}`"),
+                            ),
+                        }
                     }
                 }
             }
@@ -2488,6 +2576,16 @@ impl Interp {
                             None => Value::None,
                         },
                     ),
+                    // C-067: `b[i]` reads the byte as 0..255 directly, and
+                    // aborts outside 0..len like a list read
+                    (Value::Bytes(b), Value::Int(i)) => {
+                        let b = b.borrow();
+                        if i < 0 || i as usize >= b.len() {
+                            Err(Flow::Abort("index out of bounds".into()))
+                        } else {
+                            Ok(Value::Int(i64::from(b[i as usize])))
+                        }
+                    }
                     (o, i) => self.abstain(
                         "semantics:index",
                         format!("indexing a {} with a {}", o.type_name(), i.type_name()),
@@ -2665,6 +2763,28 @@ impl Interp {
                 }
             }
             Expr::Pipe { lhs, rhs } => {
+                // `s |> bump` / `s |> f(a)` into a fn with a `mut` first
+                // parameter: the piped PLACE is the argument, so the write-back
+                // reaches it (C-226), as `bump(s)` does
+                if is_place(lhs) {
+                    let (callee, rest): (&Expr, &[Arg]) = match &**rhs {
+                        Expr::Call { callee, args, .. } => (callee, args),
+                        other => (other, &[]),
+                    };
+                    let mut_first = match callee {
+                        Expr::Ident(f) if env.lookup(f).is_none() => self
+                            .fns
+                            .get(f.as_str())
+                            .is_some_and(|d| d.sig.params.first().is_some_and(|p| p.mutable)),
+                        _ => false,
+                    };
+                    if mut_first {
+                        let mut full: Vec<Arg> = Vec::with_capacity(rest.len() + 1);
+                        full.push(Arg::Pos((**lhs).clone()));
+                        full.extend(rest.iter().cloned());
+                        return self.eval_call(env, callee, &full);
+                    }
+                }
                 let v = self.eval(env, lhs)?;
                 match &**rhs {
                     Expr::Call {
@@ -2862,6 +2982,16 @@ impl Interp {
                     }
                     Payload::Record(_) => false,
                 },
+                // a newtype's pattern `Id(n)` reads the wrapped value itself
+                _ if args.len() == 1
+                    && !self.ctors.contains_key(name.as_str())
+                    && self
+                        .types
+                        .get(name.as_str())
+                        .is_some_and(|d| matches!(d.body, TypeBody::Alias(_))) =>
+                {
+                    self.matches(&args[0], v, env)?
+                }
                 _ => false,
             },
             Pattern::CtorRecord {
@@ -2934,6 +3064,20 @@ impl Interp {
                         if !self.matches(p, x, env)? {
                             return Ok(false);
                         }
+                    }
+                    true
+                }
+                _ => false,
+            },
+            Pattern::ListRest { head, rest } => match v {
+                Value::List(items) if items.len() >= head.len() => {
+                    for (p, x) in head.iter().zip(items.iter()) {
+                        if !self.matches(p, x, env)? {
+                            return Ok(false);
+                        }
+                    }
+                    if let Some(n) = rest {
+                        env.define(n, Value::List(Rc::new(items[head.len()..].to_vec())));
                     }
                     true
                 }
@@ -3443,6 +3587,29 @@ impl Interp {
                             None => nv.push((k, v)),
                         }
                         Value::Map(Rc::new(nv))
+                    }
+                    // C-067 / C-213: `b[i] = v` writes v's low 8 bits in
+                    // place (a `mut` parameter's caller sees it) and aborts
+                    // outside 0..len
+                    (Value::Bytes(b), Value::Int(i)) => {
+                        let x = match &v {
+                            Value::Int(x) => *x,
+                            Value::Sized { v: x, .. } => *x,
+                            other => {
+                                return Err(Flow::Fatal(format!(
+                                    "a byte write of a {}",
+                                    other.type_name()
+                                )))
+                            }
+                        };
+                        {
+                            let mut bm = b.borrow_mut();
+                            if i < 0 || i as usize >= bm.len() {
+                                return Err(Flow::Abort("index out of bounds".into()));
+                            }
+                            bm[i as usize] = (x & 0xff) as u8;
+                        }
+                        Value::Bytes(b)
                     }
                     (o, i) => {
                         return self.abstain(
@@ -4081,15 +4248,14 @@ impl Interp {
                         format!("tuple case `{n}` with a non-array payload"),
                     );
                 };
+                // C-298 (#4164): the payload array's length is the case's
+                // arity, or a decode err naming the case and both counts
                 if items.len() != tys.len() {
-                    return self.abstain(
-                        "semantics:codec-variant-shape",
-                        format!(
-                            "tuple case `{n}` arity {} document, {} declared",
-                            items.len(),
-                            tys.len()
-                        ),
-                    );
+                    return Ok(Err(format!(
+                        "expected {} element(s) for variant {n} of {t}, received {}",
+                        tys.len(),
+                        items.len()
+                    )));
                 }
                 let items = items.clone();
                 let mut out = Vec::with_capacity(items.len());
@@ -4247,30 +4413,7 @@ impl Interp {
         match (&decl.body, v) {
             (TypeBody::Record(fds), Value::Record { fields, .. }) => {
                 let fields = fields.clone();
-                let mut out: Vec<(Rc<str>, Dyn)> = Vec::with_capacity(fds.len());
-                for fd in fds {
-                    let Some((_, fv)) = fields.iter().find(|(k, _)| &**k == fd.name.as_str())
-                    else {
-                        return self.abstain(
-                            "semantics:codec",
-                            format!("record value missing declared field `{}`", fd.name),
-                        );
-                    };
-                    let key: Rc<str> = Rc::from(fd.alias.as_deref().unwrap_or(&fd.name));
-                    // C-428: a `@skip` field is never written
-                    if fd.attrs.iter().any(|a| a == "skip") {
-                        continue;
-                    }
-                    match fv {
-                        // C-209: none is OMITTED, never an explicit null
-                        Value::None => {}
-                        Value::Some(inner) => {
-                            out.push((key, self.codec_encode_val(&inner.clone())?))
-                        }
-                        other => out.push((key, self.codec_encode_val(&other.clone())?)),
-                    }
-                }
-                Ok(Dyn::O(Rc::new(out)))
+                self.codec_encode_fields(fds, &fields)
             }
             (TypeBody::Variant(_), Value::Variant { case, payload, .. }) => {
                 // externally-tagged: {"Case": [payload…]}, unit {"Case": null}
@@ -4285,10 +4428,26 @@ impl Interp {
                         }
                         Ok(Dyn::O(Rc::new(vec![(case, Dyn::A(Rc::new(a)))])))
                     }
-                    Payload::Record(_) => self.abstain(
-                        "semantics:codec-variant-shape",
-                        format!("encoding a record-payload case of `{t}`"),
-                    ),
+                    // a record-shaped case: {"Case": {field: …}}, its fields
+                    // encoded as a record's are
+                    Payload::Record(fields) => {
+                        let fds = match &decl.body {
+                            TypeBody::Variant(cases) => cases.iter().find_map(|c| match c {
+                                VariantCase::Record(n, fds) if **n == **case => Some(fds.clone()),
+                                _ => None,
+                            }),
+                            _ => None,
+                        };
+                        let Some(fds) = fds else {
+                            return self.abstain(
+                                "semantics:codec-variant-shape",
+                                format!("encoding a record-payload case of `{t}`"),
+                            );
+                        };
+                        let (case, fields) = (case.clone(), fields.clone());
+                        let inner = self.codec_encode_fields(&fds, &fields)?;
+                        Ok(Dyn::O(Rc::new(vec![(case, inner)])))
+                    }
                 }
             }
             (_, other) => self.abstain(
@@ -4296,6 +4455,32 @@ impl Interp {
                 format!("`{t}.encode` on a {}", other.type_name()),
             ),
         }
+    }
+
+    /// a record's (or a record-shaped case's) fields as a JSON object, in
+    /// declaration order, under their aliases; none omitted, `@skip` unwritten
+    fn codec_encode_fields(&mut self, fds: &[FieldDecl], fields: &Fields) -> Result<Dyn, Flow> {
+        let mut out: Vec<(Rc<str>, Dyn)> = Vec::with_capacity(fds.len());
+        for fd in fds {
+            let Some((_, fv)) = fields.iter().find(|(k, _)| &**k == fd.name.as_str()) else {
+                return self.abstain(
+                    "semantics:codec",
+                    format!("record value missing declared field `{}`", fd.name),
+                );
+            };
+            let key: Rc<str> = Rc::from(fd.alias.as_deref().unwrap_or(&fd.name));
+            // C-428: a `@skip` field is never written
+            if fd.attrs.iter().any(|a| a == "skip") {
+                continue;
+            }
+            match fv {
+                // C-209: none is OMITTED, never an explicit null
+                Value::None => {}
+                Value::Some(inner) => out.push((key, self.codec_encode_val(&inner.clone())?)),
+                other => out.push((key, self.codec_encode_val(&other.clone())?)),
+            }
+        }
+        Ok(Dyn::O(Rc::new(out)))
     }
 
     fn codec_encode_val(&mut self, v: &Value) -> Result<Dyn, Flow> {
@@ -4467,6 +4652,16 @@ fn narrow_like(cur: &Value, v: Value) -> Value {
         },
         (Value::Float32(_), Value::Float(F64(f))) => Value::Float32(f as f32),
         (_, v) => v,
+    }
+}
+
+/// a variable or a field path of one — an expression an argument's
+/// write-back can reach
+fn is_place(e: &Expr) -> bool {
+    match e {
+        Expr::Ident(_) => true,
+        Expr::Member { obj, .. } => is_place(obj),
+        _ => false,
     }
 }
 

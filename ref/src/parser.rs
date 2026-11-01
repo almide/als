@@ -196,6 +196,12 @@ impl P {
                 self.bump();
                 Ok(s)
             }
+            // `Self` is an ordinary field name (C-009: the names Rust
+            // reserves are plain Almide fields)
+            Tok::TypeName(s) if s == "Self" => {
+                self.bump();
+                Ok(s)
+            }
             other => self.err(format!("expected a name, got {other:?}")),
         }
     }
@@ -1432,7 +1438,8 @@ impl P {
                             "chained tuple index `.{f}` is not accepted — write `(t.0).1`"
                         ));
                     }
-                    Tok::TypeName(t) => {
+                    // `r.Self` is a field read (C-009), not a module's type
+                    Tok::TypeName(t) if t != "Self" => {
                         self.bump();
                         // module-qualified type / constructor: m.Type
                         let module = match e {
@@ -2348,6 +2355,20 @@ impl P {
                 let mut items = Vec::new();
                 self.skip_nl();
                 while !self.at_sym("]") {
+                    if self.eat_sym("..") {
+                        let rest = match self.peek().clone() {
+                            Tok::Ident(n) => {
+                                self.bump();
+                                Some(n)
+                            }
+                            _ => None,
+                        };
+                        self.skip_nl();
+                        self.eat_sym(",");
+                        self.skip_nl();
+                        self.expect_sym("]")?;
+                        return Ok(Pattern::ListRest { head: items, rest });
+                    }
                     items.push(self.pattern()?);
                     self.skip_nl();
                     if !self.eat_sym(",") {

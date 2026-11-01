@@ -35,6 +35,7 @@ pub fn implemented() -> Vec<&'static str> {
     v.extend(RESULT_FNS);
     v.extend(MAP_FNS);
     v.extend(SET_FNS);
+    v.extend(MAP_SET_VIA_LIST);
     v
 }
 
@@ -49,6 +50,14 @@ const PRELUDE_FNS: &[&str] = &[
 const LIST_FNS: &[&str] = &[
     "list.len",
     "list.each",
+    "list.iterate",
+    "list.sort_with",
+    "list.min_by",
+    "list.max_by",
+    "list.min_with",
+    "list.max_with",
+    "list.binary_search_by",
+    "list.binary_search_with",
     "list.get",
     "list.set",
     "list.swap",
@@ -471,6 +480,97 @@ where
         width *= 2;
     }
     Ok(())
+}
+
+/// the map / set HOF cells stdlib/map.almd and set.almd define over their
+/// list twin
+const MAP_SET_VIA_LIST: &[&str] = &[
+    "map.zip_with",
+    "map.filter_map",
+    "map.find_map",
+    "map.reduce",
+    "map.scan",
+    "map.partition",
+    "map.group_by",
+    "map.sort_by",
+    "map.sort_with",
+    "map.min_by",
+    "map.max_by",
+    "map.min_with",
+    "map.max_with",
+    "set.count",
+    "set.find",
+    "set.zip_with",
+    "set.filter_map",
+    "set.find_map",
+    "set.reduce",
+    "set.scan",
+    "set.partition",
+    "set.group_by",
+    "set.sort_by",
+    "set.sort_with",
+    "set.min_by",
+    "set.max_by",
+    "set.min_with",
+    "set.max_with",
+];
+
+/// stdlib/list.almd `__key_order`: 0 on `==`, else -1 when a sorts before b
+fn key_order(name: &str, a: &Value, b: &Value) -> Result<i64, Flow> {
+    if eq_strict(name, a, b)? {
+        return Ok(0);
+    }
+    Ok(if cmp_strict(name, a, b)? == Ordering::Less {
+        -1
+    } else {
+        1
+    })
+}
+
+/// stdlib/list.almd `sort_with`: top-down merge sort (take half, drop half,
+/// merge); the merge puts b's element first only when cmp says a's is
+/// strictly greater. The inner Err is a fallible comparator's first err.
+fn merge_sort_with(
+    it: &mut Interp,
+    c: &Rc<Callable>,
+    fal: bool,
+    xs: Vec<Value>,
+) -> Result<Result<Vec<Value>, Value>, Flow> {
+    let n = xs.len();
+    if n <= 1 {
+        return Ok(Ok(xs));
+    }
+    let half = n / 2;
+    let right_in = xs[half..].to_vec();
+    let mut left_in = xs;
+    left_in.truncate(half);
+    let a = match merge_sort_with(it, c, fal, left_in)? {
+        Ok(v) => v,
+        Err(e) => return Ok(Err(e)),
+    };
+    let b = match merge_sort_with(it, c, fal, right_in)? {
+        Ok(v) => v,
+        Err(e) => return Ok(Err(e)),
+    };
+    let mut out = Vec::with_capacity(n);
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        match call_cb(it, c, fal, vec![a[i].clone(), b[j].clone()])? {
+            Cb::Val(r) => {
+                if want_int("list.sort_with", &r)? > 0 {
+                    out.push(b[j].clone());
+                    j += 1;
+                } else {
+                    out.push(a[i].clone());
+                    i += 1;
+                }
+            }
+            Cb::Bail(e) => return Ok(Err(e)),
+        }
+    }
+    out.extend_from_slice(&a[i..]);
+    out.extend_from_slice(&b[j..]);
+    Ok(Ok(out))
 }
 
 // ── string primitives (code-point units, ALS-S1) ────────────────────────
@@ -945,6 +1045,12 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let mut count = 0i64;
             let mut dropping = name == "list.drop_while";
             for (idx, x) in xs.iter().enumerate() {
+                // past the first element that fails the predicate,
+                // `drop_while` keeps the rest without calling the callback
+                if name == "list.drop_while" && !dropping {
+                    out.push(x.clone());
+                    continue;
+                }
                 let r = match call_cb(it, &c, fal, vec![x.clone()])? {
                     Cb::Val(v) => v,
                     Cb::Bail(e) => {
@@ -1038,6 +1144,153 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 _ => unreachable!(),
             };
             Ok(hof_out(fal, bail, v))
+        }
+        // ── the order matrix (R-list-06/-17/-19) and `iterate`, walked as
+        // stdlib/list.almd walks them: the callback visits are observable ──
+        "list.iterate" => {
+            arity(name, &args, 3)?;
+            let c = want_fn(name, &args[1])?.clone();
+            let n = want_int(name, &args[2])?;
+            let fal = it.cb_fallible(&c);
+            let mut out = Vec::new();
+            let mut x = args[0].clone();
+            for _ in 0..n.max(0) {
+                out.push(x.clone());
+                match call_cb(it, &c, fal, vec![x])? {
+                    Cb::Val(y) => x = y,
+                    Cb::Bail(e) => return Ok(Value::Err(Rc::new(e))),
+                }
+            }
+            Ok(hof_out(fal, None, Value::List(Rc::new(out))))
+        }
+        "list.sort_with" => {
+            arity(name, &args, 2)?;
+            let xs = (**want_list(name, &args[0])?).clone();
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
+            Ok(match merge_sort_with(it, &c, fal, xs)? {
+                Ok(v) => hof_out(fal, None, Value::List(Rc::new(v))),
+                Err(e) => Value::Err(Rc::new(e)),
+            })
+        }
+        "list.min_by" | "list.max_by" => {
+            arity(name, &args, 2)?;
+            let xs = want_list(name, &args[0])?.clone();
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
+            // every key first, once per element in list order
+            let mut keys = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                match call_cb(it, &c, fal, vec![x.clone()])? {
+                    Cb::Val(k) => keys.push(k),
+                    Cb::Bail(e) => return Ok(Value::Err(Rc::new(e))),
+                }
+            }
+            let want = if name == "list.min_by" { -1 } else { 1 };
+            let mut best: Option<usize> = None;
+            for i in 0..xs.len() {
+                let better = match best {
+                    Some(b) => key_order(name, &keys[i], &keys[b])? == want,
+                    None => true,
+                };
+                if better {
+                    best = Some(i);
+                }
+            }
+            let v = best.map_or(Value::None, |i| Value::Some(Rc::new(xs[i].clone())));
+            Ok(hof_out(fal, None, v))
+        }
+        "list.min_with" | "list.max_with" => {
+            arity(name, &args, 2)?;
+            let xs = want_list(name, &args[0])?.clone();
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
+            let want = if name == "list.min_with" { -1 } else { 1 };
+            let mut best: Option<Value> = None;
+            for x in xs.iter() {
+                best = Some(match best {
+                    Some(b) => match call_cb(it, &c, fal, vec![x.clone(), b.clone()])? {
+                        Cb::Val(r) => {
+                            if want_int(name, &r)? * want > 0 {
+                                x.clone()
+                            } else {
+                                b
+                            }
+                        }
+                        Cb::Bail(e) => return Ok(Value::Err(Rc::new(e))),
+                    },
+                    None => x.clone(),
+                });
+            }
+            let v = best.map_or(Value::None, |b| Value::Some(Rc::new(b)));
+            Ok(hof_out(fal, None, v))
+        }
+        "list.binary_search_by" | "list.binary_search_with" => {
+            arity(name, &args, 3)?;
+            let xs = want_list(name, &args[0])?.clone();
+            let target = args[1].clone();
+            let c = want_fn(name, &args[2])?.clone();
+            let fal = it.cb_fallible(&c);
+            let by = name == "list.binary_search_by";
+            // order(e): e against the target — `_by` asks the key's natural
+            // order, `_with` the comparator
+            let order = |it: &mut Interp, e: &Value| -> Result<Result<i64, Value>, Flow> {
+                let cb_args = if by {
+                    vec![e.clone()]
+                } else {
+                    vec![e.clone(), target.clone()]
+                };
+                Ok(match call_cb(it, &c, fal, cb_args)? {
+                    Cb::Bail(err) => Err(err),
+                    Cb::Val(r) if by => Ok(key_order(name, &r, &target)?),
+                    Cb::Val(r) => Ok(want_int(name, &r)?),
+                })
+            };
+            // Rust std's branchless loop, as stdlib/list.almd walks it
+            let (mut base, mut size) = (0usize, xs.len());
+            while size > 1 {
+                let half = size / 2;
+                let mid = base + half;
+                match order(it, &xs[mid])? {
+                    Ok(c) => {
+                        if c <= 0 {
+                            base = mid;
+                        }
+                    }
+                    Err(e) => return Ok(Value::Err(Rc::new(e))),
+                }
+                size -= half;
+            }
+            let v = if xs.is_empty() {
+                Value::None
+            } else {
+                match order(it, &xs[base])? {
+                    Ok(0) => Value::Some(Rc::new(Value::Int(base as i64))),
+                    Ok(_) => Value::None,
+                    Err(e) => return Ok(Value::Err(Rc::new(e))),
+                }
+            };
+            Ok(hof_out(fal, None, v))
+        }
+        // stdlib/map.almd and set.almd: these cells are the list fn over
+        // `to_list` (a map's entries as `(k, v)` tuples, in order)
+        n2 if MAP_SET_VIA_LIST.contains(&n2) => {
+            let (module, f) = n2.split_once('.').unwrap_or(("", n2));
+            let mut args = args;
+            if args.is_empty() {
+                return Err(Flow::Fatal(format!("{n2}: expected arguments")));
+            }
+            let as_list = match (module, &args[0]) {
+                ("map", Value::Map(m)) => Value::List(Rc::new(
+                    m.iter()
+                        .map(|(k, v)| Value::Tuple(Rc::new(vec![k.clone(), v.clone()])))
+                        .collect(),
+                )),
+                ("set", Value::Set(xs)) => Value::List(xs.clone()),
+                (_, other) => return mismatch(n2, module, other),
+            };
+            args[0] = as_list;
+            call(it, &format!("list.{f}"), args)
         }
         // `each`: the callback on every element in order, for its effect; a
         // fallible callback stops at the first err (ADR-0006)

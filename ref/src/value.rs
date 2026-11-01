@@ -488,8 +488,64 @@ pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
         (Value::None, Value::Some(_)) => Some(Ordering::Less),
         (Value::Some(_), Value::None) => Some(Ordering::Greater),
         (Value::Some(x), Value::Some(y)) => value_cmp(x, y),
+        // C-053 (`: Ord` records): field DECLARATION order, the first
+        // differing field decides
+        (Value::Record { fields: xs, .. }, Value::Record { fields: ys, .. }) => {
+            for ((_, x), (_, y)) in xs.iter().zip(ys.iter()) {
+                match value_cmp(x, y)? {
+                    Ordering::Equal => {}
+                    o => return Some(o),
+                }
+            }
+            Some(xs.len().cmp(&ys.len()))
+        }
+        // C-053 (`: Ord` variants): the case's DECLARATION order first, then
+        // the payload — positional or record-shaped — field by field
+        (
+            Value::Variant {
+                type_name: ta,
+                case: ca,
+                payload: pa,
+            },
+            Value::Variant {
+                type_name: tb,
+                case: cb,
+                payload: pb,
+            },
+        ) if ta == tb => {
+            let (ia, ib) = (case_index(ta, ca)?, case_index(tb, cb)?);
+            if ia != ib {
+                return Some(ia.cmp(&ib));
+            }
+            match (pa, pb) {
+                (Payload::Unit, Payload::Unit) => Some(Ordering::Equal),
+                (Payload::Tuple(xs), Payload::Tuple(ys)) => seq_cmp(xs, ys),
+                (Payload::Record(xs), Payload::Record(ys)) => {
+                    let xv: Vec<Value> = xs.iter().map(|(_, v)| v.clone()).collect();
+                    let yv: Vec<Value> = ys.iter().map(|(_, v)| v.clone()).collect();
+                    seq_cmp(&xv, &yv)
+                }
+                _ => None,
+            }
+        }
         _ => None,
     }
+}
+
+/// every declared variant type's cases in declaration order (registered by
+/// the evaluator when it reads the program's type declarations)
+static CASE_ORDER: std::sync::Mutex<std::collections::BTreeMap<String, Vec<String>>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
+
+pub fn register_cases(type_name: &str, cases: Vec<String>) {
+    if let Ok(mut m) = CASE_ORDER.lock() {
+        m.insert(type_name.to_string(), cases);
+    }
+}
+
+fn case_index(type_name: &str, case: &str) -> Option<usize> {
+    let m = CASE_ORDER.lock().ok()?;
+    m.get(type_name)?.iter().position(|c| c == case)
 }
 
 fn seq_cmp(xs: &[Value], ys: &[Value]) -> Option<std::cmp::Ordering> {
