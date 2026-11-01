@@ -651,6 +651,17 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Unit)
         }
+        // C-322: a builtin constructor as a function value
+        // (`xs |> list.map(some)`) builds what its call would
+        "__ctor.some" | "__ctor.ok" | "__ctor.err" => {
+            arity(name, &args, 1)?;
+            let v = Rc::new(args.into_iter().next().expect("one argument"));
+            Ok(match name {
+                "__ctor.some" => Value::Some(v),
+                "__ctor.ok" => Value::Ok(v),
+                _ => Value::Err(v),
+            })
+        }
         // C-219: `panic(msg)` is typed Never; it renders its argument and
         // aborts the run through the one `PANIC:` path
         "panic" => {

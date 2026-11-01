@@ -72,6 +72,24 @@ pub const EXT2_FNS: &[&str] = &[
     "path.dirname",
     "path.extension",
     "path.stem",
+    "html.escape",
+    "html.raw",
+    "html.to_string",
+    "html.empty",
+    "html.concat",
+    "result.filter",
+    "int.count_leading_zeros",
+    "int.count_trailing_zeros",
+    "int.pop_count",
+    "int.count_ones",
+    "int.bit_reverse",
+    "int.byte_swap",
+    "int.bit_width",
+    "int.bit_length",
+    "int.log2_floor",
+    "int.log2_ceil",
+    "int.next_power_of_two",
+    "int.prev_power_of_two",
     "path.is_absolute",
     "path.join_within",
     "args.has_flag",
@@ -100,6 +118,7 @@ pub const EXT2_FNS: &[&str] = &[
     "fs.read_bytes_if_exists",
     "fs.stat",
     "fs.walk",
+    "fs.glob",
     "bytes.pad_left",
     "bytes.pad_right",
     "bytes.pad_start",
@@ -696,16 +715,25 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         "hex.decode" => {
             arity(name, &args, 1)?;
             let s = want_str(name, &args[0])?;
-            let cs: Vec<char> = s.chars().collect();
-            if !cs.len().is_multiple_of(2) {
-                return Ok(Ok(err_str("invalid hex")));
+            // over the UTF-8 bytes: an odd length first, then the first byte
+            // that is not a hex digit, by its byte index
+            let bs = s.as_bytes();
+            if !bs.len().is_multiple_of(2) {
+                return Ok(Ok(err_str(&format!(
+                    "hex string has odd length: {}",
+                    bs.len()
+                ))));
             }
-            let mut out = Vec::with_capacity(cs.len() / 2);
-            for pair in cs.chunks(2) {
-                match (pair[0].to_digit(16), pair[1].to_digit(16)) {
-                    (Some(a), Some(b)) => out.push((a * 16 + b) as u8),
-                    _ => return Ok(Ok(err_str("invalid hex"))),
-                }
+            let nib = |b: u8| char::from(b).to_digit(16).filter(|_| b.is_ascii());
+            let mut out = Vec::with_capacity(bs.len() / 2);
+            for i in (0..bs.len()).step_by(2) {
+                let Some(hi) = nib(bs[i]) else {
+                    return Ok(Ok(err_str(&format!("invalid hex char at {i}"))));
+                };
+                let Some(lo) = nib(bs[i + 1]) else {
+                    return Ok(Ok(err_str(&format!("invalid hex char at {}", i + 1))));
+                };
+                out.push((hi * 16 + lo) as u8);
             }
             Ok(ok(bytes_val(out)))
         }
@@ -770,6 +798,118 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Some(k) if k > 0 => some(Value::str(&base[k + 1..])),
                 _ => Value::None,
             })
+        }
+        // stdlib/html.almd's text-context core: a SafeHtml is the newtype of
+        // its String, so it is that String here (newtypes are transparent)
+        "html.escape" => {
+            arity(name, &args, 1)?;
+            let mut out = String::new();
+            for c in want_str(name, &args[0])?.chars() {
+                match c {
+                    '&' => out.push_str("&amp;"),
+                    '<' => out.push_str("&lt;"),
+                    '>' => out.push_str("&gt;"),
+                    '"' => out.push_str("&quot;"),
+                    '\'' => out.push_str("&#39;"),
+                    other => out.push(other),
+                }
+            }
+            Ok(Value::str(&out))
+        }
+        "html.raw" | "html.to_string" => {
+            arity(name, &args, 1)?;
+            Ok(Value::str(want_str(name, &args[0])?))
+        }
+        "html.empty" => {
+            arity(name, &args, 0)?;
+            Ok(Value::str(""))
+        }
+        "html.concat" => {
+            arity(name, &args, 2)?;
+            let mut out = want_str(name, &args[0])?.to_string();
+            out.push_str(want_str(name, &args[1])?);
+            Ok(Value::str(&out))
+        }
+        // `filter(r, f, e)`: ok(v) stays when f(v), else err(e); err stays
+        "result.filter" => {
+            arity(name, &args, 3)?;
+            match &args[0] {
+                Value::Ok(v) => {
+                    let c = match &args[1] {
+                        Value::Fn(c) => c.clone(),
+                        other => return mismatch(name, "a function", other),
+                    };
+                    let keep = it.call_value(&c, vec![(**v).clone()])?;
+                    Ok(match keep {
+                        Value::Bool(true) => args[0].clone(),
+                        Value::Bool(false) => Value::Err(Rc::new(args[2].clone())),
+                        other => return mismatch(name, "Bool", &other),
+                    })
+                }
+                Value::Err(_) => Ok(args[0].clone()),
+                other => mismatch(name, "Result", other),
+            }
+        }
+        // the 64-bit word's bit introspection (stdlib/int.almd, as the native
+        // intrinsics answer it)
+        "int.count_leading_zeros"
+        | "int.count_trailing_zeros"
+        | "int.pop_count"
+        | "int.count_ones"
+        | "int.bit_reverse"
+        | "int.byte_swap"
+        | "int.bit_width"
+        | "int.bit_length"
+        | "int.log2_floor"
+        | "int.log2_ceil"
+        | "int.next_power_of_two"
+        | "int.prev_power_of_two" => {
+            arity(name, &args, 1)?;
+            let n = want_int(name, &args[0])?;
+            let u = n as u64;
+            Ok(Value::Int(match name {
+                "int.count_leading_zeros" => i64::from(u.leading_zeros()),
+                "int.count_trailing_zeros" => i64::from(u.trailing_zeros()),
+                "int.pop_count" | "int.count_ones" => i64::from(u.count_ones()),
+                "int.bit_reverse" => u.reverse_bits() as i64,
+                "int.byte_swap" => u.swap_bytes() as i64,
+                "int.bit_width" | "int.bit_length" => {
+                    if n == 0 {
+                        0
+                    } else {
+                        64 - i64::from(u.leading_zeros())
+                    }
+                }
+                "int.log2_floor" => {
+                    if n <= 0 {
+                        -1
+                    } else {
+                        63 - i64::from(u.leading_zeros())
+                    }
+                }
+                "int.log2_ceil" => {
+                    if n <= 1 {
+                        0
+                    } else {
+                        64 - i64::from((u - 1).leading_zeros())
+                    }
+                }
+                // past 2^62 the power is 2^63, which reads as Int's min value
+                "int.next_power_of_two" => {
+                    if n <= 1 {
+                        1
+                    } else {
+                        u.next_power_of_two() as i64
+                    }
+                }
+                _ => {
+                    if n <= 0 {
+                        0
+                    } else {
+                        1i64 << (63 - i64::from(u.leading_zeros()))
+                    }
+                }
+            }))
         }
         // stdlib/path.almd `stem`: the basename (the last non-empty `/`
         // segment) minus its last `.` segment; no dot, or only a leading dot
@@ -1062,6 +1202,78 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 }
                 Err(e) => io_err(e),
             })
+        }
+        // stdlib/fs.almd `glob` (C-228): segment-wise against the path below
+        // the pattern's literal base; `*` within one segment, `**` across
+        // zero or more; links not followed; results byte-order sorted
+        "fs.glob" => {
+            arity(name, &args, 1)?;
+            let pattern: Vec<char> = want_str(name, &args[0])?.chars().collect();
+            let absolute = pattern.first() == Some(&'/');
+            let segs: Vec<String> = split_char(&pattern, '/')
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .map(|s| str_of(&s))
+                .collect();
+            let k = segs.iter().take_while(|s| !s.contains('*')).count();
+            let pats: Vec<&str> = segs[k..].iter().map(|s| s.as_str()).collect();
+            let base = format!("{}{}", if absolute { "/" } else { "" }, segs[..k].join("/"));
+            let list = |xs: Vec<String>| {
+                ok(Value::List(Rc::new(
+                    xs.iter().map(|x| Value::str(x)).collect(),
+                )))
+            };
+            if pats.is_empty() {
+                let hit = !base.is_empty() && std::path::Path::new(&base).exists();
+                return Ok(Ok(list(if hit { vec![base] } else { Vec::new() })));
+            }
+            if !base.is_empty() && !std::path::Path::new(&base).is_dir() {
+                return Ok(Ok(list(Vec::new())));
+            }
+            let root = if base.is_empty() {
+                ".".to_string()
+            } else {
+                base.clone()
+            };
+            let prefix = if base.is_empty() || base == "/" {
+                base.clone()
+            } else {
+                format!("{base}/")
+            };
+            let depth = if pats.contains(&"**") {
+                None
+            } else {
+                Some(pats.len())
+            };
+            let mut results = Vec::new();
+            if !base.is_empty() && glob_segs_match(&pats, &[]) {
+                results.push(base.clone());
+            }
+            let mut rels = Vec::new();
+            if let Err(e) = glob_walk(&root, "", depth, &mut rels) {
+                let shown = crate::stdlib_ext::err_operand(&e.0);
+                return Ok(Ok(err_str(&format!("fs.glob({shown}): {}", e.1))));
+            }
+            for rel in rels {
+                let rsegs: Vec<String> = split_char(&rel.chars().collect::<Vec<char>>(), '/')
+                    .iter()
+                    .map(|s| str_of(s))
+                    .collect();
+                let rsegs: Vec<&str> = rsegs.iter().map(|s| s.as_str()).collect();
+                if glob_segs_match(&pats, &rsegs) {
+                    results.push(format!("{prefix}{rel}"));
+                }
+            }
+            // byte order, without the host sort (ADR-0015 clause 5)
+            let mut sorted: Vec<String> = Vec::with_capacity(results.len());
+            for r in results {
+                let pos = sorted
+                    .iter()
+                    .position(|m| m.as_bytes() > r.as_bytes())
+                    .unwrap_or(sorted.len());
+                sorted.insert(pos, r);
+            }
+            Ok(list(sorted))
         }
         "fs.walk" => {
             arity(name, &args, 1)?;
@@ -2256,6 +2468,77 @@ fn b64_decode(s: &str, url: bool) -> Result<Vec<u8>, String> {
         }
     }
     Ok(out)
+}
+
+/// every entry below `dir` as a `/`-joined path relative to the walk root;
+/// `depth` levels still to visit (None: unbounded); a symlinked directory is
+/// an entry, never descended. Err: (the path that failed, its io error).
+fn glob_walk(
+    dir: &str,
+    rel: &str,
+    depth: Option<usize>,
+    out: &mut Vec<String>,
+) -> Result<(), (String, std::io::Error)> {
+    if depth == Some(0) {
+        return Ok(());
+    }
+    let rd = std::fs::read_dir(dir).map_err(|e| (dir.to_string(), e))?;
+    for e in rd.flatten() {
+        let n = e.file_name().to_string_lossy().to_string();
+        let r = if rel.is_empty() {
+            n.clone()
+        } else {
+            format!("{rel}/{n}")
+        };
+        out.push(r.clone());
+        let full = format!("{dir}/{n}");
+        let is_dir = std::fs::symlink_metadata(&full).is_ok_and(|m| m.is_dir());
+        if is_dir {
+            glob_walk(&full, &r, depth.map(|d| d - 1), out)?;
+        }
+    }
+    Ok(())
+}
+
+/// `pats` against `segs`, segment by segment; `**` spans zero or more segments
+fn glob_segs_match(pats: &[&str], segs: &[&str]) -> bool {
+    match pats.first() {
+        None => segs.is_empty(),
+        Some(&"**") => (0..=segs.len()).any(|i| glob_segs_match(&pats[1..], &segs[i..])),
+        Some(pat) => {
+            !segs.is_empty()
+                && glob_star_match(pat, segs[0])
+                && glob_segs_match(&pats[1..], &segs[1..])
+        }
+    }
+}
+
+/// one segment: `*` matches any run of characters (empty included)
+fn glob_star_match(pat: &str, seg: &str) -> bool {
+    let pc: Vec<char> = pat.chars().collect();
+    let parts: Vec<String> = split_char(&pc, '*').iter().map(|p| str_of(p)).collect();
+    if parts.len() == 1 {
+        return pat == seg;
+    }
+    let (first, last) = (&parts[0], &parts[parts.len() - 1]);
+    if seg.len() < first.len() + last.len()
+        || !seg.starts_with(first.as_str())
+        || !seg.ends_with(last.as_str())
+    {
+        return false;
+    }
+    let region = &seg[first.len()..seg.len() - last.len()];
+    let mut pos = 0;
+    for part in &parts[1..parts.len() - 1] {
+        if part.is_empty() {
+            continue;
+        }
+        match region[pos..].find(part.as_str()) {
+            Some(i) => pos += i + part.len(),
+            None => return false,
+        }
+    }
+    true
 }
 
 fn walk_dir(dir: &str, out: &mut Vec<String>) -> std::io::Result<()> {
