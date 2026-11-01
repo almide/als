@@ -9,41 +9,5 @@
 # · render:<Type> · runtime:<capability> · resource:<what> · semantics:type-mismatch
 # (a FINDING: the implementation accepted what the ALS-reading evaluator cannot type).
 
-ceiling = 9
-evaluated = 1008
-
-[[abstain]]
-class = "parse"
-count = 1
-
-[[abstain]]
-class = "semantics:ctor-call"
-count = 1
-
-[[abstain]]
-class = "semantics:ctor-fn-value"
-count = 1
-
-[[abstain]]
-class = "stdlib:bytes.starts_with"
-count = 1
-
-[[abstain]]
-class = "stdlib:fs.glob"
-count = 1
-
-[[abstain]]
-class = "stdlib:html.escape"
-count = 1
-
-[[abstain]]
-class = "stdlib:int.count_leading_zeros"
-count = 1
-
-[[abstain]]
-class = "stdlib:result.filter"
-count = 1
-
-[[abstain]]
-class = "stdlib:testing.assert_snapshot"
-count = 1
+ceiling = 0
+evaluated = 1017
