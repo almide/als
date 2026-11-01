@@ -82,8 +82,10 @@ pub enum Value {
     Ok(Rc<Value>),
     Err(Rc<Value>),
     Fn(Rc<Callable>),
-    /// a first-class range `lo ..< hi` (half-open, Int): iterated lazily as a
-    /// for-in head (C-238 / #1400), materialized only when forced
+    /// a first-class range as (first, LAST) — inclusive, empty when last <
+    /// first, so `a...9223372036854775807` keeps its last element (C-238,
+    /// #4355): iterated lazily as a for-in head (#1400), materialized only
+    /// when forced
     Range(i64, i64),
     /// the dynamic `Value` type (value/json modules) — its text IS its JSON
     /// (ALS-D2, compact, insertion-ordered keys)
@@ -298,11 +300,12 @@ impl Value {
         }
     }
     /// number of elements a range would materialize
-    pub fn range_len(lo: i64, hi: i64) -> u128 {
-        if hi <= lo {
+    /// the element count of the inclusive range [first, last]
+    pub fn range_len(first: i64, last: i64) -> u128 {
+        if last < first {
             0
         } else {
-            (hi as i128 - lo as i128) as u128
+            (last as i128 - first as i128 + 1) as u128
         }
     }
 }
