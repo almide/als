@@ -2934,6 +2934,7 @@ evidence  = [
   { path = "spec/wasm_cross/range_bind_huge.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_bind_walled_no_materialize.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_materialize_oom.almd", class = "fixture" },
+  { path = "spec/wasm_cross/range_inclusive_runtime_max.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-239"
