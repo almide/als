@@ -394,6 +394,13 @@ pub enum Pattern {
     },
     Tuple(Vec<Pattern>),
     List(Vec<Pattern>),
+    /// a list pattern with a rest: `[h, ..]` / `[h, ..t]` — the head
+    /// patterns match the first elements, the rest (bound when named) is
+    /// the list of the elements after them
+    ListRest {
+        head: Vec<Pattern>,
+        rest: Option<String>,
+    },
     /// ALS-E18 / C-323: a match arm's or-pattern alternatives `a | b | c`.
     /// Only an arm's top-level pattern carries alternatives (built in
     /// `match_arms`), they are binder-free by C-323, and the arm is
