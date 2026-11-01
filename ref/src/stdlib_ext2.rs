@@ -1365,11 +1365,17 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Value::Fn(c) => c.clone(),
                 other => return mismatch(name, "a function", other),
             };
+            // ADR-0006: a fallible callback puts the call in first-err form,
+            // the inserting path (no callback run) included
+            let fal = it.cb_fallible(&c);
             let mut out: Vec<(Value, Value)> = (*m).clone();
             let mut hit = false;
             for slot in out.iter_mut() {
                 if crate::value::values_eq(&slot.0, &key) == Some(true) {
-                    slot.1 = it.call_value(&c, vec![slot.1.clone()])?;
+                    match crate::stdlib::call_cb(it, &c, fal, vec![slot.1.clone()])? {
+                        crate::stdlib::Cb::Val(nv) => slot.1 = nv,
+                        crate::stdlib::Cb::Bail(e) => return Ok(Ok(Value::Err(Rc::new(e)))),
+                    }
                     hit = true;
                     break;
                 }
@@ -1377,7 +1383,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             if !hit {
                 out.push((key, args[2].clone()));
             }
-            Ok(Value::Map(Rc::new(out)))
+            Ok(crate::stdlib::hof_out(fal, None, Value::Map(Rc::new(out))))
         }
 
         // ═══ fan mapper forms (ALS-R3 determinism: sequential = parallel) ═══
