@@ -174,7 +174,10 @@ for-in の head としてだけ使われる束縛は**実体化しない**(#1400
 非実体化)/ `range_materialize_oom.almd` が固定する; #1272 の遅延空値
 0 回反復はその前段の回帰 pin)。それ以外の使用は実リストへ実体化する。排他 `0..<3` → 0,1,2、包含 `0...5` →
 0〜5、非零開始・呼び出し境界も両ターゲット同一(fixture は総和
-3 / 15 / 9 / 6 を pin)。
+3 / 15 / 9 / 6 を pin)。包含レンジの終端が実行時に Int の最大値でも、
+実体化したリストは終端の要素まで含む — `end + 1` の桁あふれで空にはならない
+(#4355、`range_inclusive_runtime_max.almd` が束縛・呼び出しへの直渡し・
+1 要素・空・最大値の一つ下を固定する)。
 
 テスト: `spec/wasm_cross/range_first_class.almd`(契約 C-238)、
 `tests/range_spelling_diag_test.rs`(負例)。
