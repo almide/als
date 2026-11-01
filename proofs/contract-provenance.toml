@@ -3332,3 +3332,17 @@ since = "0.69.0"
 entry = "2026-11-01T13:22:35+09:00"
 entry_commit = "c5a40b8a"
 class = "requirements-first"
+
+[[contract]]
+id = "C-449"
+since = "0.69.0"
+entry = "2026-11-01T16:53:29+09:00"
+entry_commit = "fdadf9b7"
+class = "requirements-first"
+
+[[contract]]
+id = "C-450"
+since = "0.69.0"
+entry = "2026-11-01T16:53:29+09:00"
+entry_commit = "fdadf9b7"
+class = "requirements-first"
