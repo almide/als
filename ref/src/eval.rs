@@ -19,6 +19,9 @@ use crate::value::*;
 pub enum Flow {
     /// ALS-R1 abort: `Error: <msg>` on stderr, exit 1
     Abort(String),
+    /// C-219 `panic(msg)`: `PANIC: <msg>` on stderr with no trailing
+    /// newline, exit 1
+    Panic(String),
     /// ALS-DT2 budget cut: the innermost metered region exhausted at a
     /// charge site (check-then-charge); caught by that region's fan head
     Cut,
@@ -197,7 +200,33 @@ fn snapshot_bytes(v: Value) -> Value {
             let copy = b.borrow().clone();
             Value::Bytes(Rc::new(std::cell::RefCell::new(copy)))
         }
+        // C-033: a record alias keeps every field, a Bytes field included —
+        // `let r2 = r` then `bytes.clear(r.buf)` leaves `r2.buf` as it was
+        Value::Record { type_name, fields } if fields.iter().any(|(_, f)| holds_bytes(f)) => {
+            Value::Record {
+                type_name,
+                fields: Rc::new(
+                    fields
+                        .iter()
+                        .map(|(k, f)| (k.clone(), snapshot_bytes(f.clone())))
+                        .collect(),
+                ),
+            }
+        }
+        Value::Tuple(xs) if xs.iter().any(holds_bytes) => Value::Tuple(Rc::new(
+            xs.iter().map(|x| snapshot_bytes(x.clone())).collect(),
+        )),
         other => other,
+    }
+}
+
+/// a Bytes buffer directly in this value, or in a record or tuple it holds
+fn holds_bytes(v: &Value) -> bool {
+    match v {
+        Value::Bytes(_) => true,
+        Value::Record { fields, .. } => fields.iter().any(|(_, f)| holds_bytes(f)),
+        Value::Tuple(xs) => xs.iter().any(holds_bytes),
+        _ => false,
     }
 }
 
@@ -227,6 +256,7 @@ const IN_PLACE: &[&str] = &[
     "list.clear",
     "map.clear",
     "string.push",
+    "string.clear",
 ];
 
 const PRELUDE: &[&str] = &[
@@ -432,6 +462,14 @@ impl Interp {
             }
             Err(Flow::Abort(msg)) => {
                 stderr.push_str(&format!("Error: {msg}\n"));
+                Outcome::Ran {
+                    exit: 1,
+                    stdout,
+                    stderr,
+                }
+            }
+            Err(Flow::Panic(msg)) => {
+                stderr.push_str(&format!("PANIC: {msg}"));
                 Outcome::Ran {
                     exit: 1,
                     stdout,
@@ -1357,6 +1395,24 @@ impl Interp {
                 "syntax:named-arg-std",
                 "named arguments to a stdlib mutator",
             );
+        }
+        // `list.pop` on any place (a record field, a field path, a `mut`
+        // record parameter's field): the list without its last element is
+        // written back and the element answered — some(last), none on empty
+        if full == "list.pop" {
+            if pos.len() != 1 {
+                return Err(Flow::Fatal("list.pop: expected 1 argument".into()));
+            }
+            let mut xs = match &pos[0] {
+                Value::List(xs) => (**xs).clone(),
+                other => return Err(Flow::Fatal(format!("list.pop on a {}", other.type_name()))),
+            };
+            let ret = match xs.pop() {
+                Some(x) => Value::Some(Rc::new(x)),
+                None => Value::None,
+            };
+            self.assign_place(env, &place, Value::List(Rc::new(xs)))?;
+            return Ok(ret);
         }
         let updated = stdlib::call(self, full, pos)?;
         self.assign_place(env, &place, updated)?;

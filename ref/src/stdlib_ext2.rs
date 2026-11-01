@@ -27,6 +27,8 @@ pub const EXT2_FNS: &[&str] = &[
     "math.log_gamma",
     "math.choose",
     "math.factorial",
+    "datetime.now_ms",
+    "datetime.monotonic_ns",
     "datetime.year",
     "datetime.month",
     "datetime.day",
@@ -63,10 +65,13 @@ pub const EXT2_FNS: &[&str] = &[
     "hex.encode_upper",
     "hex.decode",
     "int.to_hex",
+    "url.encode_component",
+    "url.build_query",
     "path.join",
     "path.basename",
     "path.dirname",
     "path.extension",
+    "path.stem",
     "path.is_absolute",
     "path.join_within",
     "args.has_flag",
@@ -372,6 +377,23 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
 
         // ═══ datetime — the civil calendar, translated verbatim from
         //     stdlib/datetime_calendar.almd (wrapping i64 + truncating /) ═══
+        // the host's clocks: the wall clock in ms since the Unix epoch, and a
+        // monotonic count of ns from this run's first read — only the
+        // relation between two monotonic reads is a promise (C-327)
+        "datetime.now_ms" => {
+            arity(name, &args, 0)?;
+            let ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            Ok(Value::Int(ms))
+        }
+        "datetime.monotonic_ns" => {
+            arity(name, &args, 0)?;
+            static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+            let origin = ORIGIN.get_or_init(std::time::Instant::now);
+            Ok(Value::Int(origin.elapsed().as_nanos() as i64))
+        }
         "datetime.year" => {
             arity(name, &args, 1)?;
             Ok(Value::Int(civ(want_int(name, &args[0])?).0))
@@ -472,6 +494,29 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Ok(v) => Value::Ok(Rc::new(v)),
                 Err(msg) => Value::Err(Rc::new(Value::str(&msg))),
             })
+        }
+        // stdlib/url.almd `encode_component`: every scalar but A-Za-z0-9-._~
+        // as its UTF-8 bytes in upper-case %XX escapes; `build_query` joins
+        // `k=v` pairs, each side encoded, with `&`
+        "url.encode_component" => {
+            arity(name, &args, 1)?;
+            Ok(Value::str(&url_encode(want_str(name, &args[0])?)))
+        }
+        "url.build_query" => {
+            arity(name, &args, 1)?;
+            let xs = want_list(name, &args[0])?.clone();
+            let mut parts: Vec<String> = Vec::with_capacity(xs.len());
+            for x in xs.iter() {
+                match x {
+                    Value::Tuple(kv) if kv.len() == 2 => {
+                        let k = want_str(name, &kv[0])?;
+                        let v = want_str(name, &kv[1])?;
+                        parts.push(format!("{}={}", url_encode(k), url_encode(v)));
+                    }
+                    other => return mismatch(name, "(String, String)", other),
+                }
+            }
+            Ok(Value::str(&parts.join("&")))
         }
         "url.parse_query" => {
             arity(name, &args, 1)?;
@@ -725,6 +770,26 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
                 Some(k) if k > 0 => some(Value::str(&base[k + 1..])),
                 _ => Value::None,
             })
+        }
+        // stdlib/path.almd `stem`: the basename (the last non-empty `/`
+        // segment) minus its last `.` segment; no dot, or only a leading dot
+        // with nothing after another one, keeps the name as it is
+        "path.stem" => {
+            arity(name, &args, 1)?;
+            let p: Vec<char> = want_str(name, &args[0])?.chars().collect();
+            let base = split_char(&p, '/')
+                .into_iter()
+                .rfind(|seg| !seg.is_empty())
+                .unwrap_or_default();
+            let parts = split_char(&base, '.');
+            let n = parts.len();
+            let leading_dot = base.first() == Some(&'.');
+            Ok(Value::str(&if n <= 1 || (leading_dot && n == 2) {
+                str_of(&base)
+            } else {
+                let kept: Vec<String> = parts[..n - 1].iter().map(|seg| str_of(seg)).collect();
+                kept.join(".")
+            }))
         }
         "path.is_absolute" => {
             arity(name, &args, 1)?;
@@ -1472,6 +1537,24 @@ fn digits_to_i64(cs: &[char]) -> Option<i64> {
 }
 
 /// Split on a single char, every field kept (the `string.split` shape).
+fn url_encode(s: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut out = String::new();
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_' | '~') {
+            out.push(c);
+        } else {
+            let mut buf = [0u8; 4];
+            for b in c.encode_utf8(&mut buf).bytes() {
+                out.push('%');
+                out.push(char::from(HEX[usize::from(b >> 4)]));
+                out.push(char::from(HEX[usize::from(b & 15)]));
+            }
+        }
+    }
+    out
+}
+
 fn split_char(cs: &[char], sep: char) -> Vec<Vec<char>> {
     let mut out: Vec<Vec<char>> = vec![Vec::new()];
     for c in cs {

@@ -21,6 +21,7 @@ pub fn implemented() -> Vec<&'static str> {
     v.extend(crate::stdlib_ext::EXT_FNS);
     v.extend(crate::stdlib_ext2::EXT2_FNS);
     v.extend(crate::stdlib_matrix::MATRIX_FNS);
+    v.extend(crate::stdlib_zlib::ZLIB_FNS);
     v.extend(crate::stdlib_sized::SIZED_FNS);
     v.extend(crate::stdlib_regex::REGEX_FNS);
     v.extend(crate::stdlib_testing::TESTING_FNS);
@@ -37,9 +38,17 @@ pub fn implemented() -> Vec<&'static str> {
     v
 }
 
-const PRELUDE_FNS: &[&str] = &["println", "eprintln", "assert", "assert_eq", "assert_ne"];
+const PRELUDE_FNS: &[&str] = &[
+    "println",
+    "eprintln",
+    "assert",
+    "assert_eq",
+    "assert_ne",
+    "panic",
+];
 const LIST_FNS: &[&str] = &[
     "list.len",
+    "list.each",
     "list.get",
     "list.set",
     "list.swap",
@@ -542,6 +551,13 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::Unit)
         }
+        // C-219: `panic(msg)` is typed Never; it renders its argument and
+        // aborts the run through the one `PANIC:` path
+        "panic" => {
+            arity(name, &args, 1)?;
+            let msg = render_arg(&args[0])?;
+            Err(Flow::Panic(msg))
+        }
         "assert" => {
             if args.is_empty() || args.len() > 2 {
                 return Err(Flow::Fatal("assert: expected 1 or 2 arguments".into()));
@@ -1022,6 +1038,20 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 _ => unreachable!(),
             };
             Ok(hof_out(fal, bail, v))
+        }
+        // `each`: the callback on every element in order, for its effect; a
+        // fallible callback stops at the first err (ADR-0006)
+        "list.each" => {
+            arity(name, &args, 2)?;
+            let xs = want_list(name, &args[0])?.clone();
+            let c = want_fn(name, &args[1])?.clone();
+            let fal = it.cb_fallible(&c);
+            for x in xs.iter() {
+                if let Cb::Bail(e) = call_cb(it, &c, fal, vec![x.clone()])? {
+                    return Ok(Value::Err(Rc::new(e)));
+                }
+            }
+            Ok(hof_out(fal, None, Value::Unit))
         }
         "list.fold" | "list.scan" => {
             arity(name, &args, 3)?;
@@ -2565,6 +2595,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             .or_else(|| crate::stdlib_regex::call_regex(it, other, args.clone()))
             .or_else(|| crate::stdlib_testing::call_testing(it, other, args.clone()))
             .or_else(|| crate::stdlib_bigint::call_bigint(it, other, args.clone()))
+            .or_else(|| crate::stdlib_zlib::call_zlib(it, other, args.clone()))
             .or_else(|| crate::stdlib_matrix::call_matrix(it, other, args))
         {
             Some(r) => r,

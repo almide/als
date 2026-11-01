@@ -44,6 +44,7 @@ pub const MATRIX_FNS: &[&str] = &[
     "matrix.concat_cols_many",
     "matrix.concat_rows",
     "matrix.to_bytes_f32_le",
+    "matrix.to_bytes_f64_le",
     // the operator kernels (stdlib/matrix.almd): `+ - * /` and unary `-`
     // on Matrix desugar to these, and concat_rows folds __append_rows
     "matrix.__add",
@@ -606,6 +607,16 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             let mut out = Vec::with_capacity(m.data.len() * 4);
             for x in m.data.iter() {
                 out.extend_from_slice(&(*x as f32).to_bits().to_le_bytes());
+            }
+            Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
+        }
+        // row-major f64 LE, 8 bytes per element
+        "matrix.to_bytes_f64_le" => {
+            arity(name, &args, 1)?;
+            let m = want_mat(name, &args[0])?;
+            let mut out = Vec::with_capacity(m.data.len() * 8);
+            for x in m.data.iter() {
+                out.extend_from_slice(&x.to_bits().to_le_bytes());
             }
             Ok(Value::Bytes(Rc::new(std::cell::RefCell::new(out))))
         }
