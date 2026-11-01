@@ -67,8 +67,8 @@ jobs:
       - name: Reference evaluator builds (zero dependencies, stable only)
         run: cargo build --release --quiet
         working-directory: ref
-      - name: Reference evaluator regression programs (ref/tests/regressions.rs)
-        run: cargo test --release --quiet --test regressions
+      - name: Reference evaluator tests (every ref/tests/*.rs)
+        run: cargo test --release --quiet
         working-directory: ref
       - name: Reference evaluator is independent (ADR-0015 clauses 1/4/5/6)
         run: bash scripts/check-ref-independence.sh

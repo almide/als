@@ -242,7 +242,12 @@ fn parse_matches_host() {
     let mut expected: Vec<u64> = Vec::new();
     for s in &inputs {
         let host: f64 = s.parse().unwrap();
-        expected.push(if host.is_nan() {
+        // ALS-T2 / C-413: float.parse is FINITE-ONLY — a literal that
+        // rounds past f64::MAX is `err("float literal out of range")`, where
+        // the host answers inf; the probe's `?? -1.0` reads that err as -1.0
+        expected.push(if host.is_infinite() {
+            (-1.0f64).to_bits()
+        } else if host.is_nan() {
             0x7FF8000000000000
         } else {
             host.to_bits()
