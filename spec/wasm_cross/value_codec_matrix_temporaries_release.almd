@@ -1,0 +1,20 @@
+// @contract: C-060, C-209
+// Value and Codec operations release their temporaries on the structural
+// wasm leg (#2975, #2974): a `Value` built inside an interpolation part, the
+// formatted digits of a float `Value` the JSON serializer writes, and the
+// option chunks a derived `encode` concatenates to omit a `none` field. Each
+// stayed live until exit; stdout pins the reprs, the live-at-exit ledger pins
+// that nothing stays live. (The multi-head attention scratch row this fixture
+// also pinned left with the function, dialect epoch 14.)
+import json
+
+type O: Codec = { oi: Int? = none, of: Float? = none, req: String }
+
+effect fn main() -> Unit = {
+  println("int=${value.int(2)} flt=${value.float(2.5)} arr=${value.array([value.float(0.25), value.string("s")])}")
+  println(json.stringify(value.object([("ratio", value.float(1.5)), ("n", value.int(3))])))
+  let missing = O.decode(json.parse("{\"req\": \"r\"}")!)!
+  println(json.stringify(O.encode(missing)))
+  let present = O { oi: some(4), of: some(0.5), req: "q" }
+  println(json.stringify(O.encode(present)))
+}
