@@ -3984,7 +3984,17 @@ since     = "0.60.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/closure_captured_list_mutation.almd", class = "fixture" },
+  { path = "spec/wasm_cross/closure_captured_map_key_write.almd", class = "fixture" },
+  { path = "spec/wasm_cross/closure_bytes_list_index_arg.almd", class = "fixture" },
   { path = "spec/wasm_cross/closure_captured_map_records.almd", class = "fixture" },
+  { path = "spec/wasm_cross/bytes_writer_mut_from_declaration.almd", class = "fixture" },
+  { path = "spec/wasm_cross/closure_reads_var_written_by_mut_call.almd", class = "fixture" },
+  { path = "spec/wasm_cross/closure_captured_record_field_mutation.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_closure_capture_read.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_closure_capture_write.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_closure_field_path_write.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_cell_tail_capture_read.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_cell_tail_capture_write.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-320"
@@ -3995,6 +4005,7 @@ since     = "0.60.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fuel_cut_in_arm_loop.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fuel_cut_releases_frame.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-302"
@@ -4009,6 +4020,7 @@ evidence  = [
   { path = "spec/wasm_cross/math_transcendental_bits.almd", class = "fixture" },
   { path = "spec/wasm_cross/float_signed_zero_minmax.almd", class = "fixture" },
   { path = "spec/wasm_cross/float_to_int_edges.almd", class = "fixture" },
+  { path = "spec/wasm_cross/accum_recursion_declined.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-303"
@@ -4198,6 +4210,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fan_prefetch_fs.almd", class = "fixture" },
   { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_component_fan_prefetch_reads_concurrently" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 [[contract]]
 id        = "C-322"
@@ -4219,6 +4232,8 @@ since     = "0.60.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/or_pattern.almd", class = "fixture" },
+  { path = "spec/wasm_cross/or_pattern_guarded_nullary.almd", class = "fixture" },
+  { path = "spec/wasm_cross/or_pattern_heap_subject_matrix.almd", class = "fixture" },
   { path = "spec/lang/or_pattern_test.almd", class = "fixture" },
   { path = "spec/wasm_cross/ref_rust_or_pattern_guard_count.almd", class = "fixture" },
   { path = "spec/wasm_cross/ref_grain_or_pattern_alias_match.almd", class = "fixture" },
@@ -4267,6 +4282,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/env_sleep_pause.almd", class = "fixture" },
   { path = "spec/wasm_cross/availability_pure_batch.almd", class = "fixture" },
+  { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_component_serves_env_args_and_sleep_like_native" },
 ]
 [[contract]]
 id        = "C-330"
@@ -4279,6 +4295,7 @@ evidence  = [
   { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_component_speaks_http" },
   { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_component_speaks_framed_http" },
   { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_http_transport_error_leaves_the_next_exchange_intact" },
+  { path = "tests/component_p3_test.rs", class = "fixture", name = "p3_components_need_no_feature_flag" },
 ]
 [[contract]]
 id        = "C-328"
@@ -4293,6 +4310,11 @@ evidence  = [
   { path = "spec/embedded_cross/http_error_classes.almd", class = "fixture" },
   { path = "spec/embedded_cross/http_url_redaction.almd", class = "fixture" },
   { path = "spec/embedded_cross/http_url_redaction_dial.almd", class = "fixture" },
+  { path = "tests/http_response_cross_test.rs", class = "fixture", name = "the_full_response_family_reads_the_same_on_native_and_the_p3_component" },
+  { path = "tests/http_response_cross_test.rs", class = "fixture", name = "the_full_response_family_reads_the_same_on_native_and_the_embedded_lane" },
+  { path = "tests/http_error_class_cross_test.rs", class = "fixture", name = "the_spec_fixtures_read_the_same_on_native_embedded_and_p3" },
+  { path = "tests/http_error_class_cross_test.rs", class = "fixture", name = "the_server_classes_read_the_same_on_native_embedded_and_p3" },
+  { path = "tests/http_error_class_cross_test.rs", class = "fixture", name = "a_url_userinfo_is_sent_as_basic_credentials_on_native_embedded_and_p3" },
 ]
 [[contract]]
 id        = "C-329"
@@ -4304,6 +4326,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/env_set_overlay.almd", class = "fixture" },
   { path = "crates/almide-wasm/tests/wasi_services.rs", name = "hello_ships_no_environ_or_args_service", class = "by-construction" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_env_set_matches_native_and_p1" },
 ]
 [[contract]]
 id        = "C-331"
@@ -4326,6 +4349,8 @@ evidence  = [
   { path = "spec/wasm_cross/list_rest_pattern.almd", class = "fixture" },
   { path = "spec/lang/list_rest_pattern_test.almd", class = "fixture" },
   { path = "tests/diagnostics/list-rest-not-last/broken.almd", class = "fixture" },
+  { path = "tests/list_pattern_tuple_test.rs", class = "fixture", name = "a_guarded_tuple_arm_with_a_list_pattern_honours_its_guard" },
+  { path = "tests/list_pattern_tuple_test.rs", class = "fixture", name = "refutable_element_patterns_are_tested_on_both_legs" },
 ]
 [[contract]]
 id        = "C-333"
@@ -4377,6 +4402,7 @@ status    = "active"
 evidence  = [
   { path = "spec/integration/modules/cross_module_global_state_loop_test.almd", class = "fixture" },
   { path = "spec/integration/modules/cross_module_cell_update_test.almd", class = "fixture" },
+  { path = "spec/integration/modules/cross_module_reinit_entry_collision_test.almd", class = "fixture" },
 ]
 
 # ── BYTES SEARCH / EDIT / PREDICATE FAMILY ────────────────────────────
@@ -4482,6 +4508,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/result_param_not_first.almd", class = "fixture" },
   { path = "spec/wasm_cross/result_generic_param_arg.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fallible_hof_option_effect_callback.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-346"
@@ -4538,11 +4565,13 @@ statement = "`process.exit(code)` terminates with `code` when `0 <= code <= 255`
 since     = "0.63.0"
 status    = "active"
 evidence  = [
+  { path = "tests/exit_tail_positions_test.rs", name = "dynamic_exit_codes_execute_in_every_tail_position", class = "fixture" },
   { path = "tests/incumbent_exit_tail_test.rs", name = "dynamic_exit_codes_execute_in_every_tail_position", class = "fixture" },
   { path = "spec/wasm_cross/exit_code_out_of_range.almd", class = "fixture" },
   { path = "spec/wasm_cross/exit_code_upper_bound.almd", class = "fixture" },
   { path = "spec/wasm_cross/exit_code_passthrough.almd", class = "fixture" },
   { path = "spec/embedded_cross/exit_status_passthrough.almd", class = "fixture" },
+  { path = "tests/http_response_cross_test.rs", class = "fixture", name = "an_exit_code_crosses_the_component_route" },
 ]
 
 [[contract]]
@@ -4569,6 +4598,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/ref_rust_or_pattern_guard_count.almd", class = "fixture" },
   { path = "spec/wasm_cross/ref_gleam_or_pattern_alternatives.almd", class = "fixture" },
+  { path = "spec/wasm_cross/ref_rust_or_pattern_guard_retry.almd", class = "fixture" },
 ]
 
 # ── A MATRIX KERNEL'S SHAPE PRECONDITION IS A DEFINED ABORT ──
@@ -4717,6 +4747,8 @@ status    = "active"
 evidence  = [
   { path = "tests/diagnostics/e086-scope-escape-tail/broken.almd", class = "fixture" },
   { path = "tests/diagnostics/e087-scope-unscoped-callee/broken.almd", class = "fixture" },
+  { path = "tests/diagnostic_harness_test.rs", name = "broken_files_produce_expected_diagnostics", class = "fixture" },
+  { path = "tests/scoped_region_test.rs", name = "the_same_refusal_on_both_check_targets", class = "fixture" },
   { path = "tests/diagnostics/e088-scope-nontail-recursion/broken.almd", class = "fixture" },
 ]
 [[contract]]
@@ -4728,6 +4760,7 @@ since     = "0.64.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/generic_protocol_conformance.almd", class = "fixture" },
+  { path = "spec/integration/generic_protocol_ports/src/shop_test.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-366"
@@ -4754,7 +4787,17 @@ status    = "active"
 evidence  = [
   { path = "spec/serve_cross/http_serve_replay.almd", class = "fixture" },
   { path = "spec/serve_cross/http_serve_shutdown.almd", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "http_serve_answers_the_same_status_headers_and_body_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_bind_failure_aborts_identically_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_sigterm_drains_the_request_in_flight_flushes_stdout_and_returns_from_serve_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_second_sigterm_during_the_drain_flushes_stdout_and_exits_1_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_sigterm_to_the_almide_run_pid_alone_drains_the_program_and_leaves_no_process_behind", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_sigint_to_the_almide_run_group_drains_once_and_is_not_a_forced_stop", class = "fixture" },
   { path = "spec/serve_cross/http_serve_limits.almd", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_huge_or_cut_content_length_is_refused_before_the_handler_and_a_chunked_body_is_read_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "head_has_no_body_429_and_503_carry_their_reasons_and_a_pipelined_request_meets_connection_close_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_response_header_holding_crlf_is_refused_with_500_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_bad_status_or_field_is_refused_and_the_handlers_framing_fields_are_dropped_on_native_and_the_embedded_lane", class = "fixture" },
 ]
 [[contract]]
 id        = "C-368"
@@ -4785,6 +4828,7 @@ since     = "0.66.0"
 status    = "active"
 evidence  = [
   { path = "spec/embedded_cross/http_header_refusal.almd", class = "fixture" },
+  { path = "tests/http_error_class_cross_test.rs", class = "fixture", name = "the_spec_fixtures_read_the_same_on_native_embedded_and_p3" },
 ]
 [[contract]]
 id        = "C-371"
@@ -4805,6 +4849,7 @@ since     = "0.66.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/float32_display_shortest.almd", class = "fixture" },
+  { path = "spec/wasm_cross/sized_display_matrix.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-373"
@@ -4836,6 +4881,7 @@ since     = "0.67.0"
 status    = "active"
 evidence  = [
   { path = "spec/serve_cross/http_serve_export.almd", class = "fixture" },
+  { path = "tests/http_serve_export_test.rs", name = "the_stock_serve_export_answers_what_native_answers_under_wasmtime_serve", class = "fixture" },
 ]
 [[contract]]
 id        = "C-376"
@@ -5004,6 +5050,8 @@ since     = "0.69.0"
 status    = "active"
 evidence  = [
   { path = "spec/serve_cross/http_serve_limits.almd", class = "fixture" },
+  { path = "tests/http_serve_cross_test.rs", name = "a_client_trickling_its_head_does_not_stall_the_next_client_and_is_answered_408_at_the_header_deadline_on_native_and_the_embedded_lane", class = "fixture" },
+  { path = "crates/almide-rt-core/tests/almide_rt_core_http.rs", name = "a_head_not_whole_by_the_header_deadline_is_408_and_a_silent_client_is_closed_unanswered", class = "fixture" },
 ]
 
 [[contract]]
@@ -5037,7 +5085,11 @@ since     = "0.69.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fs_root_escape.almd", class = "fixture" },
+  { path = "spec/stdlib/fs_root_test.almd", class = "fixture" },
   { path = "tests/fs_scope_test.rs", name = "a_symlink_inside_a_root_pointing_outside_is_refused_alike_on_both_targets", class = "fixture" },
+  { path = "tests/fs_scope_test.rs", name = "a_directory_flipped_to_a_symlink_during_rooted_reads_never_leaks_on_either_target", class = "fixture" },
+  { path = "tests/fs_scope_test.rs", name = "the_stock_wasm_artifact_refuses_rooted_symlinks_alike", class = "fixture" },
+  { path = "crates/almide-rt-core/tests/fs_beneath_core.rs", name = "a_dir_swapped_for_a_symlink_mid_walk_is_never_followed", class = "fixture" },
 ]
 
 [[contract]]
@@ -5050,6 +5102,9 @@ status    = "active"
 evidence  = [
   { path = "tests/fs_scope_test.rs", name = "permissions_fs_bounds_every_fs_call_alike_on_both_targets", class = "fixture" },
   { path = "tests/fs_scope_test.rs", name = "the_component_host_preopens_only_the_granted_roots", class = "fixture" },
+  { path = "tests/fs_scope_test.rs", name = "almide_test_is_bounded_by_permissions_fs_on_both_targets", class = "fixture" },
+  { path = "tests/fs_scope_test.rs", name = "a_directory_flipped_to_a_symlink_under_permissions_fs_never_leaks_on_either_target", class = "fixture" },
+  { path = "crates/almide-rt-core/tests/fs_scoped_core.rs", name = "a_dir_swapped_for_a_symlink_after_the_decision_is_never_followed", class = "fixture" },
 ]
 
 [[contract]]
