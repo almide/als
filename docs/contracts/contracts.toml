@@ -1438,6 +1438,7 @@ evidence  = [
   { path = "spec/wasm_cross/list_enumerate_find.almd", class = "fixture" },
   { path = "spec/wasm_cross/list_iter_tco.almd", class = "fixture" },
   { path = "spec/wasm_cross/list_heap_tuple_return.almd", class = "fixture" },
+  { path = "spec/wasm_cross/list_find_map_short_circuit.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-103"
@@ -2291,6 +2292,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/unsigned_literal_domain.almd", class = "fixture" },
   { path = "tests/diagnostics/e024-unsigned-negative-literal/broken.almd", class = "fixture" },
+  { path = "spec/wasm_cross/declaration_literal_domain.almd", class = "fixture" },
 ]
 
 # ── TCO HEAP-ACCUMULATOR SEED: THE UPFRONT COPY IS A REAL SHARE ───────
@@ -2365,6 +2367,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/uint64_upper_half.almd", class = "fixture" },
   { path = "spec/wasm_cross/unsigned_literal_domain.almd", class = "fixture" },
+  { path = "spec/wasm_cross/declaration_literal_domain.almd", class = "fixture" },
   { path = "spec/wasm_cross/sized_display_matrix.almd", class = "fixture" },
   { path = "spec/wasm_cross/uint64_assert_display.almd", class = "fixture" },
 ]
@@ -3647,6 +3650,8 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fallible_hof_effect_callback_family.almd", class = "fixture" },
   { path = "spec/wasm_cross/fallible_hof_option_effect_callback.almd", class = "fixture" },
+  { path = "spec/wasm_cross/list_find_map_short_circuit.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fallible_hof_recursive_callee.almd", class = "fixture" },
   { path = "spec/integration/module_fallible_lambda_callee/src/main.almd", class = "fixture" },
 ]
 [[contract]]
