@@ -37,6 +37,7 @@ mod stdlib_matrix;
 mod stdlib_regex;
 mod stdlib_sized;
 mod stdlib_testing;
+mod stdlib_zlib;
 mod value;
 
 use std::io::Write;

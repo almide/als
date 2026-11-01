@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::eval::{Flow, Interp};
-use crate::value::{dyn_text, json_quote, values_eq, Dyn, PathSeg, Value, F64};
+use crate::value::{dyn_text, json_quote, values_eq, Callable, Dyn, PathSeg, Value, F64};
 
 pub const EXT_FNS: &[&str] = &[
     // value
@@ -61,6 +61,7 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.to_list",
     "bytes.len",
     "bytes.is_empty",
+    "bytes.is_valid_utf8",
     "bytes.get",
     "bytes.slice",
     "bytes.repeat",
@@ -140,6 +141,9 @@ pub const EXT_FNS: &[&str] = &[
     "bytes.get_f64_le",
     "bytes.get_f64_be",
     "bytes.next_u8",
+    "bytes.get_bool",
+    "bytes.next_bool",
+    "bytes.put_bool",
     "bytes.next_u16_le",
     "bytes.next_u16_be",
     "bytes.next_i16_le",
@@ -269,6 +273,8 @@ pub const EXT_FNS: &[&str] = &[
     "fs.read_text_if_exists",
     "fs.fold_lines",
     "fs.for_each_line",
+    "fs.fold_lines_range",
+    "fs.fold_lines_chunked",
     "fs.open_root",
     "fs.root_read_text",
     "fs.root_write_text",
@@ -288,6 +294,7 @@ pub const EXT_FNS: &[&str] = &[
     "process.exit",
     // late arrivals for the core modules
     "string.push",
+    "string.clear",
     "list.group_by",
 ];
 
@@ -474,6 +481,65 @@ fn io_err(e: std::io::Error) -> Value {
     err_str(&e.to_string())
 }
 
+/// C-215: an fs failure inside a walker names the call and its quoted path
+fn fs_call_err(call: &str, path: &str, e: std::io::Error) -> Value {
+    err_str(&format!("{call}({}): {e}", err_operand(path)))
+}
+
+/// `read_line` over bytes from `at`: the line through its `\n` (or the end),
+/// and how many bytes it took
+fn read_line_at(data: &[u8], at: usize) -> (&[u8], usize) {
+    if at >= data.len() {
+        return (&[], 0);
+    }
+    let rest = &data[at..];
+    match rest.iter().position(|b| *b == b'\n') {
+        Some(k) => (&rest[..=k], k + 1),
+        None => (rest, rest.len()),
+    }
+}
+
+/// The range walk of `fs.fold_lines_range`; the inner Err is a read error's
+/// text (a line that is not UTF-8)
+fn fold_byte_range(
+    it: &mut Interp,
+    c: &Rc<Callable>,
+    data: &[u8],
+    start: i64,
+    end: i64,
+    init: Value,
+) -> Result<Result<Value, String>, Flow> {
+    let mut pos: usize = if start > 0 { (start - 1) as usize } else { 0 };
+    if start > 0 {
+        let (_, n) = read_line_at(data, pos);
+        if n == 0 {
+            return Ok(Ok(init));
+        }
+        pos += n;
+    }
+    let mut acc = init;
+    while (pos as i64) < end {
+        let (line, n) = read_line_at(data, pos);
+        if n == 0 {
+            break;
+        }
+        pos += n;
+        let mut line = line;
+        if line.last() == Some(&b'\n') {
+            line = &line[..line.len() - 1];
+            if line.last() == Some(&b'\r') {
+                line = &line[..line.len() - 1];
+            }
+        }
+        let text = match std::str::from_utf8(line) {
+            Ok(t) => t,
+            Err(_) => return Ok(Err("stream did not contain valid UTF-8".into())),
+        };
+        acc = it.call_value(c, vec![acc, Value::str(text)])?;
+    }
+    Ok(Ok(acc))
+}
+
 /// C-418: `"s"` with every character of C-418's set (`ERR_ESCAPED`) written
 /// `\\n` `\\r` `\\t` `\\0` or `\\u{hex}`; every other character, quote and
 /// backslash included, kept as is.
@@ -553,6 +619,7 @@ pub fn call_ext(it: &mut Interp, name: &str, args: Vec<Value>) -> Option<Result<
         | "fs.remove_all"
         | "fs.stat"
         | "fs.copy"
+        | "fs.walk"
         | "fs.rename" => args
             .iter()
             .take(if name == "fs.copy" || name == "fs.rename" {
@@ -944,6 +1011,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let b = want_bytes(name, &args[0])?;
             let e = b.borrow().is_empty();
             Ok(Value::Bool(e))
+        }
+        // the validator `bytes.to_string` reads its verdict from; true when empty
+        "bytes.is_valid_utf8" => {
+            arity(name, &args, 1)?;
+            let b = want_bytes(name, &args[0])?;
+            let valid = std::str::from_utf8(&b.borrow()).is_ok();
+            Ok(Value::Bool(valid))
         }
         "bytes.get" | "bytes.get_u8" => {
             arity(name, &args, 2)?;
@@ -1478,9 +1552,11 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             // the callback call sequence
             let cb_at = if name == "fs.fold_lines" { 2 } else { 1 };
             arity(name, &args, cb_at + 1)?;
-            let text = match std::fs::read_to_string(&**want_str(name, &args[0])?) {
+            let path = want_str(name, &args[0])?;
+            // C-215: the read's failure names the walker the writer called
+            let text = match std::fs::read_to_string(&**path) {
                 Ok(s) => s,
-                Err(e) => return Ok(Ok(io_err(e))),
+                Err(e) => return Ok(Ok(fs_call_err(name, path, e))),
             };
             let c = match &args[cb_at] {
                 Value::Fn(c) => c.clone(),
@@ -1517,6 +1593,65 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             } else {
                 Value::Unit
             }))
+        }
+        // stdlib/fs.almd `fold_lines_range`: fold the lines whose first byte
+        // follows a byte in [start, end) — line 0 belongs to the range
+        // holding byte 0 — so a partition of [0, size) folds every line
+        // once; the last line may read past `end` to finish
+        "fs.fold_lines_range" => {
+            arity(name, &args, 5)?;
+            let path = want_str(name, &args[0])?;
+            let (start, end) = (want_int(name, &args[1])?, want_int(name, &args[2])?);
+            let c = match &args[4] {
+                Value::Fn(c) => c.clone(),
+                other => return mismatch(name, "a function", other),
+            };
+            let data = match std::fs::read(&**path) {
+                Ok(d) => d,
+                Err(e) => return Ok(Ok(fs_call_err(name, path, e))),
+            };
+            match fold_byte_range(it, &c, &data, start, end, args[3].clone())? {
+                Ok(v) => Ok(ok(v)),
+                Err(msg) => Ok(err_str(&format!("{name}({}): {msg}", err_operand(path)))),
+            }
+        }
+        // `fold_lines_chunked(path, workers, init, f)`: `workers` (at least 1)
+        // equal byte chunks of [0, size), empty tail chunks dropped, each
+        // folded from `init` by the range rule; the partials in chunk order
+        "fs.fold_lines_chunked" => {
+            arity(name, &args, 4)?;
+            let path = want_str(name, &args[0])?;
+            let workers = want_int(name, &args[1])?;
+            let c = match &args[3] {
+                Value::Fn(c) => c.clone(),
+                other => return mismatch(name, "a function", other),
+            };
+            let size = match std::fs::metadata(&**path) {
+                Ok(m) => m.len() as i64,
+                Err(e) => return Ok(Ok(fs_call_err(name, path, e))),
+            };
+            let data = match std::fs::read(&**path) {
+                Ok(d) => d,
+                Err(e) => return Ok(Ok(fs_call_err("fs.fold_lines_range", path, e))),
+            };
+            let w = workers.max(1);
+            let chunk = size / w + 1;
+            let count = (size + chunk - 1) / chunk;
+            let mut parts = Vec::new();
+            for i in 0..count {
+                let s0 = i * chunk;
+                let e0 = (s0 + chunk).min(size);
+                match fold_byte_range(it, &c, &data, s0, e0, args[2].clone())? {
+                    Ok(v) => parts.push(v),
+                    Err(msg) => {
+                        return Ok(Ok(err_str(&format!(
+                            "fs.fold_lines_range({}): {msg}",
+                            err_operand(path)
+                        ))))
+                    }
+                }
+            }
+            Ok(ok(Value::List(Rc::new(parts))))
         }
         "fs.remove" | "fs.remove_all" => {
             arity(name, &args, 1)?;
@@ -1579,7 +1714,12 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let a = want_str(name, &args[0])?.to_string();
             let b = want_str(name, &args[1])?.to_string();
             let r = if name == "fs.copy" {
-                std::fs::copy(&a, &b).map(|_| ())
+                // a directory source fails as reading it does (EISDIR), the
+                // read half before the write half
+                match std::fs::metadata(&a) {
+                    Ok(m) if m.is_dir() => std::fs::read(&a).map(|_| ()),
+                    _ => std::fs::copy(&a, &b).map(|_| ()),
+                }
             } else {
                 std::fs::rename(&a, &b)
             };
@@ -1764,6 +1904,13 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             let mut s = want_str(name, &args[0])?.to_string();
             s.push_str(want_str(name, &args[1])?);
             Ok(Value::str(&s))
+        }
+        // in place through Interp::call_in_place: the var is written back
+        // with a fresh empty String; an alias bound before keeps its text
+        "string.clear" => {
+            arity(name, &args, 1)?;
+            let _ = want_str(name, &args[0])?;
+            Ok(Value::str(""))
         }
         "list.group_by" => {
             arity(name, &args, 2)?;
@@ -1993,7 +2140,7 @@ fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flo
         );
     }
     let width: i64 = match ty {
-        "u8" => 1,
+        "u8" | "bool" => 1,
         "u16_le" | "u16_be" | "i16_le" | "i16_be" | "f16_le" | "f16_be" => 2,
         "u32_le" | "u32_be" | "i32_le" | "i32_be" | "f32_le" | "f32_be" => 4,
         "i64_le" | "i64_be" | "f64_le" | "f64_be" => 8,
@@ -2006,7 +2153,12 @@ fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flo
     let rd = format!("bytes.read_{ty}");
     match verb {
         "get" | "next" => {
-            let got = if fits {
+            let got = if fits && ty == "bool" {
+                // `get_bool`: the byte at pos != 0
+                some(Value::Bool(
+                    want_bytes(name, &args[0])?.borrow()[pos as usize] != 0,
+                ))
+            } else if fits {
                 match read_bytes_fn(it, &rd, &args[..2])? {
                     Ok(v) => some(v),
                     Err(f) => return Ok(Err(f)),
@@ -2023,12 +2175,19 @@ fn typed_io(it: &Interp, name: &str, args: &[Value]) -> Result<Result<Value, Flo
         }
         "put" => {
             if !fits {
-                return Ok(Err(Flow::Abstain {
-                    class: "stdlib:panic".into(),
-                    reason: format!(
-                        "{name}: {width}-byte write at {pos} is out of range for length {len} — a panic (C-219), not rendered yet"
-                    ),
-                }));
+                // stdlib/bytes.almd `put_out_of_range`: C-219's panic
+                return Ok(Err(Flow::Panic(format!(
+                    "{name}: {width}-byte write at {pos} is out of range for length {len}"
+                ))));
+            }
+            if ty == "bool" {
+                // `put_bool`: 1 for true, 0 for false
+                let x = match &args[2] {
+                    Value::Bool(x) => *x,
+                    other => return mismatch(name, "Bool", other),
+                };
+                want_bytes(name, &args[0])?.borrow_mut()[pos as usize] = u8::from(x);
+                return Ok(Ok(Value::Unit));
             }
             write_bytes_fn(it, &format!("bytes.set_{ty}"), args)
         }
