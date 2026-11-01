@@ -2692,6 +2692,7 @@ evidence  = [
   { path = "spec/wasm_cross/fuel_var_budget.almd", class = "fixture" },
   { path = "spec/wasm_cross/fuel_interp_uncharged.almd", class = "fixture" },
   { path = "spec/wasm_cross/fuel_single_call_args.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fan_race_walled_program.almd", class = "fixture" },
 ]
 
 # ── DETERMINISTIC RACE WINNER (fan.min) ─
@@ -2710,6 +2711,7 @@ evidence  = [
   { path = "spec/wasm_cross/fuel_trap_window.almd", class = "fixture" },
   { path = "spec/wasm_cross/fan_race_mapper.almd", class = "fixture" },
   { path = "spec/wasm_cross/fuel_single_call_args.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fan_race_walled_program.almd", class = "fixture" },
 ]
 
 # ── SETTLE TUPLE ─
@@ -2761,6 +2763,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/codec_none_omission.almd", class = "fixture" },
   { path = "spec/stdlib/codec_field_matrix_test.almd", class = "fixture" },
+  { path = "spec/wasm_cross/value_codec_matrix_temporaries_release.almd", class = "fixture" },
 ]
 
 # ── NaN OBSERVATION IS CANONICAL — Wasm 3.0 deterministic-profile conformance ─
@@ -2813,6 +2816,7 @@ evidence  = [
   { path = "spec/wasm_cross/endian_auto_import.almd", class = "fixture" },
   { path = "spec/wasm_cross/bytes_copy_within_offset_domain.almd", class = "fixture" },
   { path = "crates/almide-interp/src/inplace.rs", name = "bytes_write_op", class = "by-construction" },
+  { path = "spec/wasm_cross/endian_explicit_import.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-214"
@@ -2835,6 +2839,10 @@ status    = "active"
 evidence  = [
   { path = "spec/stdlib/fs_if_exists_test.almd", class = "fixture" },
   { path = "spec/wasm_cross/fs_read_directory_errno.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fs_read_bytes_raw_call_head.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fs_fallible_walker_call_head.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
+  { path = "tests/fs_if_exists_eloop_test.rs", name = "a_symlink_loop_is_the_readers_err_not_absence_on_every_leg", class = "fixture" },
 ]
 [[contract]]
 id        = "C-216"
@@ -2879,8 +2887,12 @@ statement = "A call whose return type is `Never` — `process.exit(code)`, the s
 since     = "0.56.0"
 status    = "active"
 evidence  = [
+  { path = "tests/exit_tail_positions_test.rs", name = "dynamic_exit_codes_execute_in_every_tail_position", class = "fixture" },
   { path = "tests/incumbent_exit_tail_test.rs", name = "dynamic_exit_codes_execute_in_every_tail_position", class = "fixture" },
   { path = "spec/wasm_cross/guard_else_exit_code.almd", class = "fixture" },
+  { path = "tests/panic_abort_positions_test.rs", name = "panic_aborts_identically_on_native_wasm_and_interp_in_every_position", class = "fixture" },
+  { path = "spec/wasm_cross/never_fn_value_positions.almd", class = "fixture" },
+  { path = "tests/diverging_operand_matrix_test.rs", name = "a_diverging_value_aborts_identically_in_every_position_on_every_leg", class = "fixture" },
 ]
 
 # ── STREAMING LINE WALKERS: O(LONGEST LINE) MEMORY, READ_LINES SEMANTICS ──
@@ -2896,6 +2908,10 @@ evidence  = [
   { path = "spec/stdlib/fs_fold_lines_range_test.almd", class = "fixture" },
   { path = "spec/stdlib/fs_fold_lines_chunked_test.almd", class = "fixture" },
   { path = "spec/wasm_cross/line_endings_bare_cr.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
+  { path = "spec/wasm_cross/statement_after_tail_walker_bang.almd", class = "fixture" },
+  { path = "tests/fs_fold_lines_chunked_rc_acc_test.rs", name = "chunked_fold_over_rc_accumulators_matches_on_both_legs", class = "fixture" },
+  { path = "tests/fs_fold_lines_utf8_scope_test.rs", name = "utf8_is_validated_per_line_read_on_every_walker_and_leg", class = "fixture" },
 ]
 [[contract]]
 id        = "C-221"
@@ -2908,6 +2924,7 @@ evidence  = [
   { path = "spec/wasm_cross/effect_slot_carrier.almd", class = "fixture" },
   { path = "spec/wasm_cross/effect_fn_value.almd", class = "fixture" },
   { path = "spec/lang/fallible_user_hof_test.almd", class = "fixture" },
+  { path = "spec/wasm_cross/effect_slot_never_err_bang.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-222"
@@ -2928,6 +2945,7 @@ since     = "0.56.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/matrix_pow_libm.almd", class = "fixture" },
+  { path = "spec/wasm_cross/matrix_product_family.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-224"
@@ -2949,6 +2967,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fs_read_lines.almd", class = "fixture" },
   { path = "spec/wasm_cross/line_endings_bare_cr.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 [[contract]]
 id        = "C-226"
@@ -2959,8 +2978,17 @@ since     = "0.56.2"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/mut_param_call_chain.almd", class = "fixture" },
+  { path = "spec/wasm_cross/closure_mut_arg_in_nested_match.almd", class = "fixture" },
+  { path = "spec/wasm_cross/lambda_captures_mut_param.almd", class = "fixture" },
+  { path = "spec/wasm_cross/effect_call_arg_credit.almd", class = "fixture" },
   { path = "spec/wasm_cross/mut_param_writeback_growth.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_spread_reassign.almd", class = "fixture" },
   { path = "spec/wasm_cross/list_push_on_record_field.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_scalar_param_reassign.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_tail_recursion.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_list_param_read_by_range_ops.almd", class = "fixture" },
+  { path = "spec/integration/licm_module_mut_call/src/main.almd", class = "fixture" },
+  { path = "spec/wasm_cross/mut_param_fn_value_alternatives.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-227"
@@ -2987,6 +3015,7 @@ evidence  = [
   { path = "spec/wasm_cross/fs_composition_family.almd", class = "fixture" },
   { path = "spec/wasm_cross/matrix_select_rows.almd", class = "fixture" },
   { path = "spec/wasm_cross/fs_glob_segments.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 [[contract]]
 id        = "C-229"
@@ -2998,6 +3027,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/matrix_select_rows_oob.almd", class = "fixture" },
   { path = "spec/wasm_cross/bytes_negative_offset_family.almd", class = "fixture" },
+  { path = "spec/wasm_cross/matrix_select_rows_wrapped_rid.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-230"
@@ -3093,6 +3123,8 @@ evidence  = [
   { path = "spec/wasm_cross/range_bind_huge.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_bind_walled_no_materialize.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_materialize_oom.almd", class = "fixture" },
+  { path = "spec/wasm_cross/range_exclusive_end_at_min.almd", class = "fixture" },
+  { path = "spec/wasm_cross/range_head_fold_edges.almd", class = "fixture" },
   { path = "spec/wasm_cross/range_inclusive_runtime_max.almd", class = "fixture" },
 ]
 [[contract]]
@@ -3176,6 +3208,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/string_interpolation.almd", class = "fixture" },
+  { path = "spec/wasm_cross/top_let_case_distinct_names.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-247"
@@ -3268,6 +3301,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/record_forms.almd", class = "fixture" },
+  { path = "spec/wasm_cross/record_option_none_cells.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-256"
@@ -3278,6 +3312,9 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/loop_break_continue.almd", class = "fixture" },
+  { path = "spec/wasm_cross/guard_jump_in_value_fn.almd", class = "fixture" },
+  { path = "tests/wasm_break_continue_heap_test.rs", name = "break_and_continue_over_heap_locals_match_native_on_the_structural_leg_without_leaking", class = "fixture" },
+  { path = "tests/wasm_break_continue_heap_test.rs", name = "guard_jumps_in_value_returning_fns_match_native_on_the_structural_leg_without_leaking", class = "fixture" },
 ]
 [[contract]]
 id        = "C-257"
@@ -3298,6 +3335,11 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/call_lambda_ctor.almd", class = "fixture" },
+  { path = "spec/wasm_cross/hof_fn_value_callbacks.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fold_family_source_before_init.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fold_init_rebinds_source.almd", class = "fixture" },
+  { path = "spec/wasm_cross/arg_rebinds_earlier_arg.almd", class = "fixture" },
+  { path = "spec/wasm_cross/let_bound_closure_scope.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-259"
@@ -3318,6 +3360,10 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/declaration_forms.almd", class = "fixture" },
+  { path = "spec/wasm_cross/top_let_closure_record.almd", class = "fixture" },
+  { path = "spec/wasm_cross/top_let_fn_value_closure_param.almd", class = "fixture" },
+  { path = "spec/wasm_cross/top_let_fn_value_bytes_param.almd", class = "fixture" },
+  { path = "spec/wasm_cross/top_let_rc_value.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-261"
@@ -3370,6 +3416,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/guard_statement.almd", class = "fixture" },
+  { path = "spec/wasm_cross/guard_value_exit_in_loop.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-266"
@@ -3454,6 +3501,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fs_list_dir_multipass.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 
 # ── fs WRITE-SIDE ERROR TEXT ───────────────────────────────────────────
@@ -3466,6 +3514,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fs_write_errno.almd", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 
 # ── ADR-0006 FALLIBLE CALLBACK FOR THE fs STREAMING WALKERS ────────────
@@ -3481,6 +3530,7 @@ evidence  = [
   { path = "spec/wasm_cross/fs_fallible_stream_callback.almd", class = "fixture" },
   { path = "spec/stdlib/fs_streaming_test.almd", class = "fixture" },
   { path = "tests/fs_streaming_family_gate_test.rs", name = "every_streaming_cell_decides_its_fallible_form", class = "fixture" },
+  { path = "tests/component_p3_fs_cross_test.rs", class = "fixture", name = "p3_component_fs_fixtures_match_native" },
 ]
 
 # ── http RESPONSE HEADERS ──────────────────────────────────────────────
@@ -3564,6 +3614,7 @@ status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/result_default_and_passthrough.almd", class = "fixture" },
   { path = "spec/wasm_cross/effect_tail_carrier_family.almd", class = "fixture" },
+  { path = "spec/wasm_cross/effect_unit_yields_result.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-282"
@@ -3595,6 +3646,8 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/fallible_hof_effect_callback_family.almd", class = "fixture" },
+  { path = "spec/wasm_cross/fallible_hof_option_effect_callback.almd", class = "fixture" },
+  { path = "spec/integration/module_fallible_lambda_callee/src/main.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-285"
@@ -3605,6 +3658,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/regex_engine.almd", class = "fixture" },
+  { path = "spec/wasm_cross/regex_captures_accumulator_release.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-286"
@@ -3655,6 +3709,7 @@ since     = "0.57.1"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/adr0005_operator_equivalence.almd", class = "fixture" },
+  { path = "spec/wasm_cross/optional_chain_heap_field.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-290"

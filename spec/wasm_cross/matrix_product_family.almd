@@ -1,0 +1,39 @@
+// @contract: C-223
+// The matrix products run byte-identically on every leg, the structural one
+// included (#1423 stage 4). Every dot product is native's scalar loop —
+// accumulate from 0.0, k ascending, mul then add, no fused step:
+// - mul is a.rows × b.cols over min(a.cols, b.rows) terms; an operand with no
+//   rows or cols gives the all-zero / empty product;
+// The operands are small integers and halves so every summation order agrees
+// (native's matmul may run through the platform BLAS). (swiglu_gate, pinned
+// here before, left the stdlib at dialect epoch 14 for module nn.kernels of package almide-graphics/nn;
+// the linear-row and conv1d kernels followed it at epoch 15.)
+fn show(tag: String, m: Matrix) -> Unit = {
+  let l = matrix.to_lists(m)
+  let s = matrix.shape(m)
+  println("${tag}: ${s} ${l}")
+}
+
+fn main() -> Unit = {
+  let a = matrix.from_lists([
+    [1.0, 2.0, 3.0],
+    [4.0, 5.0, 6.0]
+  ])
+  let b = matrix.from_lists([
+    [0.5, -1.0],
+    [2.0, 8.0],
+    [3.0, 0.25]
+  ])
+  let c = matrix.from_lists([
+    [10.0, 20.0, 30.0],
+    [40.0, 50.0, 60.0],
+    [70.0, 80.0, 90.0]
+  ])
+  let e = matrix.zeros(0, 0)
+  show("mul", a * b)
+  show("mul_k0", matrix.zeros(3, 0) * matrix.from_lists([
+    [1.0, 2.0]
+  ]))
+  show("mul_b0", a * e)
+  show("mul_a0", e * a)
+}
