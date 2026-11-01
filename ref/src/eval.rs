@@ -1470,10 +1470,15 @@ impl Interp {
                     );
                 }
                 let mut out = Vec::with_capacity(n as usize);
-                let mut i = a;
-                while i < b {
-                    out.push(Value::Int(i));
-                    i += 1;
+                if a <= b {
+                    let mut i = a;
+                    loop {
+                        out.push(Value::Int(i));
+                        if i == b {
+                            break;
+                        }
+                        i += 1;
+                    }
                 }
                 Ok(Value::List(Rc::new(out)))
             }
@@ -2198,12 +2203,18 @@ impl Interp {
                             )))
                         }
                     };
-                    let end = if *inclusive { b } else { b - 1 };
+                    // the inclusive last element; `a ..< Int.MIN` is empty
+                    let (a, end) = match (*inclusive, b.checked_sub(1)) {
+                        (true, _) => (a, b),
+                        (false, Some(last)) => (a, last),
+                        (false, None) => (1, 0),
+                    };
                     if let Some(r) = self.fast_int_range_loop(env, binders, a, end, body) {
                         return r.map(|_| Value::Unit);
                     }
                     let mut i = a;
-                    while i <= end {
+                    let mut more = a <= end;
+                    while more {
                         self.charge(1)?; // ALS-DT2 loop-head check
                         let inner = Env::new(Some(env.clone()));
                         if binders.len() != 1 {
@@ -2218,18 +2229,22 @@ impl Interp {
                             Err(Flow::Continue) => {}
                             Err(f) => return Err(f),
                         }
-                        i += 1;
+                        // stop AT the last element: `i + 1` past
+                        // Int.MAX is no element
+                        more = i < end;
+                        i = i.wrapping_add(1);
                     }
                     self.charge(1)?; // the final failing head check
                     return Ok(Value::Unit);
                 }
                 let it = self.eval(env, iter)?;
                 if let Value::Range(a, b) = it {
-                    if let Some(r) = self.fast_int_range_loop(env, binders, a, b - 1, body) {
+                    if let Some(r) = self.fast_int_range_loop(env, binders, a, b, body) {
                         return r.map(|_| Value::Unit);
                     }
                     let mut i = a;
-                    while i < b {
+                    let mut more = a <= b;
+                    while more {
                         self.charge(1)?; // ALS-DT2 loop-head check
                         let inner = Env::new(Some(env.clone()));
                         if binders.len() != 1 {
@@ -2244,7 +2259,8 @@ impl Interp {
                             Err(Flow::Continue) => {}
                             Err(f) => return Err(f),
                         }
-                        i += 1;
+                        more = i < b;
+                        i = i.wrapping_add(1);
                     }
                     self.charge(1)?; // the final failing head check
                     return Ok(Value::Unit);
@@ -2763,6 +2779,15 @@ impl Interp {
                 }
             }
             Expr::Pipe { lhs, rhs } => {
+                // `list.range(a, b) |> list.map/filter … |> list.fold(k, g)`
+                // over pure Int callbacks: one fused walk (crate::fuse)
+                if self.meter.is_empty() && self.is_module_ref(env, "list") {
+                    if let Some(plan) = crate::fuse::plan(lhs, rhs, env) {
+                        if let Some(r) = self.run_fused(env, plan) {
+                            return r;
+                        }
+                    }
+                }
                 // `s |> bump` / `s |> f(a)` into a fn with a `mut` first
                 // parameter: the piped PLACE is the argument, so the write-back
                 // reaches it (C-226), as `bump(s)` does
@@ -2842,10 +2867,12 @@ impl Interp {
                 let l = self.eval(env, lo)?;
                 let h = self.eval(env, hi)?;
                 match (l, h) {
-                    (Value::Int(a), Value::Int(b)) => {
-                        let end = if *inclusive { b.saturating_add(1) } else { b };
-                        Ok(Value::Range(a, end))
-                    }
+                    (Value::Int(a), Value::Int(b)) => Ok(match (*inclusive, b.checked_sub(1)) {
+                        (true, _) => Value::Range(a, b),
+                        (false, Some(last)) => Value::Range(a, last),
+                        // `a ..< Int.MIN` is empty
+                        (false, None) => Value::Range(1, 0),
+                    }),
                     (a, b) => Err(Flow::Fatal(format!(
                         "range over {} and {}",
                         a.type_name(),
@@ -4713,6 +4740,68 @@ struct IStmt {
 }
 
 impl Interp {
+    /// the fused range pipeline (crate::fuse): only for bounds that are Int
+    /// literals or plain names (so declining after reading them repeats
+    /// nothing), the span bound of `list.range` kept, fuel charged at 1/64
+    /// per element in 2^20-element chunks. None declines: an abort inside a
+    /// callback is left to the stage-by-stage walk, whose order of visits
+    /// decides which abort is the first.
+    fn run_fused(&mut self, env: &Rc<Env>, plan: crate::fuse::Plan) -> Option<R> {
+        use crate::fuse::{exec, Stage};
+        let bound = |e: &Expr| -> Option<i64> {
+            match e {
+                Expr::Int(k) => Some(*k),
+                Expr::Ident(n) => match env.lookup(n) {
+                    Some(Value::Int(k)) => Some(k),
+                    _ => None,
+                },
+                _ => None,
+            }
+        };
+        let (a, b) = (bound(plan.lo)?, bound(plan.hi)?);
+        if (b as i128) - (a as i128) > (1i128 << 31) {
+            return Some(Err(Flow::Abort("out of memory".into())));
+        }
+        let total: u64 = if b > a {
+            (b as i128 - a as i128) as u64
+        } else {
+            0
+        };
+        let mut acc = plan.init;
+        let mut stack: Vec<i64> = Vec::with_capacity(8);
+        let mut done: u64 = 0;
+        let mut x = a;
+        while done < total {
+            let chunk = (total - done).min(1 << 20);
+            let fuel_cost = (chunk >> 6).max(1);
+            if self.fuel < fuel_cost {
+                self.fuel = 0;
+                return Some(self.abstain(
+                    "resource:fuel",
+                    "evaluation fuel exhausted — the program runs longer than the reference evaluator's budget",
+                ));
+            }
+            self.fuel -= fuel_cost;
+            'element: for _ in 0..chunk {
+                let mut v = x;
+                x = x.wrapping_add(1);
+                for st in &plan.stages {
+                    match st {
+                        Stage::Map(code) => v = exec(code, &[v], &mut stack).ok()?,
+                        Stage::Filter(code) => {
+                            if exec(code, &[v], &mut stack).ok()? == 0 {
+                                continue 'element;
+                            }
+                        }
+                    }
+                }
+                acc = exec(&plan.fold, &[acc, v], &mut stack).ok()?;
+            }
+            done += chunk;
+        }
+        Some(Ok(Value::Int(acc)))
+    }
+
     fn fast_int_range_loop(
         &mut self,
         env: &Rc<Env>,
@@ -4752,7 +4841,7 @@ impl Interp {
             return Some(Ok(()));
         }
         // execute — every iteration, chunked fuel at 1/64
-        let total = (end - a + 1) as u64;
+        let total = (end as i128 - a as i128 + 1) as u64;
         let mut stack: Vec<i64> = Vec::with_capacity(8);
         let mut done: u64 = 0;
         let mut i = a;
@@ -4788,7 +4877,7 @@ impl Interp {
                     }
                     regs[st.target] = stack.pop().expect("rpn value");
                 }
-                i += 1;
+                i = i.wrapping_add(1);
             }
             done += chunk;
             if done == total {
