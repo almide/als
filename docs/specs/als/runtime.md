@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-10-30
+> Last updated: 2026-11-01
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -145,8 +145,16 @@ err `request cancelled` で終わらせて接続を閉じる。以後 `read_new`
 `read_new`・`wait`・`cancel` を native と同じ
 観測で提供する。err の文字列、`cancel` で接続が閉じること、ハンドルの最後の写しを
 捨てると呼び出しが取り消されることも同じである。単体の成果物
-（`almide build --target wasm`）はこの族を持てず、`almide check --target wasm` は
-E081 で拒否する。OpenAI と Anthropic のストリーミングクライアントは
+（`almide build --target wasm`）も同じ観測で提供する。この族を含むプログラムの
+成果物は `wasi:http` を使う標準の WASI 0.3 コンポーネントで（WASI preview 1 には
+http クライアントが無い）、`wasmtime run -S http` で走らせる。そこでは `total_ms`・
+`idle_ms`・`cancel` をコンポーネント自身が守る（ADR-0023 §4.3。タイマーを交換と
+競わせ、`poll` と `read_new` は待つ代わりにランタイムへ短い番を渡す）。`wasi:http` を
+提供しないランタイムは、プログラムが走る前の読み込み時にそのコンポーネントを拒否する。
+埋め込みレーンでは、この族と応答全体のクライアント（`http.send`・`http.get_response`）を
+両方含むプログラムを E081 で拒否する。そのレーンは 2 つを別のホストで提供するからである。
+テスト: 実装側の `tests/http_call_handle_test.rs`（3 つのレグ）と
+`tests/http_call_p3_cross_test.rs`。OpenAI と Anthropic のストリーミングクライアントは
 dialect epoch 14 でパッケージ almide/llm に移った（C-270）。
 テスト: `spec/stdlib/http_call_test.almd`、`spec/embedded_cross/http_call_handle_errs.almd`
 
