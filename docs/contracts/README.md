@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 452 contracts: **requirements-first 147** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 453 contracts: **requirements-first 148** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-452 contracts
+453 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -487,4 +487,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-450 | A directory entry whose name is not UTF-8 lists as its lossy decode, and a stock host's refusal of it is a classified error | 0.69.0 | active | fixture | 0 |
 | C-451 | A scalar effect fn exported to wasm crosses as its value: the raw export answers the ok Int, Float or Bool itself (nothing for Unit), and an err writes its message to stderr and traps | 0.69.0 | active | fixture | 0 |
 | C-452 | An @export(c) fn crosses C at the C ABI table's widths, Int as int64_t; an effect fn answers its ok value, and an err writes its message to stderr and exits 1 | 0.69.0 | active | fixture | 0 |
+| C-453 | A Region export declared returns: address crosses the wasm host boundary as its data address alone, one value in the memory's address width, with every other rule of the (ptr, len) form kept | 0.69.1 | active | fixture | 0 |
 
