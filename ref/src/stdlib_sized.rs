@@ -218,6 +218,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 // C-372: the binary32's own shortest digits (0.1f32 -> "0.1"),
                 // `.0` kept on an integral value like float.to_string
                 Value::Float32(g) => Ok(Value::str(&fmtfloat::to_string_form_f32(*g))),
+                // C-182: a float literal reaching a Float32 position untyped
+                // (the fallback of a `??` whose carrier held no payload)
+                // narrows to binary32 there, as at every other birth site
+                Value::Float(F64(f)) => Ok(Value::str(&fmtfloat::to_string_form_f32(*f as f32))),
                 other => Err(Flow::Fatal(format!(
                     "{name}: expected Float32, got {}",
                     other.type_name()
