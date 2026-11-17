@@ -1,6 +1,6 @@
 # ALS §E — Expression Semantics (normative)
 
-> Last updated: 2026-10-24
+> Last updated: 2026-11-17
 
 > **Status**: normative. これらの節は実装から独立した**規範**であり、v0(native)と
 > v1(MIR/wasm)の両実装がこの節に適合する義務を負う。適合の証拠は
@@ -675,8 +675,33 @@ v=21 → 42)。失敗極性なら else の err が呼び出し元へ伝搬する
 あり、修正は「証明済みの bind 形へ正規化する認識器」に variant match を
 教えることだった(ALS-ST5 と同じ機構の別の顔)。
 
+**式位置の裁定(#4678)**: 失敗極性の else は、guard let を含むブロックが
+**どの式位置にあっても囲む関数から返る**。`let` / `var` の値や代入の値の
+ブロック、文の `if` / `match` のアーム、関数末尾の分岐のアームに加え、
+値を束縛される `if` / `match` のアーム、`if` の条件、関数呼び出しの引数
+(単独・2 番目・入れ子)、二項演算子の左右、リスト・タプル・レコードの要素、
+文字列補間の部分、`for` の範囲、`while` の条件でも同じ — ブロックの位置で
+guard の意味は変わらない。唯一の境界はラムダ本体で、そこでは else は
+ラムダから返る。
+
+```almide
+fn mk(n: Int) -> Result[Int, String] = if n > 0 then ok(n) else err("neg")
+
+fn work(n: Int) -> Int = {
+  let k = if n > 100 then 0 else {
+    guard let v = mk(n) else -1
+    v + 1
+  }
+  println("after")
+  k * 10
+}
+```
+
+`work(-5)` は `-1` を返し、`after` は出力されない。
+
 テスト: `spec/wasm_cross/guard_let_statement.almd`(契約 C-266)、
-`spec/lang/guard_let_test.almd`(wasm レグ)。
+`spec/wasm_cross/guard_let_in_expression_positions.almd`(契約 C-266、
+全式位置)、`spec/lang/guard_let_test.almd`(wasm レグ)。
 
 ## ALS-E29 二項演算子(`ExprKind::Binary`)
 
