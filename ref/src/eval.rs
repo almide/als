@@ -3440,6 +3440,13 @@ impl Interp {
                     (Value::Str(a), Value::Str(b)) => char_cmp(a, b),
                     // C-099: false < true
                     (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+                    // R-bigint-04 / C-456: `<` on BigInt is its compare
+                    (Value::Record { .. }, Value::Record { .. })
+                        if crate::stdlib_bigint::protocol_order(&l, &r).is_some() =>
+                    {
+                        crate::stdlib_bigint::protocol_order(&l, &r)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    }
                     _ => {
                         return self.abstain(
                             "semantics:compare",

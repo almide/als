@@ -491,6 +491,12 @@ pub fn value_cmp(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
         (Value::None, Value::Some(_)) => Some(Ordering::Less),
         (Value::Some(_), Value::None) => Some(Ordering::Greater),
         (Value::Some(x), Value::Some(y)) => value_cmp(x, y),
+        // C-456: a BigInt orders by its protocol's compare, not its fields
+        (Value::Record { .. }, Value::Record { .. })
+            if crate::stdlib_bigint::protocol_order(a, b).is_some() =>
+        {
+            crate::stdlib_bigint::protocol_order(a, b)
+        }
         // C-053 (`: Ord` records): field DECLARATION order, the first
         // differing field decides
         (Value::Record { fields: xs, .. }, Value::Record { fields: ys, .. }) => {

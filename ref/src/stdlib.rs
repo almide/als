@@ -273,6 +273,9 @@ const SET_FNS: &[&str] = &[
     "set.fold",
     "set.any",
     "set.all",
+    "set.sort",
+    "set.min",
+    "set.max",
 ];
 
 // ── argument helpers ─────────────────────────────────────────────────────
@@ -2628,6 +2631,37 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 }
             }
             Ok(Value::Set(Rc::new(v)))
+        }
+        // ALS-C9 / C-456: a set's natural order is its members' order
+        "set.sort" => {
+            arity(name, &args, 1)?;
+            let mut v = (**want_set(name, &args[0])?).clone();
+            stable_sort_by(&mut v, |a, b| cmp_strict(name, a, b))?;
+            Ok(Value::List(Rc::new(v)))
+        }
+        "set.min" | "set.max" => {
+            arity(name, &args, 1)?;
+            let xs = want_set(name, &args[0])?.clone();
+            let mut best: Option<Value> = None;
+            for x in xs.iter() {
+                best = Some(match best {
+                    None => x.clone(),
+                    Some(b) => {
+                        let ord = cmp_strict(name, x, &b)?;
+                        let take = if name == "set.min" {
+                            ord == Ordering::Less
+                        } else {
+                            ord == Ordering::Greater
+                        };
+                        if take {
+                            x.clone()
+                        } else {
+                            b
+                        }
+                    }
+                });
+            }
+            Ok(best.map(|v| Value::Some(Rc::new(v))).unwrap_or(Value::None))
         }
         "set.to_list" => {
             arity(name, &args, 1)?;

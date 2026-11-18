@@ -213,9 +213,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C9"
-hash = "sha256:a56ff94c4dfa"
-reviewed = "2026-10-27"
-by = "O6lvl4 (via the Claude session, 2026-10-27, R-float-09 one-NaN ordering (almide#4258): the Float order clause amended from sign-dependent NaN placement to the single +qNaN after +inf, checked against the amended C-055 statement, the extended list_float_total_order fixture's NaN rows and the reference evaluator's float_order)"
+hash = "sha256:5a04d8fd4a44"
+reviewed = "2026-11-18"
+by = "O6lvl4 (via the Claude session, 2026-11-18, almide#4788 owner ruling (BigInt orders numerically on every route): the protocol-compare clause checked against the C-456 statement and bigint_protocol_order.almd, whose lines were measured on almide v0.69.1's wasm leg (field order) and on the implementation candidate's native and wasm legs (numeric order, Int control unchanged)"
 independent = "no"
 verdict = "accurate"
 
