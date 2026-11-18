@@ -677,9 +677,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R3"
-hash = "sha256:5de8e2c626f4"
-reviewed = "2026-10-18"
-by = "O6lvl4 (via the Claude session; dialect epoch 14 final form (ADR-0028, decided 2026-10-18): `fan.any` removed in favour of a `??` chain / `list.find_map`, `fan.race` → `fan.min(clock)` with the clock required; checked against the rewritten C-004/C-005/C-185/C-205 statements, the rewritten spec/wasm_cross fan fixtures and the reference evaluator)"
+hash = "sha256:5067fbc7a7f0"
+reviewed = "2026-11-18"
+by = "O6lvl4 (via the Claude session, 2026-11-18, almide#4618: the scope paragraph narrows the substrate-independence promise to what the 2026-11-09 fan red-team (runs 42607209362, 42610643942; every probe against its sequential twin, byte for byte) found holding — values, Err/trap, exit, the ordered output and @ordered operations — and names what it refuted (clock, non-ordered fs, sockets between arms, unix.shm, stack depth, mutual waiting); checked against the amended C-004, C-199 and C-386 statements and ALMIDE_FAN_SEQUENTIAL's block-arm inlining (almide 52c7193be5))"
 independent = "no"
 verdict = "accurate"
 

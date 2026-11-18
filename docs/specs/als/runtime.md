@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-11-01
+> Last updated: 2026-11-18
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -48,6 +48,17 @@ Err が複数あれば**最小 index の Err** を結果とする — ブロッ�
 要素 k の trap は、要素 0..k-1 が完了して出力がリスト順に現れ、要素 k の
 trap までの出力の後に abort する観測となり、k より後の要素の出力は現れない
 (C-200、`spec/wasm_cross/fan_trap_waits_for_elements_below.almd`)。
+
+**範囲(almide#4618)**: この同一性が覆うのは、各 arm が計算する値・Err・
+trap・`process.exit`、`println` / `eprintln` / `print` / `io.print` /
+`io.write(io.stdout())` による出力、および `@ordered` 操作(ADR-0024 D3)で
+ある。壁時計(arm 内の時計読み)、`@ordered` でない面を通じて arm 同士が互いに
+観測できる効果(`@ordered` でないファイルシステム状態、同一プログラム内の arm 間の
+ソケット通信、`unix.shm`)、資源枯渇(スタック深さ)、停止性は範囲外である —
+互いを待つ arm(サーバ arm とクライアント arm)はスレッドでは終わり、逐次評価では
+終わらないことがある。`ALMIDE_FAN_SEQUENTIAL=1` はすべての fan(`fan.map`・
+`fan.settle`・`fan { }` のブロック arm)を順に inline 実行し、比較の基準となる
+逐次の双子を与える。
 
 `fan.race` と `fan.timeout` は 0.42.0 / 0.29.0 でいったん削除された後、
 **決定的意味論を得て 0.47.0 で復活した**: race は (spend, index) 辞書式
