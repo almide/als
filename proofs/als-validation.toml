@@ -677,9 +677,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R3"
-hash = "sha256:5067fbc7a7f0"
+hash = "sha256:40a923243949"
 reviewed = "2026-11-18"
-by = "O6lvl4 (via the Claude session, 2026-11-18, almide#4618: the scope paragraph narrows the substrate-independence promise to what the 2026-11-09 fan red-team (runs 42607209362, 42610643942; every probe against its sequential twin, byte for byte) found holding — values, Err/trap, exit, the ordered output and @ordered operations — and names what it refuted (clock, non-ordered fs, sockets between arms, unix.shm, stack depth, mutual waiting); checked against the amended C-004, C-199 and C-386 statements and ALMIDE_FAN_SEQUENTIAL's block-arm inlining (almide 52c7193be5))"
+by = "O6lvl4 (via the Claude session, 2026-11-18, almide#4618 owner ruling (unix.shm_write and unix.shm_resize are @ordered; socket traffic between arms stays unordered): the scope paragraph moves the shared-memory file inside the ordered surface and names sockets as the unordered remainder; checked against the amended C-004 and C-386 statements and fan_ordered_shm_arms.almd, whose lines were measured native == embedded wasm on almide bugs-final, and refuted by the pre-ruling binary, which ran the arms on threads)"
 independent = "no"
 verdict = "accurate"
 

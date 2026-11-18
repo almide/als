@@ -52,9 +52,12 @@ trap までの出力の後に abort する観測となり、k より後の要素
 **範囲(almide#4618)**: この同一性が覆うのは、各 arm が計算する値・Err・
 trap・`process.exit`、`println` / `eprintln` / `print` / `io.print` /
 `io.write(io.stdout())` による出力、および `@ordered` 操作(ADR-0024 D3)で
-ある。壁時計(arm 内の時計読み)、`@ordered` でない面を通じて arm 同士が互いに
-観測できる効果(`@ordered` でないファイルシステム状態、同一プログラム内の arm 間の
-ソケット通信、`unix.shm`)、資源枯渇(スタック深さ)、停止性は範囲外である —
+ある。`unix.shm_write` と `unix.shm_resize` は `@ordered` であり、ある arm が書いた
+共有メモリファイルを兄弟 arm が読む観測(バイト列と大きさ)は逐次評価と同じになる
+(`spec/embedded_cross/fan_ordered_shm_arms.almd`)。壁時計(arm 内の時計読み)、
+`@ordered` でない面を通じて arm 同士が互いに観測できる効果(`@ordered` でない
+ファイルシステム状態、および同一プログラム内の arm 間のソケット通信 — ADR-0024 D3 は
+これを順序づけず、順序の約束はない)、資源枯渇(スタック深さ)、停止性は範囲外である —
 互いを待つ arm(サーバ arm とクライアント arm)はスレッドでは終わり、逐次評価では
 終わらないことがある。`ALMIDE_FAN_SEQUENTIAL=1` はすべての fan(`fan.map`・
 `fan.settle`・`fan { }` のブロック arm)を順に inline 実行し、比較の基準となる
