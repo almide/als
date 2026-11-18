@@ -66,7 +66,9 @@ fn main() -> Unit = {
   )
   println("sort_by " + (by_amount(named) |> list.join(",")))
   println("min_by " + first_by(named) + " max_by " + last_by(named))
-  println("less " + bool.to_string(less(bigint.from(-3), bigint.from(2))) + " " + bool.to_string(less(bigint.from(4294967296), bigint.from(5))))
+  let below = less(bigint.from(-3), bigint.from(2))
+  let above = less(bigint.from(4294967296), bigint.from(5))
+  println("less ${below} ${above}")
   println("int set.sort  " + show_int(set_sorted(set.from_list(vals))))
   println("int list.sort " + show_int(sorted(vals)))
   println("int sort_by " + (by_amount(list.zip(
