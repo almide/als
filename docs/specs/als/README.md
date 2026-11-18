@@ -32,7 +32,7 @@
 | [ALS-C6](./collections.md#als-c6-型変換コンビネータ) | 型変換コンビネータ | C-039 |
 | [ALS-C7](./collections.md#als-c7-レコード・変種・パターンマッチ) | レコード・変種・パターンマッチ | C-036, C-224, C-226 |
 | [ALS-C8](./collections.md#als-c8-幅指定整数フィールド) | 幅指定整数フィールド | C-038 |
-| [ALS-C9](./collections.md#als-c9-順序系コンビネータの全域性) | 順序系コンビネータの全域性 | C-053, C-055, C-276 |
+| [ALS-C9](./collections.md#als-c9-順序系コンビネータの全域性) | 順序系コンビネータの全域性 | C-053, C-055, C-276, C-456 |
 | [ALS-C10](./collections.md#als-c10-空コレクションの型要件（静的規範）) | 空コレクションの型要件（静的規範） | C-052, C-058, C-277 |
 
 ## data-formats.md — 7 section(s)
