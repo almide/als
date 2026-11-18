@@ -240,6 +240,25 @@ fn bit_length(mag: &[u64]) -> i64 {
     }
 }
 
+/// The order the Integer protocol's `compare` gives two BigInts (C-456,
+/// almide/almide#4788): numeric, as `<` on them and every natural-order
+/// operation a generic body reaches. `None` unless both are BigInt values.
+pub fn protocol_order(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
+    let is_big =
+        |v: &Value| matches!(v, Value::Record { type_name: Some(t), .. } if &**t == "BigInt");
+    if !(is_big(a) && is_big(b)) {
+        return None;
+    }
+    let (x, y) = (want_big("compare", a).ok()?, want_big("compare", b).ok()?);
+    let c = match (x.neg, y.neg) {
+        (false, true) => 1,
+        (true, false) => -1,
+        (false, false) => cmp_mag(&x.mag, &y.mag),
+        (true, true) => cmp_mag(&y.mag, &x.mag),
+    };
+    Some(c.cmp(&0))
+}
+
 fn cmp_mag(a: &[u64], b: &[u64]) -> i64 {
     if a.len() != b.len() {
         return if a.len() < b.len() { -1 } else { 1 };

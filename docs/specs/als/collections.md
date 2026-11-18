@@ -1,6 +1,6 @@
 # ALS — コレクション（Collections）
 
-> Last updated: 2026-10-27
+> Last updated: 2026-11-18
 
 コレクション型（List / Map / Set / タプル / レコード）の観測規範。参照方法は
 [strings.md](strings.md) 冒頭と同じ（契約台帳の `spec` キーから参照される）。
@@ -80,7 +80,13 @@ Contracts: C-038。
 +qNaN 0x7FF8000000000000 として +inf の後の最大、-0 < +0）で比較し、
 NaN 混入でも決定的に完走する（パニック・未定義順は不適合）。String キーの `sort_by` は要素が heap でも安定順序で
 全域（結果は各要素を co-own する）。
-Contracts: C-053, C-055, C-276。
+順序をプロトコルの `compare` 要件で定める宣言型（`BigInt: Integer`）は、型引数の
+束縛を経て到達した自然順序の操作 — `list.sort` / `list.min` / `list.max`、
+`list.sort_by` のキー順、およびそれらに帰着する `set.sort` / `set.min` /
+`set.max` / `deque.sort` / `list.min_by` / `list.max_by` — でも、その `compare`
+で比較する（`<` と同じ順序）。フィールド配置による構造順（`{ neg, limbs }` なら
+負数がすべて正数の後に来る）は不適合（almide#4788）。
+Contracts: C-053, C-055, C-276, C-456。
 
 ## ALS-C10 空コレクションの型要件（静的規範）
 
