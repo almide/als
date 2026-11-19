@@ -1,0 +1,10 @@
+// ALS-B4 (ADR-0038): an output line writes the Int straight to stdout; it
+// builds no string.
+@bounded
+effect fn countdown() -> Unit = {
+  for i in 0..<4 {
+    println("${3 - i}")
+  }
+}
+
+effect fn main() -> Unit = countdown()!

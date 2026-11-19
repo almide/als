@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-11-18
+> Last updated: 2026-11-20
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -23,7 +23,28 @@ Contracts: C-035。
   インスタンス化ごとに同じ規則。
 - **裸の Float**: Display は整数値の `.0` を落とす（`3`）。`float.to_string`
   は保持する（`3.0`）。この2形の区別は規範である。
-Contracts: C-008, C-009, C-010, C-011。
+
+**出力行**（ALS-B4、ADR-0038）— `println` / `eprintln` の引数の位置に直接書いた
+補間で、穴がすべて Int・サイズ付き整数・Float・Float32・Bool・String のもの — は、
+同じ補間を String として作ってから出力した場合と**同じバイト列**を両ターゲットで
+書く。整数の穴はその型の `to_string` の桁、Bool は `true` / `false`、String は
+そのバイト列、Float / Float32 の穴は上の Display 形（整数値の `.0` を落とす）である。
+出力行は 1 行ごとの確保をせず、同じ出力先の他の行と**混ざらない**: `fan.map` の
+arm が並行に出力しても各行は欠けずに現れ、観測は ALS-R3 のリスト順のものになる。
+
+```almide
+effect fn main() -> Unit = {
+  let axis = "pitch"
+  let step = 15
+  println("axis ${axis} t=${step} sat=${step > 9}")
+  println("axis " + axis + " t=" + int.to_string(step) + " sat=" + bool.to_string(step > 9))
+}
+```
+
+Fixture: `spec/wasm_cross/output_line_int_bool.almd`、
+`spec/wasm_cross/output_line_float.almd`、
+`spec/wasm_cross/output_line_fan_whole.almd`。
+Contracts: C-008, C-009, C-010, C-011, C-457。
 
 ## ALS-R3 fan 並行コンビネータの決定性
 

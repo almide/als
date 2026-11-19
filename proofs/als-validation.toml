@@ -85,9 +85,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-B4"
-hash = "sha256:953123dca033"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:7c65180bd16c"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, ADR-0038 owner ruling: the output-line exception paragraph and its admitted / refused examples added, read against ADR-0038 sections 1, 2 and 4 and the amended C-311 statement; the e071-*-line-in-loop and e071-bounded-to-string-print-in-loop cases written to match; requirements-first — not yet run, the admitted halves are red against 0.70.0-rc3 by design; the rest of the section unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
@@ -669,9 +669,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R2"
-hash = "sha256:1b8664a319ef"
-reviewed = "2026-08-27"
-by = "O6lvl4 (via the Claude session; four-agent adversarial review 2026-08-27 — prose cross-checked against contract statements, named fixtures and 100+ live probes on almide 0.59.1; 36 sections amended to measurement before stamping)"
+hash = "sha256:0177b8ad7d6c"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, ADR-0038 owner ruling: the output-line paragraph added, read against ADR-0038 sections 1 and 4, the C-457 statement and C-011 (the Float hole keeps the interpolation Display form); output_line_int_bool, output_line_float and output_line_fan_whole written to match and not yet run; the rest of the section unchanged from the 2026-08-27 review)"
 independent = "no"
 verdict = "accurate"
 
@@ -991,9 +991,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T15"
-hash = "sha256:5ab085c6336c"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:6fab88497409"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, stdlib removal mirror (dialect epoch 17, 0.70.0): float.sign replaced by float.signum, the only change to the section; checked against the amended C-049 statement and the renamed fixtures)"
 independent = "no"
 verdict = "accurate"
 
@@ -1046,9 +1046,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T23"
-hash = "sha256:244a527379ad"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:2eed5eb9921c"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, stdlib removal mirror (dialect epoch 17, 0.70.0): float.sign replaced by float.signum, the only change to the section; checked against the amended C-049 statement and the renamed fixtures)"
 independent = "no"
 verdict = "accurate"
 

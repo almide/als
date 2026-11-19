@@ -239,6 +239,7 @@ const SIZED_MODULES: &[(&str, u8, bool)] = &[
     ("int8", 8, true),
     ("int16", 16, true),
     ("int32", 32, true),
+    ("int64", 64, true),
     ("uint8", 8, false),
     ("uint16", 16, false),
     ("uint32", 32, false),

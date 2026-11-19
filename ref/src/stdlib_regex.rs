@@ -2335,7 +2335,6 @@ pub const REGEX_FNS: &[&str] = &[
     "regex.compile",
     "regex.is_match",
     "regex.is_full_match",
-    "regex.full_match",
     "regex.find",
     "regex.find_all",
     "regex.index_of",
@@ -2434,7 +2433,7 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             }
             Ok(Value::str(&out))
         }
-        "regex.is_match" | "regex.is_full_match" | "regex.full_match" => {
+        "regex.is_match" | "regex.is_full_match" => {
             arity(name, &args, 2)?;
             let (p, s) = (want_regex(name, &args[0])?, want_str(name, &args[1])?);
             Ok(Value::Bool(if name == "regex.is_match" {

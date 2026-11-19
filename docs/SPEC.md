@@ -1258,7 +1258,7 @@ Also auto-imported: `bytes`, `matrix`, and the sized numeric modules
 `assert`, `assert_eq`, `assert_ne`, `assert_ok`, `assert_err`, `assert_some`, `assert_none`
 
 **regex** (8 functions):
-`match`, `full_match`, `find`, `find_all`, `replace`, `replace_first`, `split`, `captures`
+`match`, `is_full_match`, `find`, `find_all`, `replace`, `replace_first`, `split`, `captures`
 
 **http** (26 functions, effect):
 HTTP client operations.

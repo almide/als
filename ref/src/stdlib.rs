@@ -164,6 +164,7 @@ const STRING_FNS: &[&str] = &[
 ];
 const INT_FNS: &[&str] = &[
     "int.to_string",
+    "bool.to_string",
     "int.parse",
     "int.abs",
     "int.min",
@@ -193,7 +194,7 @@ const FLOAT_FNS: &[&str] = &[
     "float.max",
     "float.to_fixed",
     "float.clamp",
-    "float.sign",
+    "float.signum",
     "float.is_nan",
     "float.nan",
     "float.is_infinite",
@@ -1919,6 +1920,15 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
             arity(name, &args, 1)?;
             Ok(parse_i64(want_str(name, &args[0])?))
         }
+        // ═══ bool ═══ the text `${b}` holds (ADR-0038 output lines, C-457)
+        "bool.to_string" => {
+            arity(name, &args, 1)?;
+            Ok(Value::str(if want_bool(name, &args[0])? {
+                "true"
+            } else {
+                "false"
+            }))
+        }
 
         // int.parse_radix (stdlib/int.almd): radix outside 2..36 panics; the
         // ALS-T1 trim, an optional sign, then an optional 0x/0o/0b prefix only
@@ -2139,7 +2149,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 x
             })))
         }
-        "float.sign" => {
+        "float.signum" => {
             arity(name, &args, 1)?;
             Ok(Value::Float(F64(want_float(name, &args[0])?.signum()))) // ALS-T15
         }
