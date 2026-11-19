@@ -80,11 +80,9 @@ pub const EXT2_FNS: &[&str] = &[
     "result.filter",
     "int.count_leading_zeros",
     "int.count_trailing_zeros",
-    "int.pop_count",
     "int.count_ones",
     "int.bit_reverse",
     "int.byte_swap",
-    "int.bit_width",
     "int.bit_length",
     "int.log2_floor",
     "int.log2_ceil",
@@ -854,11 +852,9 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
         // intrinsics answer it)
         "int.count_leading_zeros"
         | "int.count_trailing_zeros"
-        | "int.pop_count"
         | "int.count_ones"
         | "int.bit_reverse"
         | "int.byte_swap"
-        | "int.bit_width"
         | "int.bit_length"
         | "int.log2_floor"
         | "int.log2_ceil"
@@ -870,10 +866,10 @@ fn dispatch(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Result<Valu
             Ok(Value::Int(match name {
                 "int.count_leading_zeros" => i64::from(u.leading_zeros()),
                 "int.count_trailing_zeros" => i64::from(u.trailing_zeros()),
-                "int.pop_count" | "int.count_ones" => i64::from(u.count_ones()),
+                "int.count_ones" => i64::from(u.count_ones()),
                 "int.bit_reverse" => u.reverse_bits() as i64,
                 "int.byte_swap" => u.swap_bytes() as i64,
-                "int.bit_width" | "int.bit_length" => {
+                "int.bit_length" => {
                     if n == 0 {
                         0
                     } else {

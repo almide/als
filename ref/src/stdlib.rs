@@ -193,7 +193,7 @@ const FLOAT_FNS: &[&str] = &[
     "float.max",
     "float.to_fixed",
     "float.clamp",
-    "float.sign",
+    "float.signum",
     "float.is_nan",
     "float.nan",
     "float.is_infinite",
@@ -2139,7 +2139,7 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
                 x
             })))
         }
-        "float.sign" => {
+        "float.signum" => {
             arity(name, &args, 1)?;
             Ok(Value::Float(F64(want_float(name, &args[0])?.signum()))) // ALS-T15
         }

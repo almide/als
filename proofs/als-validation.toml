@@ -991,9 +991,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T15"
-hash = "sha256:5ab085c6336c"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:6fab88497409"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, stdlib removal mirror (dialect epoch 17, 0.70.0): float.sign replaced by float.signum, the only change to the section; checked against the amended C-049 statement and the renamed fixtures)"
 independent = "no"
 verdict = "accurate"
 
@@ -1046,9 +1046,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-T23"
-hash = "sha256:244a527379ad"
-reviewed = "2026-10-26"
-by = "O6lvl4 (via the Claude session, 2026-10-26, stdlib removal mirror (almide remove-old, epoch 15): the section's removed spellings replaced by their epoch-15 replacements, text mirrored from almide remove-old and checked against the amended contracts and the fixtures as almide carries them"
+hash = "sha256:2eed5eb9921c"
+reviewed = "2026-11-20"
+by = "O6lvl4 (via the Claude session, 2026-11-20, stdlib removal mirror (dialect epoch 17, 0.70.0): float.sign replaced by float.signum, the only change to the section; checked against the amended C-049 statement and the renamed fixtures)"
 independent = "no"
 verdict = "accurate"
 
