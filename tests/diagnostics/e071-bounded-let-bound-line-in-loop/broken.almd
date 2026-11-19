@@ -1,0 +1,11 @@
+// ALS-B4 (ADR-0038): an interpolation bound to a name is a String, built per
+// iteration — only the direct argument of println / eprintln is an output line.
+@bounded
+effect fn report(axis: String, armed: Bool) -> Unit = {
+  for i in 0..<4 {
+    let line = "axis ${axis} step ${i} armed=${armed}"
+    println(line)
+  }
+}
+
+effect fn main() -> Unit = report("pitch", true)!

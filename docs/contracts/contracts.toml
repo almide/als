@@ -4184,12 +4184,18 @@ evidence  = [
 id        = "C-311"
 spec      = "ALS-B4"
 title     = "No allocation inside a counted loop in a @bounded function (E071)"
-statement = "Inside a counted loop body of a `@bounded` function, constructing, concatenating or pushing to a list/string/map/set or creating a closure is rejected with E071 (hint `allocate outside the loop`); reading, borrowing and passing existing heap values is admissible; allocation outside loops is admissible. Requirements-first (ADR-0017): specified here before any checker enforces it; the 0.58.0 release warns E053 (unknown attribute) and has no such rejection, so this evidence is red against it by design."
+statement = "Inside a counted loop body of a `@bounded` function, constructing, concatenating or pushing to a list/string/map/set or creating a closure is rejected with E071 (hint `allocate outside the loop`); reading, borrowing and passing existing heap values is admissible; allocation outside loops is admissible. AMENDED (ADR-0038, 0.70.0): the one exception is an output line — an interpolated string (or a plain string literal) written directly as the single argument of an output builtin (`println`, `eprintln`) whose holes all have a direct sink writer (Int, the sized ints Int8..Int64 / UInt8..UInt64, Float, Float32, Bool, String); it builds no string and is admissible. A hole of any other type (record, variant, list, map, set, Option, Result, tuple, type variable), an interpolation bound to a name (`let s = \"${n}\"`) and a printed String result (`println(int.to_string(n))`) stay E071; each hole expression is still judged by every other rule. Requirements-first (ADR-0017): specified here before any checker enforces it; the 0.58.0 release warns E053 (unknown attribute) and has no such rejection, so this evidence is red against it by design; likewise the output-line exception is specified before the checker admits it — the 0.70.0-rc3 release refuses an output line in a counted loop with E071, so the admitted `fixed.almd` halves below are red against it by design."
 since     = "0.60.0"
 status    = "active"
 evidence  = [
   { path = "tests/diagnostics/e071-bounded-alloc-in-loop/broken.almd", class = "fixture" },
   { path = "spec/stdlib/bounded_profile_test.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-record-hole-line-in-loop/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-list-hole-line-in-loop/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-let-bound-line-in-loop/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-let-bound-line-in-loop/fixed.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-to-string-print-in-loop/broken.almd", class = "fixture" },
+  { path = "tests/diagnostics/e071-bounded-to-string-print-in-loop/fixed.almd", class = "fixture" },
 ]
 [[contract]]
 id        = "C-312"
@@ -5966,4 +5972,18 @@ since     = "0.70.0"
 status    = "active"
 evidence  = [
   { path = "spec/wasm_cross/bigint_protocol_order.almd", class = "fixture" },
+]
+
+# ── OUTPUT LINE: AN INTERPOLATED println WRITES THE STRING PATH'S BYTES ─
+[[contract]]
+id        = "C-457"
+spec      = "ALS-R2"
+title     = "An output line writes the same bytes on both targets as the String path would, allocates nothing per line, and never interleaves with another line on the same stream"
+statement = "ALS-R2 (ADR-0038): an output line — `println` / `eprintln` whose single argument is an interpolated string (or a plain string literal) written directly in the argument position, every hole an Int, a sized int (Int8..Int64, UInt8..UInt64), Float, Float32, Bool or String — writes the same bytes on both targets as the String path would: the bytes the interpolated String would hold (the same interpolation built as a String outside the line and then printed), which for an integer hole are its type's `to_string` digits, for a Bool `true` / `false`, for a String its bytes, and for a Float / Float32 hole the interpolation Display form of C-011 (shortest round-trip digits, no exponent, `NaN`, `inf`, `-inf`, the `.0` of an integral value dropped). It allocates nothing per line, and it never interleaves with another line on the same stream: under `fan.map` arms that print concurrently, every line appears whole, in the list-order observation of C-004. Requirements-first: specified here before the implementation lowers an output line to the sink; the 0.70.0-rc3 release already prints these bytes through the String path, so the byte evidence is green against it and certifies the reference the new lowering must keep (the per-line zero-allocation clause is the implementation's alloc_count ledger, cited there)."
+since     = "0.70.0"
+status    = "active"
+evidence  = [
+  { path = "spec/wasm_cross/output_line_int_bool.almd", class = "fixture" },
+  { path = "spec/wasm_cross/output_line_float.almd", class = "fixture" },
+  { path = "spec/wasm_cross/output_line_fan_whole.almd", class = "fixture" },
 ]
