@@ -817,7 +817,7 @@ fn_decl      := [visibility] ["scoped"] ["effect"] "fn" name …
 呼び出しは拒否される。判定はシグネチャだけで決まり、モジュール名には依らない —
 `int.abs` / `int.clamp` / `float.abs` / `float.clamp` は認められ、`int` の
 関数であっても `int.to_string`(結果が `String`)と `int.parse`(引数が
-`String`)は拒否され、シグネチャがスカラ(`() -> Float`)の `random.float` も
+`String`)は拒否され、シグネチャがスカラ(`(Int, Int) -> Int`)の `random.int` も
 `effect fn` なので拒否される。
 
 **拒否の規範**: 断片の外の形は**検査時に**拒否される。ターゲット選択の前に

@@ -629,9 +629,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-E31"
-hash = "sha256:893fef2006d5"
+hash = "sha256:1012a2c1fd7e"
 reviewed = "2026-11-20"
-by = "O6lvl4 (via the Claude session, 2026-11-20, E087 owner ruling: the admitted stdlib call is decided by its declared signature (scalar and effect-free) instead of by the module names int / float / math / bool, read against the amended C-364 statement and the checker's scoped walk; the E087 row text `its signature is not scalar and effect-free` and the e087-scope-string-result-call / e087-scope-string-param-call / e087-scope-effect-call cases written to match; requirements-first — not yet run, the expects_error rows are red against 0.70.0-rc3 by design; the stale contract ids C-353 / C-354 / C-355 in the section's citations corrected to C-362 / C-363 / C-364; the rest of the section unchanged from the 2026-09-22 review)"
+by = "O6lvl4 (via the Claude session, 2026-11-20, E087 owner ruling: the admitted stdlib call is decided by its declared signature (scalar and effect-free) instead of by the module names int / float / math / bool, read against the amended C-364 statement and the checker's scoped walk; the E087 row text `its signature is not scalar and effect-free` and the e087-scope-string-result-call / e087-scope-string-param-call / e087-scope-effect-call cases written to match (the effect case uses random.int, which the reference evaluator implements); requirements-first — not yet run, the expects_error rows are red against 0.70.0-rc3 by design; the stale contract ids C-353 / C-354 / C-355 in the section's citations corrected to C-362 / C-363 / C-364; the rest of the section unchanged from the 2026-09-22 review)"
 independent = "no"
 verdict = "accurate"
 
