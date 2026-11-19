@@ -1,6 +1,6 @@
 # ALS §E — Expression Semantics (normative)
 
-> Last updated: 2026-11-17
+> Last updated: 2026-11-20
 
 > **Status**: normative. これらの節は実装から独立した**規範**であり、v0(native)と
 > v1(MIR/wasm)の両実装がこの節に適合する義務を負う。適合の証拠は
@@ -793,7 +793,7 @@ fn_decl      := [visibility] ["scoped"] ["effect"] "fn" name …
 **観測(stdout・stderr・終了コード)を変えない**。`scoped fn` は領域の外で
 呼ばれれば通常の関数であり、その結果は領域の中で呼んだときと同一である。
 つまりこの修飾子が宣言するのは**記憶の回収境界**であって値の意味ではない
-(契約 C-353、C-354)。
+(契約 C-362、C-363)。
 
 **回収の規範**: ブロックのために確保された記憶は境界で回収される。その実現は
 レグごとに異なってよい — 構造 wasm レグはブロックの入口でアロケータ状態を
@@ -808,11 +808,20 @@ fn_decl      := [visibility] ["scoped"] ["effect"] "fn" name …
 ジェネリックなバリアント型で、各ケースが unit か位置フィールドのみ、その
 フィールドがスカラか同じ条件のバリアント型であるもの、およびスカラ場だけの
 レコード、それらのタプルと `Option` — と、**通常のワーカ**および**直接末尾
-再帰のワーカ**である。呼べるのは他の `scoped fn` と `int` / `float` / `math` /
-`bool` のスカラ stdlib 呼び出し、そしてコンストラクタだけである。
+再帰のワーカ**である。呼べるのは他の `scoped fn`、コンストラクタ、そして
+**宣言されたシグネチャがスカラで効果を持たない** stdlib 関数だけである。stdlib
+関数の呼び出しが認められるのは、その宣言が `effect fn` でなく、`@ordered` /
+`@memory_unsafe` / `@signals_process` のどの印も持たず、かつすべての引数型と
+結果型がスカラ(`Int`、サイズ付き整数 `Int8`…`Int64` / `UInt8`…`UInt64`、
+`Float`、`Float32`、`Bool`、`Unit`)であるときに限る。シグネチャが分からない
+呼び出しは拒否される。判定はシグネチャだけで決まり、モジュール名には依らない —
+`int.abs` / `int.clamp` / `float.abs` / `float.clamp` は認められ、`int` の
+関数であっても `int.to_string`(結果が `String`)と `int.parse`(引数が
+`String`)は拒否され、シグネチャがスカラ(`() -> Float`)の `random.float` も
+`effect fn` なので拒否される。
 
 **拒否の規範**: 断片の外の形は**検査時に**拒否される。ターゲット選択の前に
-走る検査なので、判定は native と wasm で同一である(契約 C-355):
+走る検査なので、判定は native と wasm で同一である(契約 C-364):
 
 - **E086** — 領域の値が境界を越える形。`{name} would outlive its scoped
   allocation` に `= allocated at <file:line:col>` と `= scope ends at
@@ -821,6 +830,8 @@ fn_decl      := [visibility] ["scoped"] ["effect"] "fn" name …
   グローバル、ホスト資源(出力・`effect fn`)、未知の間接呼び出し、外側の
   ヒープ値の捕捉、断片外の型。`<構文> is not permitted in a scoped
   {function,block}` に、何を保持しうるかの行と、要求元の宣言を名乗る行が付く。
+  シグネチャがスカラでない、または効果を持つために拒否される stdlib 呼び出しでは、
+  前者の行が `its signature is not scalar and effect-free` を含む。
 - **E088** — 継続を保持する再帰形。`recursive call retains the current scoped
   activation` に、呼び出しの後に何が残るかの行が付く。単一の非末尾自己再帰と
   相互再帰がこれに当たる。木を辿る形(一つのアームに二つ以上の自己呼び出し)は
@@ -829,7 +840,11 @@ fn_decl      := [visibility] ["scoped"] ["effect"] "fn" name …
 `scoped effect fn` は文法上受理されるが stage 1 では E087 で拒否される — 効果は
 ホスト資源であり、境界で走る終了処理をこの断片は持たない。
 
-テスト: `spec/wasm_cross/scoped_region_value.almd`(契約 C-353)、
-`spec/wasm_cross/scoped_worker_in_and_out.almd`(契約 C-354)、
+テスト: `spec/wasm_cross/scoped_region_value.almd`(契約 C-362)、
+`spec/wasm_cross/scoped_worker_in_and_out.almd`(契約 C-363)、
 `tests/diagnostics/e086-scope-escape-tail/` ほか E086 / E087 / E088 の
-negative fixture 群(契約 C-355)。
+negative fixture 群(契約 C-364)。シグネチャによる呼び出しの判定は
+`tests/diagnostics/e087-scope-string-result-call/`(結果が `String`)、
+`tests/diagnostics/e087-scope-string-param-call/`(引数が `String`)、
+`tests/diagnostics/e087-scope-effect-call/`(`effect fn`)が確かめ、各
+`fixed.almd` がスカラで効果のない呼び出しを認められる側として示す。
