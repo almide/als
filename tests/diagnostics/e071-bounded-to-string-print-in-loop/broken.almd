@@ -1,0 +1,10 @@
+// ALS-B4 (ADR-0038): `int.to_string` returns a new String, so printing it
+// allocates per iteration.
+@bounded
+effect fn countdown() -> Unit = {
+  for i in 0..<4 {
+    println(int.to_string(3 - i))
+  }
+}
+
+effect fn main() -> Unit = countdown()!

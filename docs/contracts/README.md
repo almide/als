@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 456 contracts: **requirements-first 151** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 457 contracts: **requirements-first 152** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-456 contracts
+457 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -491,4 +491,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-454 | An address-only Region export holds one host share, a lease its next call ends, so a host that never releases runs in bounded memory | 0.69.1 | active | fixture | 0 |
 | C-455 | A fetched response's header list names every field in ASCII lowercase and leaves out the fields the client manages, on every lane | 0.70.0 | active | fixture | 0 |
 | C-456 | A declared type whose protocol defines its order through `compare` (BigInt) orders by that compare in every natural-order operation a generic body reaches, on every leg | 0.70.0 | active | fixture | 1 |
+| C-457 | An output line writes the same bytes on both targets as the String path would, allocates nothing per line, and never interleaves with another line on the same stream | 0.70.0 | active | fixture | 3 |
 

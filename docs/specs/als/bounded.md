@@ -1,6 +1,6 @@
 # ALS §B — The Bounded Profile (normative)
 
-> Last updated: 2026-10-26
+> Last updated: 2026-11-20
 
 > **Status**: normative（ADR-0017、2026-08-21 裁定）。本章は**有界プロファイル**
 > — 言語の**サブセット**であって方言ではない — を定める。`@bounded` を付けた関数は、
@@ -151,7 +151,45 @@ fn squares() -> List[Int] = {
 fn main() -> Unit = println("${list.len(squares())}")
 ```
 
-テスト: `tests/diagnostics/e071-bounded-alloc-in-loop/`。Contracts: C-311。
+**例外 — 出力行（ADR-0038）**: 出力 builtin（`println` / `eprintln`）の引数の位置に
+直接書いた補間文字列（または素の文字列リテラル）で、すべての穴の型が**直接書き出し**
+を持つもの — Int、サイズ付き整数（`Int8`…`Int64`、`UInt8`…`UInt64`）、Float、
+Float32、Bool、String — を**出力行**と呼ぶ。出力行は文字列を作らず、各部分を
+そのまま出力先へ書き出すので、回数付きループの中でも許される。判定は位置と型だけで
+決まり、関数名には依らない。書き出すバイト列と、1 行が他の行と混ざらないことは
+ALS-R2 が定める。次は従来どおり E071 で拒否される: それ以外の型の穴（レコード・
+変種・リスト・Map・Set・Option・Result・タプル・型変数）、名前に束縛した補間
+（`let s = "${n}"`）、String を返す呼び出しの出力（`println(int.to_string(n))`）。
+穴の中の式は他のすべての規則で引き続き判定される（`${a + b}` の文字列連結は E071、
+Float の演算は E077）。
+
+```almide
+@bounded
+effect fn report(axis: String, armed: Bool) -> Unit = {
+  for i in 0..<4 {
+    println("axis ${axis} step ${i} armed=${armed}")
+  }
+}
+
+effect fn main() -> Unit = report("pitch", true)!
+```
+
+```almide check-fail=E071
+@bounded
+effect fn countdown() -> Unit = {
+  for i in 0..<4 {
+    println(int.to_string(3 - i))
+  }
+}
+
+effect fn main() -> Unit = countdown()!
+```
+
+テスト: `tests/diagnostics/e071-bounded-alloc-in-loop/`、
+`tests/diagnostics/e071-bounded-record-hole-line-in-loop/`、
+`tests/diagnostics/e071-bounded-list-hole-line-in-loop/`、
+`tests/diagnostics/e071-bounded-let-bound-line-in-loop/`、
+`tests/diagnostics/e071-bounded-to-string-print-in-loop/`。Contracts: C-311。
 
 ## ALS-B5 `break` / `continue` の禁止
 

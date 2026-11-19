@@ -1,0 +1,11 @@
+// ALS-B4 (ADR-0038): written directly as println's argument, the same line is
+// an output line — its String, Int and Bool holes are written to stdout, and
+// no string is built.
+@bounded
+effect fn report(axis: String, armed: Bool) -> Unit = {
+  for i in 0..<4 {
+    println("axis ${axis} step ${i} armed=${armed}")
+  }
+}
+
+effect fn main() -> Unit = report("pitch", true)!

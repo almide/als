@@ -164,6 +164,7 @@ const STRING_FNS: &[&str] = &[
 ];
 const INT_FNS: &[&str] = &[
     "int.to_string",
+    "bool.to_string",
     "int.parse",
     "int.abs",
     "int.min",
@@ -1918,6 +1919,15 @@ pub fn call(it: &mut Interp, name: &str, args: Vec<Value>) -> Result<Value, Flow
         "int.parse" => {
             arity(name, &args, 1)?;
             Ok(parse_i64(want_str(name, &args[0])?))
+        }
+        // ═══ bool ═══ the text `${b}` holds (ADR-0038 output lines, C-457)
+        "bool.to_string" => {
+            arity(name, &args, 1)?;
+            Ok(Value::str(if want_bool(name, &args[0])? {
+                "true"
+            } else {
+                "false"
+            }))
         }
 
         // int.parse_radix (stdlib/int.almd): radix outside 2..36 panics; the
