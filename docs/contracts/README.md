@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 457 contracts: **requirements-first 152** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-457 contracts
+458 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -492,4 +492,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-455 | A fetched response's header list names every field in ASCII lowercase and leaves out the fields the client manages, on every lane | 0.70.0 | active | fixture | 0 |
 | C-456 | A declared type whose protocol defines its order through `compare` (BigInt) orders by that compare in every natural-order operation a generic body reaches, on every leg | 0.70.0 | active | fixture | 1 |
 | C-457 | An output line writes the same bytes on both targets as the String path would, allocates nothing per line, and never interleaves with another line on the same stream | 0.70.0 | active | fixture | 3 |
+| C-458 | An import whose first segment names both a module of the project and a [dependencies] entry is refused with E121, for `import pkg` and `import pkg.sub` alike | 0.70.0 | active | fixture | 0 |
 
