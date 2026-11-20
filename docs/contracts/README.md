@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 458 contracts: **requirements-first 159** (two-repo regime, since 2026-08-20),
-contemporaneous 0, **retroactive 0** (shrink-only ceiling 0), unmeasured 299.
+the `since` release was tagged). Of 459 contracts: **requirements-first 154** (two-repo regime, since 2026-08-20),
+contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-458 contracts
+459 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -493,4 +493,5 @@ contemporaneous 0, **retroactive 0** (shrink-only ceiling 0), unmeasured 299.
 | C-456 | A declared type whose protocol defines its order through `compare` (BigInt) orders by that compare in every natural-order operation a generic body reaches, on every leg | 0.70.0 | active | fixture | 1 |
 | C-457 | An output line writes the same bytes on both targets as the String path would, allocates nothing per line, and never interleaves with another line on the same stream | 0.70.0 | active | fixture | 3 |
 | C-458 | An import whose first segment names both a module of the project and a [dependencies] entry is refused with E121, for `import pkg` and `import pkg.sub` alike | 0.70.0 | active | fixture | 0 |
+| C-459 | A process command name runs the program the launch PATH finds; env.set(\"PATH\") never changes which program a name runs, on native and the embedded wasm host alike | 0.70.0 | active | fixture | 0 |
 
