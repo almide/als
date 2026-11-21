@@ -30,15 +30,15 @@ second judge: correctness.
 | `docs/specs/*.md` | Language specification chapters: language, type system, effect system, modules, packages, Result/Option/effect, effect-fn call semantics, edit locality. |
 | `docs/SPEC.md`, `docs/GRAMMAR.md`, `docs/design/` | Design thesis, EBNF grammar, design doctrine (equivalence, hidden operations, rejected patterns). |
 | `docs/adr/` | Architecture Decision Records — the *why* behind the language decisions, with falsifiers. |
-| `docs/contracts/contracts.toml` | **Behavior-contract ledger**: 301 named `C-NNN` promises (stdout, stderr, exit code — identical on every target). `README.md` and `conformance.md` next to it are generated from it. |
-| `spec/wasm_cross/` | 591 cross-target fixtures, each declaring the contract(s) it certifies on a `// @contract:` header. The ledger ↔ fixture link is symmetric and gated. |
+| `docs/contracts/contracts.toml` | **Behavior-contract ledger**: 459 named `C-NNN` promises (stdout, stderr, exit code — identical on every target). `README.md` and `conformance.md` next to it are generated from it. |
+| `spec/wasm_cross/` | 1,017 cross-target fixtures, each declaring the contract(s) it certifies on a `// @contract:` header. The ledger ↔ fixture link is symmetric and gated. |
 | `spec/lang/`, `spec/stdlib/`, `spec/integration/` | Test-block corpora (`almide test`) — language, stdlib, multi-module. |
 | `spec/wasm_fail/`, `spec/programs/`, `spec/wasm_cross_pkg/` | Failure-shape fixtures (`// @expect-fail:`), whole programs, the package-form cross-target fixture. |
-| `tests/diagnostics/` | 752 diagnostic cases (`broken.almd` must be rejected with the pinned code/hint; `fixed.almd` must compile). Rejection behaviour is part of the language surface. |
-| `proofs/als-element-coverage.toml` | Every surface-syntax element → the ALS section that specifies it (72/72 sectioned, 0 UNWRITTEN — a freeze precondition). |
+| `tests/diagnostics/` | 1,066 diagnostic cases (`broken.almd` must be rejected with the pinned code/hint; `fixed.almd` must compile). Rejection behaviour is part of the language surface. |
+| `proofs/als-element-coverage.toml` | Every surface-syntax element → the ALS section that specifies it (73/73 sectioned, 0 UNWRITTEN — a freeze precondition). |
 | `proofs/contract-provenance.toml` | Every contract → the instant its id entered the ledger vs the instant its `since` release was tagged: `requirements-first` / `contemporaneous` / `retroactive` (shrink-only) / `unmeasured`. The two-PR order, measured. |
 | `proofs/als-validation.toml` | Per-section validation record (who reviewed which `ALS-<id>`, when, independently or not, with what verdict), bound to a hash of the section text; unvalidated sections are a shrink-only ceiling. |
-| `proofs/runner-coverage.toml` | How much of the runner its self-test exercises: line coverage of `scripts/conformance.py` under the 21 scenarios, an exact floor (line, not branch; the uncovered lines are listed). |
+| `proofs/runner-coverage.toml` | How much of the runner its self-test exercises: line coverage of `scripts/conformance.py` under the 30 scenarios, an exact floor (line, not branch; the uncovered lines are listed). |
 | `proofs/dialect-epochs.toml` | The dialect-epoch record: what each epoch added, deprecated, removed. |
 | `scripts/check-contracts.sh` | Contract-ledger traceability gate (schema, evidence floor, symmetric links, spec keying, generated-doc freshness, retired-path citations). |
 | `scripts/check-als-element-coverage.sh` | Element-coverage gate (ledger side here; AST enumeration with an implementation root). |
@@ -123,10 +123,11 @@ paths that were renamed into place lives in the implementation repository.
   language-level mechanized semantics, when written, belongs here. The
   executable reading exists since 2026-08-21: `ref/` reproduces the λ_almd
   kernel corpus 49/49 and, over `spec/wasm_cross` + `spec/programs`,
-  evaluates 173 of 602 programs (171 of the 172 comparable ones agree with
-  the native target; the one disagreement and the two findings are in
-  `docs/ref/PARSER-NOTES.md`) and abstains on 429 in 152 ledgered classes —
-  the long tail is stdlib. The runner's `ref` leg exists (verdict
+  evaluated 173 of 602 programs at landing (171 of the 172 comparable ones
+  agreed with the native target; the one disagreement and the two findings
+  are in `docs/ref/PARSER-NOTES.md`), abstaining on 429 in 152 ledgered
+  classes. The abstain ledger has since been ratcheted to zero:
+  `proofs/ref-abstain.toml` records `evaluated = 1017`, `ceiling = 0`. The runner's `ref` leg exists (verdict
   *legs == ref* wherever the reference evaluates; abstains counted, never
   verdicts; `// @ref-allow:` tracks adjudicated findings) — so limitation 2
   of QUALIFICATION.md is now bounded by the abstain ledger instead of by the
