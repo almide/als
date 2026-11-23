@@ -31,7 +31,8 @@ verdict here and a verdict in the compiler's own CI mean the same thing):
   diag      tests/diagnostics/<case>/: `almide check broken.almd` must report a
             diagnostic carrying meta.toml's expects_code / expects_error /
             hint_substring; `almide check fixed.almd` must pass clean.
-            (tests/diagnostic_harness_test.rs)
+            meta.toml's check_profile / check_target add `--profile` /
+            `--target` to both checks. (tests/diagnostic_harness_test.rs)
   ref       spec/wasm_cross + spec/programs against the REFERENCE EVALUATOR
             (ref/, ADR-0015; TOR-8's adjudication): where the reference
             evaluates a program, BOTH targets must equal ITS observables —
@@ -262,6 +263,9 @@ def diag_item(args, root, case):
     # a diagnostic that belongs to a profile (E100 under critical) is judged
     # with that profile on both halves, as the implementation's harness does
     prof = ["--profile", meta["check_profile"]] if meta.get("check_profile") else []
+    # and a TARGET verdict (check_target = "wasi": E081 on the rustc wasip1
+    # route) is judged on that route, the same way
+    prof += ["--target", meta["check_target"]] if meta.get("check_target") else []
     code, out, err = run([args.almide, "check", *prof, broken], cwd=root)
     combined = out + err
     problems = []
