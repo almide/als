@@ -6017,3 +6017,15 @@ status    = "active"
 evidence  = [
   { path = "tests/proc_launch_path_test.rs", name = "a_command_name_runs_what_the_launch_path_finds_on_both_legs", class = "fixture" },
 ]
+
+[[contract]]
+id        = "C-460"
+spec      = "ALS-R6"
+title     = "A stdlib call that reaches a filesystem entry carries an FS category in [permissions].allow: unix.connect is also FS.read, unix.listen and unix.shm_create FS.write, and fs.temp_dir, which touches no entry, is Env.read"
+statement = "ALS-R6 (almide/almide#4825): `[permissions].allow` (ADR-0026 D2) judges a stdlib call by the categories its declaration names, and a call whose runtime opens, creates, binds, connects to, removes or reads the metadata of a filesystem entry by name names an `FS` leaf: `FS.read` when it only looks the entry up, `FS.write` when it creates or changes one. `unix.connect` is `Net.fetch` and `FS.read` (it looks up the socket file at its path); `unix.listen` is `Net.listen` and `FS.write` (it creates the socket file); `unix.shm_create` is `FS.write` (it creates its backing file in its directory and unlinks it; it reaches no network). A project whose `allow` omits that leaf is refused on `almide check`, `almide build` and `almide run`, native and wasm alike, with `error: capability violation in` naming the function and `<leaf> is not in [permissions].allow`, before anything runs. `fs.temp_dir` reads the temp directory's name from the environment and touches no entry, so it is `Env.read`, not `FS.read`. A call on an open descriptor (`unix.accept`, `write_fds`, `take_fds`, `select`, `shm_resize`, `shm_write`, `shm_read`, and `io.read` / `write` / `close` on an `Fd`) names no entry and keeps its categories. Starting a process is `Proc` only: the program it runs and its working directory are bounded by `[permissions] proc`, not by `FS` or `[permissions] fs`. Under `[permissions] fs` (C-393) every call that carries an `FS` leaf is judged by where its path, or its directory, leads; a program that reaches an `FS` call whose declaration does not say how its path is judged is refused before it is built, so no such call runs unbounded."
+since     = "0.70.0"
+status    = "active"
+evidence  = [
+  { path = "tests/fs_category_test.rs", name = "a_call_that_reaches_a_file_needs_its_fs_leaf_on_every_route", class = "fixture" },
+  { path = "crates/almide-codegen/src/fs_scope.rs", name = "every_file_touching_runtime_fn_declares_an_fs_category", class = "fixture" },
+]
