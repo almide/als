@@ -6,7 +6,7 @@
 # The floor is EXACT: below it is a regression, above it the floor must be
 # ratcheted up (--write records the measured value).
 #
-# line_floor = "86.3"
-# executable_lines = "314"
+# line_floor = "86.4"
+# executable_lines = "316"
 # module_level_lines_excluded = "34"
-# uncovered = "122-125 157-158 178 211 246 260 311-314 316-317 321-325 341 446-455 475-476 478-479 481-482 484 486-487 513-514"
+# uncovered = "123-126 158-159 179 212 247 261 318-321 323-324 328-332 348 453-462 482-483 485-486 488-489 491 493-494 520-521"
