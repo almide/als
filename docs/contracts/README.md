@@ -28,10 +28,10 @@ Evidence classes (weakest → strongest): `doc-only` < `by-construction` <
 
 Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contract-provenance.toml)
 (`scripts/check-contract-provenance.py`: the instant the id entered this ledger against the instant
-the `since` release was tagged). Of 463 contracts: **requirements-first 158** (two-repo regime, since 2026-08-20),
+the `since` release was tagged). Of 464 contracts: **requirements-first 159** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-463 contracts
+464 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -498,4 +498,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-461 | The native build route refuses a reachable @extern fn with no native binding and no Almide body with E081 before anything is rendered, never building a binary that aborts at the call | 0.70.0 | active | fixture | 0 |
 | C-462 | A wasm module whose own certificate is INCOMPLETE is refused by default on every route that makes one; --allow-incomplete-verification lets it pass with a warning naming each uncertified function | 0.70.0 | active | fixture | 0 |
 | C-463 | The native routes no certificate covers warn on every use, and the critical profile refuses the rustc --target wasi route | 0.70.0 | active | fixture | 0 |
+| C-464 | The native build route refuses an @extern(rust) fn returning a Region (E090) and a Set whose element holds a nested Float (E081) before anything is rendered | 0.70.0 | active | fixture | 0 |
 
