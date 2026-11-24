@@ -3444,3 +3444,10 @@ since = "0.70.0"
 entry = "2026-11-24T19:32:50+09:00"
 entry_commit = "a3a4a167"
 class = "requirements-first"
+
+[[contract]]
+id = "C-465"
+since = "0.70.0"
+entry = "2026-11-24T20:31:26+09:00"
+entry_commit = "6295134a"
+class = "requirements-first"
