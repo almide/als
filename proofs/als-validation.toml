@@ -1127,3 +1127,11 @@ reviewed = "2026-10-28"
 by = "O6lvl4 (via the Claude session, 2026-10-28, owner-approved after GCE green on sec-rows-22-27-d: compile_budget_test covers the budget table, E111 doubling chains, E113 bool matrix, the nesting budget, critical refusing --budget and linear type sharing; e112-* fixtures; controls for rows 22/27 exit 101)"
 independent = "no"
 verdict = "accurate"
+
+[[section]]
+id = "ALS-I5"
+hash = "sha256:5e4ea09cf8d5"
+reviewed = "2026-11-24"
+by = "O6lvl4 (via the Claude session, 2026-11-24, author review against the owner's ruling on decision-site row verify.gate-build-incomplete-accepted: INCOMPLETE refused by default, --allow-incomplete-verification passes it with a warning recorded in the build output; the implementation and tests/verify_incomplete_refused_test.rs land on almide after this pin)"
+independent = "no"
+verdict = "accurate"
