@@ -6030,3 +6030,15 @@ evidence  = [
   { path = "tests/fs_category_test.rs", name = "a_call_that_reaches_a_file_needs_its_fs_leaf_on_every_route", class = "fixture" },
   { path = "crates/almide-codegen/src/fs_scope.rs", name = "every_file_touching_runtime_fn_declares_an_fs_category", class = "fixture" },
 ]
+
+# ── EXTERN: A FN WITH NO NATIVE BINDING AND NO BODY IS REFUSED ON NATIVE ──
+[[contract]]
+id        = "C-461"
+spec      = "ALS-D7"
+title     = "The native build route refuses a reachable @extern fn with no native binding and no Almide body with E081 before anything is rendered, never building a binary that aborts at the call"
+statement = "ALS-D7 (almide/almide#4006): the native build route — `almide build` and `almide run` without a wasm target, `almide bench`, and `almide check --target native`, which reports that route's verdict — refuses a program whose native roots (`main`, every `@export(c)` fn, every top-level `let` initializer) reach an `@extern` fn that names no native binding (no `@extern(rust, ...)` or `@extern(c, ...)`; for example only `@extern(wasm, \"js\", ...)`) and has no Almide body. The refusal is E081, given before anything is rendered: the diagnostic names the fn, says it has no implementation on the native target, and offers the wasm build for its host, a native binding, or an Almide body. The command exits 1 and no binary is written or run. A fn that also declares a native binding binds through it; one with an Almide body runs the body natively while the wasm route still lowers it to its import. A call that only a test or an unexported `pub fn` makes is not refused (the native test harness keeps a typed hole there, an abort only a test that runs it reaches). `almide check` without `--target` is the language check every target shares and does not report it, and `almide check --target wasm` and `almide build --target wasm` are unchanged."
+since     = "0.70.0"
+status    = "active"
+evidence  = [
+  { path = "tests/diagnostics/e081-extern-no-native-binding/broken.almd", class = "fixture" },
+]
