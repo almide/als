@@ -90,4 +90,4 @@ wasm のモジュールを作るコマンド（`almide build --target wasm`、`b
 関数ごとの行を出し、`almide build` はこの通過を `Built` の行に書く。
 
 テスト: `tests/verify_incomplete_refused_test.rs`。
-Contracts: C-461。
+Contracts: C-462。

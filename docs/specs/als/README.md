@@ -45,7 +45,7 @@
 | [ALS-D4](./data-formats.md#als-d4-正規表現エンジン) | 正規表現エンジン | C-032, C-160, C-285, C-347, C-395 |
 | [ALS-D5](./data-formats.md#als-d5-半精度浮動小数のデコード) | 半精度浮動小数のデコード | C-037 |
 | [ALS-D6](./data-formats.md#als-d6-codec-と-json-デコード) | Codec と JSON デコード | C-084, C-085, C-095, C-098, C-103, C-209, C-211, C-216, C-217, C-357, C-427, C-428, C-429, C-435 |
-| [ALS-D7](./data-formats.md#als-d7-バイト列ブリッジ) | バイト列ブリッジ | C-062, C-090, C-376, C-446, C-451, C-452, C-453, C-454 |
+| [ALS-D7](./data-formats.md#als-d7-バイト列ブリッジ) | バイト列ブリッジ | C-062, C-090, C-376, C-446, C-451, C-452, C-453, C-454, C-461 |
 
 ## deterministic-time.md — 5 section(s)
 
@@ -109,7 +109,7 @@
 | [ALS-I2](./implementation.md#als-i2-コンパイラの決定性と資源) | コンパイラの決定性と資源 | C-040, C-059 |
 | [ALS-I3](./implementation.md#als-i3-v1-lowering-エッジの等価証拠) | v1 lowering エッジの等価証拠 | C-075, C-107, C-109, C-116, C-120, C-138, C-152, C-143, C-144, C-139, C-156, C-157, C-158, C-212, C-336 |
 | [ALS-I4](./implementation.md#als-i4-コンパイルコストの予算) | コンパイルコストの予算 | C-440 |
-| [ALS-I5](./implementation.md#als-i5-不完全な証明書のビルドは既定で拒否される) | 不完全な証明書のビルドは既定で拒否される | C-461 |
+| [ALS-I5](./implementation.md#als-i5-不完全な証明書のビルドは既定で拒否される) | 不完全な証明書のビルドは既定で拒否される | C-462 |
 
 ## runtime.md — 9 section(s)
 
