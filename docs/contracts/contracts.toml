@@ -6055,3 +6055,15 @@ evidence  = [
   { path = "tests/verify_incomplete_refused_test.rs", name = "an_incomplete_certificate_is_refused_unless_the_flag_allows_it", class = "fixture" },
 ]
 
+# ── NATIVE: THE UNVERIFIED ROUTES ARE DECLARED, WARN, AND CRITICAL REFUSES ─
+[[contract]]
+id        = "C-463"
+spec      = "ALS-I5"
+title     = "The native routes no certificate covers warn on every use, and the critical profile refuses the rustc --target wasi route"
+statement = "ALS-I5 (almide/almide#4006, owner ruling 2026-11-24 W3): the verified native render serves `almide build`, `almide run` and `almide bench`. The routes it does not serve ship the standard codegen's Rust, which no certificate covers, and stay as declared unverified routes: Rust source output (`almide <file> --target rust`), `almide build --repr-c`, `almide build --cdylib`, the rustc route `almide build --target wasi`, and the REPL. Each prints, on stderr, a warning that begins `warning: ` and names the route as an unverified route, and its output is otherwise unchanged (the source is still written, the build still runs). `almide check --profile critical --target wasi` is refused: exit code 1 and stderr `error: --profile critical refuses --target wasi`, because the critical profile admits only routes a certificate covers; `almide check --profile critical` with `--target wasm` or `--target native`, and `almide check --target wasi` without the profile, are unchanged."
+since     = "0.70.0"
+status    = "active"
+evidence  = [
+  { path = "tests/unverified_route_test.rs", name = "the_critical_profile_refuses_the_rustc_wasi_route_and_admits_the_verified_ones", class = "fixture" },
+  { path = "tests/unverified_route_test.rs", name = "the_rust_source_route_warns_that_it_is_unverified", class = "fixture" },
+]

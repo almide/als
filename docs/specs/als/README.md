@@ -109,7 +109,7 @@
 | [ALS-I2](./implementation.md#als-i2-コンパイラの決定性と資源) | コンパイラの決定性と資源 | C-040, C-059 |
 | [ALS-I3](./implementation.md#als-i3-v1-lowering-エッジの等価証拠) | v1 lowering エッジの等価証拠 | C-075, C-107, C-109, C-116, C-120, C-138, C-152, C-143, C-144, C-139, C-156, C-157, C-158, C-212, C-336 |
 | [ALS-I4](./implementation.md#als-i4-コンパイルコストの予算) | コンパイルコストの予算 | C-440 |
-| [ALS-I5](./implementation.md#als-i5-不完全な証明書のビルドは既定で拒否される) | 不完全な証明書のビルドは既定で拒否される | C-462 |
+| [ALS-I5](./implementation.md#als-i5-不完全な証明書のビルドは既定で拒否される) | 不完全な証明書のビルドは既定で拒否される | C-462, C-463 |
 
 ## runtime.md — 9 section(s)
 
