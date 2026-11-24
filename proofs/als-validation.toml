@@ -165,9 +165,17 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-C3"
-hash = "sha256:7de4ab831211"
-reviewed = "2026-10-25"
-by = "O6lvl4 (via the Claude session, on the owner's instruction of 2026-10-24 — prose checked against the C-422..C-430 statements and the named fixtures run on native, wasm and the reference evaluator)"
+hash = "sha256:afe633f07385"
+reviewed = "2026-11-24"
+by = "O6lvl4 (via the Claude session, 2026-11-24, author review against the owner's ruling of 2026-11-24 evening (ADR-0039): one sentence added — Set and Map == decide element and key agreement by ALS-C11's key equality; the IEEE rule for every other Float component is unchanged)"
+independent = "no"
+verdict = "accurate"
+
+[[section]]
+id = "ALS-C11"
+hash = "sha256:e938d7eda6d5"
+reviewed = "2026-11-24"
+by = "O6lvl4 (via the Claude session, 2026-11-24, author review against the owner's ruling of 2026-11-24 evening (ADR-0039): the key equality is NaN ~ NaN and 0.0 ~ -0.0 recursively through nested components, == and the list equality family stay IEEE; spec/wasm_cross/collection_key_total_equality.almd pins it and the implementation lands on almide after this pin)"
 independent = "no"
 verdict = "accurate"
 

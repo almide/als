@@ -20,7 +20,7 @@
 | [ALS-B11](./bounded.md#als-b11-早期脱出の制限) | 早期脱出の制限 | C-318 |
 | [ALS-B12](./bounded.md#als-b12-md5・sha-1-は-stdlib-にない) | MD5・SHA-1 は stdlib にない | C-424 |
 
-## collections.md — 10 section(s)
+## collections.md — 11 section(s)
 
 | ID | Section | Contracts |
 |----|---------|-----------|
@@ -34,6 +34,7 @@
 | [ALS-C8](./collections.md#als-c8-幅指定整数フィールド) | 幅指定整数フィールド | C-038 |
 | [ALS-C9](./collections.md#als-c9-順序系コンビネータの全域性) | 順序系コンビネータの全域性 | C-053, C-055, C-276, C-456 |
 | [ALS-C10](./collections.md#als-c10-空コレクションの型要件（静的規範）) | 空コレクションの型要件（静的規範） | C-052, C-058, C-277 |
+| [ALS-C11](./collections.md#als-c11-コレクションのキー等価) | コレクションのキー等価 | C-466 |
 
 ## data-formats.md — 7 section(s)
 
@@ -192,4 +193,4 @@
 | [ALS-T30](./text-and-numbers.md#als-t30-testingassert_aborts-—-子で走る-abort-表明) | testing.assert_aborts — 子で走る abort 表明 | C-384 |
 | [ALS-T31](./text-and-numbers.md#als-t31-hmac-と定数時間比較) | HMAC と定数時間比較 | C-422, C-423 |
 
-139 sections across 11 chapters.
+140 sections across 11 chapters.
