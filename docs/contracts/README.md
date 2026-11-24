@@ -31,7 +31,7 @@ Measured per contract in [`proofs/contract-provenance.toml`](../../proofs/contra
 the `since` release was tagged). Of 460 contracts: **requirements-first 155** (two-repo regime, since 2026-08-20),
 contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 17.
 
-460 contracts
+461 contracts
 
 | ID | Contract | Since | Status | Strongest Evidence | # Fixtures |
 |----|----------|-------|--------|--------------------|-----------:|
@@ -495,4 +495,5 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-458 | An import whose first segment names both a module of the project and a [dependencies] entry is refused with E121, for `import pkg` and `import pkg.sub` alike | 0.70.0 | active | fixture | 0 |
 | C-459 | A process command name runs the program the launch PATH finds; env.set(\"PATH\") never changes which program a name runs, on native and the embedded wasm host alike | 0.70.0 | active | fixture | 0 |
 | C-460 | A stdlib call that reaches a filesystem entry carries an FS category in [permissions].allow: unix.connect is also FS.read, unix.listen and unix.shm_create FS.write, and fs.temp_dir, which touches no entry, is Env.read | 0.70.0 | active | fixture | 0 |
+| C-461 | On the native target, a reachable @extern fn with no native binding and no Almide body is refused at check time with E081, never built into a binary that aborts at the call | 0.70.0 | active | fixture | 0 |
 
