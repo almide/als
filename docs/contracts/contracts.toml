@@ -6042,3 +6042,16 @@ status    = "active"
 evidence  = [
   { path = "tests/diagnostics/e081-extern-no-native-binding/broken.almd", class = "fixture" },
 ]
+
+# ── BUILD: AN INCOMPLETE CERTIFICATE IS REFUSED UNLESS THE FLAG ALLOWS IT ──
+[[contract]]
+id        = "C-462"
+spec      = "ALS-I5"
+title     = "A wasm module whose own certificate is INCOMPLETE is refused by default on every route that makes one; --allow-incomplete-verification lets it pass with a warning naming each uncertified function"
+statement = "ALS-I5 (owner ruling 2026-11-24 on almide decision-site row verify.gate-build-incomplete-accepted): every route that makes a wasm module — `almide build --target wasm` (and the core module `build --component` packages), `almide run --target wasm`, `almide test --target wasm`, `almide bench --target wasm` — judges the module's own certificate with the verifier before it writes or runs it. INCOMPLETE (every witness accepted, at least one function the producer declared uncertified) is refused by default exactly as REJECTED is: exit code 1, no artifact written, nothing run, and stderr names each uncertified function with the producer's reason and names the flag. With `--allow-incomplete-verification` on that command the module passes: stderr carries a `warning[verification-incomplete]` line and one line per uncertified function, and `almide build` records the pass on its `Built` line. A REJECTED certificate is refused with or without the flag, and a CERTIFIED one passes without it."
+since     = "0.70.0"
+status    = "active"
+evidence  = [
+  { path = "tests/verify_incomplete_refused_test.rs", name = "an_incomplete_certificate_is_refused_unless_the_flag_allows_it", class = "fixture" },
+]
+
