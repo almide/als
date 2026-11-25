@@ -1,6 +1,6 @@
 # ALS — 実行時規範（Runtime）
 
-> Last updated: 2026-11-20
+> Last updated: 2026-11-25
 
 プログラム実行の観測規範（エラー終了・文字列補間の表示形・並行コンビネータ）。
 参照方法は [strings.md](strings.md) 冒頭と同じ。
@@ -306,9 +306,11 @@ chunked`、§5.1）、`:` の無い行、名前が token でない行、空白�
 （実装側のドライバが両レグに外れた頭部を送り、どちらも `400` で答えることを比べる）。
 Contracts: C-405。
 
-ソケットホストと export ホストの応答は、ハンドラが自分で
-`X-Content-Type-Options` を付けない限り `X-Content-Type-Options: nosniff` を持つ
-（almide/almide#4134。コアが自分で答える `400`・`413`・`500` も同じ）。テスト:
+ソケットホストと export ホストの応答は、すべて `X-Content-Type-Options: nosniff`
+を持つ（almide/almide#4134。コアが自分で答える `400`・`413`・`500` も同じ）。この
+フィールドは `Connection` と同じくサーバーのもので、ハンドラが付けた
+`X-Content-Type-Options` は（大小文字も値も問わず）捨てられる。ゆえにアプリが自分に
+許したスクリプト可能な型（C-465）の本文も sniff されない。テスト:
 `spec/serve_cross/http_serve_limits.almd`。Contracts: C-407。
 
 バッファする HTTP クライアント（`http.get` 族・`request_response`）は、枠付けの

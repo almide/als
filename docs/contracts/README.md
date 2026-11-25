@@ -441,7 +441,7 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-404 | http.query_params is url.parse_query of the target after its first ?, one decoder on every leg, every pair kept in order and a bad escape an err | 0.69.0 | active | fixture | 1 |
 | C-405 | the socket host answers 400 to a request head RFC 9112 refuses: a bare LF or CR, a malformed request line, a non-origin target, whitespace before a header colon, a colon-less line, obs-fold, a missing or repeated Host | 0.69.0 | active | fixture | 0 |
 | C-406 | the router and the middleware before it read one canonical path: a non-canonical path and a parameter that decodes to a traversal are 400 | 0.69.0 | active | fixture | 0 |
-| C-407 | every http.serve response carries X-Content-Type-Options: nosniff unless the handler set the field | 0.69.0 | active | fixture | 0 |
+| C-407 | every http.serve response carries X-Content-Type-Options: nosniff, a field the server writes and a handler cannot replace | 0.69.0 | active | fixture | 0 |
 | C-408 | the buffered http client refuses a response that ended before its framing did, and caps the response head, as the call-handle client does | 0.69.0 | active | fixture | 0 |
 | C-409 | a handler's err never reaches the client: a fixed 500 body names the request's number, and stderr gets the err quoted under it | 0.69.0 | active | fixture | 0 |
 | C-410 | datetime.parse_iso refuses a year outside 0..=9999 by name instead of answering a wrapped instant | 0.69.0 | active | fixture | 1 |
@@ -499,6 +499,6 @@ contemporaneous 156, **retroactive 132** (shrink-only ceiling 132), unmeasured 1
 | C-462 | A wasm module whose own certificate is INCOMPLETE is refused by default on every route that makes one; --allow-incomplete-verification lets it pass with a warning naming each uncertified function | 0.70.0 | active | fixture | 0 |
 | C-463 | The native routes no certificate covers warn on every use, and the critical profile refuses the rustc --target wasi route | 0.70.0 | active | fixture | 0 |
 | C-464 | The native build route refuses an @extern(rust) fn returning a Region (E090) and a Set whose element holds a nested Float (E081) before anything is rendered | 0.70.0 | active | fixture | 0 |
-| C-465 | http.typed takes only a media type from the stdlib's closed non-script table or one the application grants itself under [trust] media \"self\"; anything else is E117 | 0.70.0 | active | fixture | 0 |
+| C-465 | http.typed takes only a media type from the stdlib's closed non-script table or one the application grants itself under [trust] media \"self\", a script-capable one only by its exact name; anything else is E117 | 0.70.0 | active | fixture | 0 |
 | C-466 | A Set element and a Map key compare with the collection key equality: every NaN is one key and -0.0 is the key 0.0, through every nested component, while == stays IEEE | 0.70.0 | active | fixture | 1 |
 

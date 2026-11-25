@@ -701,9 +701,9 @@ verdict = "accurate"
 
 [[section]]
 id = "ALS-R5"
-hash = "sha256:e83aa437cf5a"
-reviewed = "2026-11-01"
-by = "O6lvl4 (via the Claude session, 2026-11-01, ADR-0023 §4.3: the call-handle paragraph extended to the stand-alone artifact, the WASI 0.3 component almide build --target wasm writes for an http client program, read against C-366's amended statement and tests/http_call_handle_test.rs, whose native, embedded and p3 legs print byte for byte on almide wasi-http-call; the rest of the section unchanged)"
+hash = "sha256:cedcc0a1638c"
+reviewed = "2026-11-25"
+by = "O6lvl4 (via the Claude session, 2026-11-25, owner ruling 2026-11-25: the nosniff paragraph now says the X-Content-Type-Options field is the server's, a handler's own field dropped as Connection is, read against C-407's amended statement and the implementation's rt-core test the_response_always_carries_nosniff; the rest of the section unchanged)"
 independent = "no"
 verdict = "accurate"
 
